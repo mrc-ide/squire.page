@@ -75,7 +75,7 @@ compare_adjustment_plot <- function(out, grad_dur, extend_past = 10){
 }
 
 #'
-#'@noRd
+#'@export
 get_immunity_ratios <- function(out, max_date = NULL) {
 
   #compatibility with weekly fits
@@ -146,7 +146,7 @@ get_immunity_ratios <- function(out, max_date = NULL) {
   return(ratios)
 }
 #'
-#'@noRd
+#'@export
 get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
 
   #compatibility with weekly fits
@@ -581,8 +581,8 @@ rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE, Rt_plot = FALSE) {
 sero_plot <- function(res, sero_df) {
 
   #compatibility with weekly fits
-  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
-    out$pmcmc_results$inputs$data$date <- out$pmcmc_results$inputs$data$week_start
+  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
+    res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
     date_0 <- max(res$pmcmc_results$inputs$data$week_end)
   } else {
     date_0 <- max(res$pmcmc_results$inputs$data$date)
@@ -637,12 +637,13 @@ sero_plot <- function(res, sero_df) {
   return(gg)
 
 }
-
+#'
+#'@export
 ar_plot <- function(res) {
 
   #compatibility with weekly fits
-  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
-    out$pmcmc_results$inputs$data$date <- out$pmcmc_results$inputs$data$week_start
+  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
+    res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
     date_0 <- max(res$pmcmc_results$inputs$data$week_end)
   } else {
     date_0 <- max(res$pmcmc_results$inputs$data$date)
@@ -656,7 +657,7 @@ ar_plot <- function(res) {
     dplyr::mutate(infections = dplyr::lag(cumsum(tidyr::replace_na(.data$infections, 0)), 5, default = 0))
 
 
-  g2 <- ggplot2::ggplot(inf, ggplot2::aes(.data$date, .data$infections/.data$S_tot, group = .data$replicate)) + ggplot2::geom_line() +
+  g2 <- ggplot2::ggplot(inf, ggplot2::aes(.data$date, .data$infections/S_tot, group = .data$replicate)) + ggplot2::geom_line() +
     ggplot2::scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
     ggplot2::ylab("Attack Rate") + ggplot2::xlab("") + ggplot2::theme_bw()
 
@@ -668,8 +669,8 @@ ar_plot <- function(res) {
 cdp_plot <- function(res) {
 
   #compatibility with weekly fits
-  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
-    out$pmcmc_results$inputs$data$date <- out$pmcmc_results$inputs$data$week_start
+  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
+    res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
     date_0 <- max(res$pmcmc_results$inputs$data$week_end)
   } else {
     date_0 <- max(res$pmcmc_results$inputs$data$date)
@@ -689,6 +690,10 @@ cdp_plot <- function(res) {
 #'
 #'@export
 dp_plot <- function(res) {
+
+  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
+    res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
+  }
 
   suppressWarnings(
     dp <- plot(res, particle_fit = TRUE) +

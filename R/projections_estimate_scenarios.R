@@ -102,7 +102,8 @@ get_future_Rt = function(model_out, forcast_days){
   return(trends)
 }
 
-#'
+#' This function doesn't work as intended at the moment, to be replaced with
+#' an expanded version of projections
 #'@export
 update_Rt <- function(model_out, Rt){
   pars <- model_out$replicate_parameters

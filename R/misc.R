@@ -1,5 +1,5 @@
 #'
-#'@noRd
+#'@export
 named_list <- function(...) {
   get <- as.character(match.call())
   l <- list(...)
