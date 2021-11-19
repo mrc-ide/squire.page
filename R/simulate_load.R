@@ -96,22 +96,18 @@ loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 
   #add extra categories
   if(add_income){
     counterfactual_data <-
-      dplyr::left_join(
+      dplyr::mutate(
         counterfactual_data,
-        readRDS(
-          "income_group.rds"
-        ),
-        by = "iso3c")
+        income_group = get_income_group(.data$iso3c)
+        )
     group_by <- unique(c(group_by, "income_group"))
   }
   if(add_who){
     counterfactual_data <-
-      dplyr::left_join(
+      dplyr::mutate(
         counterfactual_data,
-        readRDS(
-          "who_region.Rds"
-        ),
-        by = "iso3c")
+        who_region = get_WHO_region(.data$iso3c)
+        )
     group_by <- unique(c(group_by, "who_region"))
   }
   counterfactual_data <- dplyr::group_by_at(counterfactual_data, c(group_by,"counterfactual"))

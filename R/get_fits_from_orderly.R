@@ -3,12 +3,12 @@
 #' Save the found model objects in ~/model_fits/... under the
 #' relevant iso3 code.
 #' @param repo the file path of the global-lmic-reports-orderly repo.
-#' @param iso3cs which countries should be collected?
+#' @param iso3cs which countries should be collected? Default NULL collects all available.
+#' @param excess Are these excess fits we are collecting, default = FALSE
 #' @param date Collect the reports from which date, should be a string
-#'
+#' @return A named (iso3 codes) list of fit objects
 #' @export
-get_fits <- function(repo, iso3cs, date){
-  excess <- TRUE
+get_fits <- function(repo, date, iso3cs = NULL, excess = FALSE){
   if(excess){
     report <- "excess_mortality"
     file <- "res.Rds"
@@ -70,14 +70,17 @@ get_fits <- function(repo, iso3cs, date){
     }
 
     reports$date <- as.character(date)
+    temp <- tryCatch(DBI::dbDisconnect(), error = function(x){TRUE})
     return(reports)
   }
 
   # reports for specific date
   reports <- reports_day(report, date)
 
-  #only want the relevant countries
-  reports <- reports[reports$country %in% iso3cs,]
+  if(!is.null(iso3cs)){
+    #only want the relevant countries
+    reports <- reports[reports$country %in% iso3cs,]
+  }
 
   fits <- lapply(reports$id, function(x){
     readRDS(file.path(repo, "archive", report, x, file))
@@ -85,11 +88,6 @@ get_fits <- function(repo, iso3cs, date){
 
   names(fits) <- reports$country
 
-  #save each fit individually
-  dir.create(file.path("model_fits"), recursive = TRUE, showWarnings = FALSE)
-  for(fit in names(fits)){
-    saveRDS(fits[[fit]], paste0("model_fits\\", fit, ".Rds"))
-  }
+  return(fits)
 
-  tryCatch(DBI::dbDisconnect(), error = function(x){NULL})
 }

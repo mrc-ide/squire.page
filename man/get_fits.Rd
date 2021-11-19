@@ -7,14 +7,19 @@ Uses DBI to search orderlys database for the relevant files.
 Save the found model objects in ~/model_fits/... under the
 relevant iso3 code.}
 \usage{
-get_fits(repo, iso3cs, date)
+get_fits(repo, date, iso3cs = NULL, excess = FALSE)
 }
 \arguments{
 \item{repo}{the file path of the global-lmic-reports-orderly repo.}
 
-\item{iso3cs}{which countries should be collected?}
-
 \item{date}{Collect the reports from which date, should be a string}
+
+\item{iso3cs}{which countries should be collected? Default NULL collects all available.}
+
+\item{excess}{Are these excess fits we are collecting, default = FALSE}
+}
+\value{
+A named (iso3 codes) list of fit objects
 }
 \description{
 Get the relevant fits from an global-lmic-reports-orderly.
