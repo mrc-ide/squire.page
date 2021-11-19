@@ -288,21 +288,21 @@ country_immunity_plot <- function(df, min_date, date_0, vjust = -1.2, R0 = FALSE
 
   if(Reff){
     g1 <- g1 +
-      ggplot2::geom_ribbon(mapping = ggplot2::aes(x = .data$date, ymin=.data$Reff_min, ymax = .data$Reff_max, group = .data$iso), fill = "#96c4aa") +
-      ggplot2::geom_ribbon(mapping = ggplot2::aes(x = .data$date, ymin = .data$Reff_q25, ymax = .data$Reff_q75, group = .data$iso), fill = "#48996b") +
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(x = .data$date, ymin=.data$Reff_min, ymax = .data$Reff_max, group = .data$iso3c), fill = "#96c4aa") +
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(x = .data$date, ymin = .data$Reff_q25, ymax = .data$Reff_q75, group = .data$iso3c), fill = "#48996b") +
       ggplot2::geom_line(mapping = ggplot2::aes(x = .data$date, y = .data$Reff_median), color = "#48996b")
   }
 
   if(R0) {
     g1 <- g1 +
-      ggplot2::geom_ribbon(mapping = ggplot2::aes(x=.data$date, ymin=.data$R0_min, ymax = .data$R0_max, group = .data$iso), fill = "#8cbbca") +
-      ggplot2::geom_ribbon(mapping = ggplot2::aes(x = .data$date, ymin = .data$R0_q25, ymax = .data$R0_q75, group = .data$iso), fill = "#3f8da7") +
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(x=.data$date, ymin=.data$R0_min, ymax = .data$R0_max, group = .data$iso3c), fill = "#8cbbca") +
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(x = .data$date, ymin = .data$R0_q25, ymax = .data$R0_q75, group = .data$iso3c), fill = "#3f8da7") +
       ggplot2::geom_hline(yintercept = df$R0_median[1], linetype = "dashed")
   }
   if(Rt) {
     g1 <- g1 +
-      ggplot2::geom_ribbon(mapping = ggplot2::aes(x=.data$date, ymin=.data$Rt_min, ymax = .data$Rt_max, group = .data$iso), fill = "grey71", alpha = 0.25) +
-      ggplot2::geom_ribbon(mapping = ggplot2::aes(x = .data$date, ymin = .data$Rt_q25, ymax = .data$Rt_q75, group = .data$iso), fill = "grey71", alpha = 0.55) +
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(x=.data$date, ymin=.data$Rt_min, ymax = .data$Rt_max, group = .data$iso3c), fill = "grey71", alpha = 0.25) +
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(x = .data$date, ymin = .data$Rt_q25, ymax = .data$Rt_q75, group = .data$iso3c), fill = "grey71", alpha = 0.55) +
       ggplot2::geom_line(mapping = ggplot2::aes(x = .data$date, y = .data$Rt_median), colour = "grey71", alpha = 0.55)
   }
   g1
@@ -310,111 +310,41 @@ country_immunity_plot <- function(df, min_date, date_0, vjust = -1.2, R0 = FALSE
 
 #'
 #'@export
-rt_plot_immunity <- function(out, R0_plot = FALSE, Rt_plot = FALSE) {
+rt_plot_immunity <- function(out, vaccine = TRUE, R0_plot = FALSE, Rt_plot = FALSE) {
 
-  #compatibility with weekly fits
-  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
-    out$pmcmc_results$inputs$data$date <- out$pmcmc_results$inputs$data$week_start
-    excess <- TRUE
-  } else {
-    excess <- FALSE
-  }
 
   iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
-
-  if("pmcmc_results" %in% names(out)) {
-    wh <- "pmcmc_results"
+  #compatibility with weekly fits
+  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
+    date_0 <- max(as.Date(out$pmcmc_results$inputs$data$week_start))
   } else {
-    wh <- "scan_results"
+    date_0 <- max(as.Date(out$pmcmc_results$inputs$data$date))
   }
 
-  date <- max(as.Date(out$pmcmc_results$inputs$data$date))
-  date_0 <- date
-
   # impact of immunity ratios
-  ratios <- get_immunity_ratios(out)
+  if(vaccine){
+    ratios <- get_immunity_ratios_vaccine(out)
+  } else {
+    ratios <- get_immunity_ratios(out)
+  }
 
-  # create the Rt data frame
-  rts <- ifelse(
-    excess,
-    lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
+  # get Rt values for each replicate
+  rt <- get_Rt(out) %>% # add ratios
+    dplyr::group_by(rep) %>%
+    dplyr::mutate(
+      ratios = ratios[[unique(.data$rep)]][seq_along(.data$Rt)],
+      R0 = .data$Rt[1]*.data$ratios,
+      Reff = .data$Rt*.data$ratios
+    ) %>%
+    dplyr::ungroup()
 
-      #get the Rt values from R0 and the Rt_change values
-      Rt <- evaluate_Rt_pmcmc_custom(R0 = out$replicate_parameters$R0[y],
-                                     pars = as.list(out$replicate_parameters[y,]),
-                                     Rt_args = out$pmcmc_results$inputs$Rt_args)
-      #get the dates in t and the corresponding Rt indexes
-      tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_Rt_change,
-                                                 change = seq(2, length(Rt)),
-                                                 start_date = out$replicate_parameters$start_date[y],
-                                                 steps_per_day = 1/out$parameters$dt,
-                                                 starting_change = 1)
-      #reduce Rt to the values needed
-      Rt <- Rt[tt$change]
-
-      df <- data.frame(
-        Rt = Rt,
-        date = tt$dates,
-        iso = iso3c
-      ) %>%
-        tidyr::complete(date = seq(min(date), date_0, by = "days")) %>%
-        tidyr::fill(.data$Rt)
-      #add ratio, first ensure the same length
-      df <- df %>%
-        dplyr::mutate(ratios = ratios[[y]][1:nrow(df)]) %>%
-        dplyr::mutate(
-          Reff = .data$Rt*.data$ratios,
-          R0 = .data$Rt[1]*.data$ratios,
-          rep = y
-        ) %>%
-        dplyr::select(!ratios)
-      df$pos <- seq_len(nrow(df))
-      return(df)
-    }),
-    lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
-      tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change,
-                                                 change = out$interventions$R0_change,
-                                                 start_date = out$replicate_parameters$start_date[y],
-                                                 steps_per_day = 1/out$parameters$dt)
-
-      if(wh == "scan_results") {
-        Rt <- c(out$replicate_parameters$R0[y],
-                vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1),
-                       R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y]))
-      } else {
-        Rt <- squire:::evaluate_Rt_pmcmc(
-          R0_change = tt$change,
-          date_R0_change = tt$dates,
-          R0 = out$replicate_parameters$R0[y],
-          pars = as.list(out$replicate_parameters[y,]),
-          Rt_args = out$pmcmc_results$inputs$Rt_args)
-      }
-
-      df <- data.frame(
-        "Rt" = Rt,
-        "date" = tt$dates,
-        "iso" = iso3c,
-        rep = y,
-        stringsAsFactors = FALSE) %>%
-        tidyr::complete(date = seq(min(date), date_0, by = "days")) %>%
-        tidyr::fill(.data$Rt) %>%
-        dplyr::mutate(
-          "Reff" = .data$Rt*utils::tail(stats::na.omit(ratios[[y]]),length(.data$Rt)),
-          "R0" = stats::na.omit(.data$Rt)[1]*utils::tail(stats::na.omit(ratios[[y]]),length(.data$Rt)),
-        )
-      df$pos <- seq_len(nrow(df))
-      return(df)
-    })
-  )
-
-  rt <- do.call(rbind, rts)
   rt$date <- as.Date(rt$date)
 
   new_rt_all <- rt %>%
     dplyr::group_by(rep) %>%
     dplyr::arrange(date)
 
-  suppressMessages(sum_rt <- dplyr::group_by(new_rt_all, .data$date, .data$iso) %>%
+  suppressMessages(sum_rt <- dplyr::group_by(new_rt_all, .data$date, .data$iso3c) %>%
                      dplyr::summarise(Rt_min = stats::quantile(.data$Rt, 0.025,na.rm=TRUE),
                                Rt_q25 = stats::quantile(.data$Rt, 0.25,na.rm=TRUE),
                                Rt_q75 = stats::quantile(.data$Rt, 0.75,na.rm=TRUE),
@@ -439,140 +369,6 @@ rt_plot_immunity <- function(out, R0_plot = FALSE, Rt_plot = FALSE) {
   res <- list("plot" = suppressWarnings(
     country_immunity_plot(sum_rt, min_date, date_0, R0 = R0_plot, Rt = Rt_plot, Reff = TRUE)
     ), "rts" = sum_rt)
-  return(res)
-}
-
-#'
-#'@export
-rt_plot_immunity_vaccine <- function(out, R0_plot = FALSE, Rt_plot = FALSE) {
-
-  #compatibility with weekly fits
-  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
-    out$pmcmc_results$inputs$data$date <- out$pmcmc_results$inputs$data$week_start
-    excess <- TRUE
-  } else {
-    excess <- FALSE
-  }
-
-  iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
-
-  if("pmcmc_results" %in% names(out)) {
-    wh <- "pmcmc_results"
-  } else {
-    wh <- "scan_results"
-  }
-
-  date <- max(as.Date(out$pmcmc_results$inputs$data$date))
-  date_0 <- date
-
-  # impact of immunity ratios
-  ratios <- get_immunity_ratios_vaccine(out)
-
-  # create the Rt data frame
-  rts <- ifelse(
-    excess,
-    lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
-
-      #get the Rt values from R0 and the Rt_change values
-      Rt <- evaluate_Rt_pmcmc_custom(R0 = out$replicate_parameters$R0[y],
-                                     pars = as.list(out$replicate_parameters[y,]),
-                                     Rt_args = out$pmcmc_results$inputs$Rt_args)
-      #get the dates in t and the corresponding Rt indexes
-      tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_Rt_change,
-                                                 change = seq(2, length(Rt)),
-                                                 start_date = out$replicate_parameters$start_date[y],
-                                                 steps_per_day = 1/out$parameters$dt,
-                                                 starting_change = 1)
-      #reduce Rt to the values needed
-      Rt <- Rt[tt$change]
-
-      df <- data.frame(
-        Rt = Rt,
-        date = tt$dates,
-        "iso" = iso3c
-      ) %>%
-        tidyr::complete(date = seq(min(date), date_0, by = "days")) %>%
-        tidyr::fill(.data$Rt)
-      #add ratio, first ensure the same length
-      df <- df %>%
-        dplyr::mutate(ratios = ratios[[y]][1:nrow(df)]) %>%
-        dplyr::mutate(
-          Reff = .data$Rt*ratios,
-          R0 = .data$Rt[1]*ratios,
-          rep = y
-        ) %>%
-        dplyr::select(!ratios)
-      df$pos <- seq_len(nrow(df))
-      return(df)
-    }),
-    lapply(seq_len(length(out$replicate_parameters$R0)), function(y) {
-      tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change,
-                                                 change = out$interventions$R0_change,
-                                                 start_date = out$replicate_parameters$start_date[y],
-                                                 steps_per_day = 1/out$parameters$dt)
-
-      if(wh == "scan_results") {
-        Rt <- c(out$replicate_parameters$R0[y],
-                vapply(tt$change, out[[wh]]$inputs$Rt_func, numeric(1),
-                       R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y]))
-      } else {
-        Rt <- squire:::evaluate_Rt_pmcmc(
-          R0_change = tt$change,
-          date_R0_change = tt$dates,
-          R0 = out$replicate_parameters$R0[y],
-          pars = as.list(out$replicate_parameters[y,]),
-          Rt_args = out$pmcmc_results$inputs$Rt_args)
-      }
-
-      df <- data.frame(
-        "Rt" = Rt,
-        "date" = tt$dates,
-        iso = iso3c,
-        rep = y,
-        stringsAsFactors = FALSE) %>%
-        tidyr::complete(date = seq(min(date), date_0, by = "days")) %>%
-        tidyr::fill(.data$Rt) %>%
-        dplyr::mutate(
-          "Reff" = .data$Rt*utils::tail(stats::na.omit(ratios[[y]]),length(.data$Rt)),
-          "R0" = stats::na.omit(.data$Rt)[1]*utils::tail(stats::na.omit(ratios[[y]]),length(.data$Rt)),
-        )
-      df$pos <- seq_len(nrow(df))
-      return(df)
-    })
-  )
-
-  rt <- do.call(rbind, rts)
-  rt$date <- as.Date(rt$date)
-
-  new_rt_all <- rt %>%
-    dplyr::group_by(rep) %>%
-    dplyr::arrange(date)
-
-  suppressMessages(sum_rt <- dplyr::group_by(new_rt_all, .data$date, .data$iso) %>%
-                     dplyr::summarise(Rt_min = stats::quantile(.data$Rt, 0.025,na.rm=TRUE),
-                               Rt_q25 = stats::quantile(.data$Rt, 0.25,na.rm=TRUE),
-                               Rt_q75 = stats::quantile(.data$Rt, 0.75,na.rm=TRUE),
-                               Rt_max = stats::quantile(.data$Rt, 0.975,na.rm=TRUE),
-                               Rt_median = stats::median(.data$Rt,na.rm=TRUE),
-                               Rt = mean(.data$Rt,na.rm=TRUE),
-                               R0_min = stats::quantile(.data$R0, 0.025,na.rm=TRUE),
-                               R0_q25 = stats::quantile(.data$R0, 0.25,na.rm=TRUE),
-                               R0_q75 = stats::quantile(.data$R0, 0.75,na.rm=TRUE),
-                               R0_max = stats::quantile(.data$R0, 0.975,na.rm=TRUE),
-                               R0_median = stats::median(.data$R0),
-                               R0 = mean(.data$R0),
-                               Reff_min = stats::quantile(.data$Reff, 0.025,na.rm=TRUE),
-                               Reff_q25 = stats::quantile(.data$Reff, 0.25,na.rm=TRUE),
-                               Reff_q75 = stats::quantile(.data$Reff, 0.75,na.rm=TRUE),
-                               Reff_max = stats::quantile(.data$Reff, 0.975,na.rm=TRUE),
-                               Reff_median = stats::median(.data$Reff,na.rm=TRUE),
-                               Reff = mean(.data$Reff,na.rm=TRUE)))
-
-  min_date <- min(as.Date(out$replicate_parameters$start_date))
-
-  res <- list("plot" = suppressWarnings(
-    country_immunity_plot(sum_rt, min_date, date_0, R0 = R0_plot, Rt = Rt_plot, Reff = TRUE)
-  ), "rts" = sum_rt)
   return(res)
 }
 
