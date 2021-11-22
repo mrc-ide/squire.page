@@ -29,6 +29,3 @@ Imports:
 Suggests:
     orderly,
     DBI
-Remotes: 
-    https://github.com/mrc-ide/nimue,
-    https://github.com/mrc-ide/squire
