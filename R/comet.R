@@ -28,6 +28,10 @@
 #' }
 #' @export
 prepare_input_json_df <- function(out, ox_interventions = NULL){
+  if(any(!c("pmcmc_results", "replicate_parameters", "parameters") %in%
+         names(out))){
+    stop("out does not contain the needed data, pleasure insure this is the output of MCMC fit.")
+  }
   iso3c <- countrycode::countrycode(out$parameters$country, origin = "country.name",
                                     destination = "iso3c")
   ## and save the info for the interface
@@ -103,6 +107,9 @@ prepare_input_json_df <- function(out, ox_interventions = NULL){
 
   #make adjustments for the vaccines if needed
   if(class(out) == "nimue_simulation"){
+    if(is.null(out$interventions$vaccine_strategy)){
+      stop("Vaccine strategy is not attached, if this is output of regular Squire functions manually add to out$interventions$vaccine_strategy as a string.")
+    }
     df <- ammend_df_covidsim_for_vaccs(df,
                                        out,
                                        strategy =

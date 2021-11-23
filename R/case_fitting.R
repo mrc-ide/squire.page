@@ -205,7 +205,6 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
 #' @param grad_dur How many days into the past to adjust.
 #' @return A squire model object, with the adjusted replicate parameters.
 #' @export
-#'@export
 generate_draws_pmcmc_case_fitted <- function(out, n_particles = 10, grad_dur = 21) {
 
   pmcmc <- out$pmcmc_results
