@@ -313,6 +313,7 @@ fit_spline_rt <- function(data,
                                                 envir = new.env(parent = environment(stats::acf)))
 
   res$interventions$delta_adjustments <- as.list(delta_characteristics)
+  res$interventions$vaccine_strategy <- vaccine_inputs$strategy
 
   # remove states to keep object memory save down
   if("chains" %in% names(res$pmcmc_results)) {

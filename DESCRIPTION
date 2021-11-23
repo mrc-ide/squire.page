@@ -16,6 +16,7 @@ Imports:
     tidyr,
     tibble,
     lubridate,
+    tidyselect,
     ggplot2,
     utils,
     stats,
@@ -25,7 +26,13 @@ Imports:
     purrr,
     future,
     nimue (>= 0.1.22),
-    squire (>= 0.6.10)
+    squire (>= 0.6.10),
+    countrycode
 Suggests:
     orderly,
-    DBI
+    DBI,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Depends: 
+    R (>= 2.10)
+LazyData: true
