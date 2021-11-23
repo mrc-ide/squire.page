@@ -34,7 +34,6 @@ generate_parameters <- function(out, draws = 10){
   } else {
     res <- pmcmc_results$results
   }
-  squire:::assert_neg(res$log_posterior, zero_allowed = FALSE)
   res <- unique(res)
   probs <- exp(res$log_posterior)
   probs <- probs/sum(probs)
