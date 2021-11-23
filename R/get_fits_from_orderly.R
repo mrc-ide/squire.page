@@ -1,14 +1,36 @@
-#' Get the relevant fits from an global-lmic-reports-orderly.
-#' Uses DBI to search orderlys database for the relevant files.
-#' Save the found model objects in ~/model_fits/... under the
-#' relevant iso3 code.
-#' @param repo the file path of the global-lmic-reports-orderly repo.
-#' @param iso3cs which countries should be collected? Default NULL collects all available.
-#' @param excess Are these excess fits we are collecting, default = FALSE
-#' @param date Collect the reports from which date, should be a string
-#' @return A named (iso3 codes) list of fit objects
+#' Get the relevant fits from an global-lmic-reports-orderly
+#'
+#' Uses DBI to search orderlys database for the relevant files. Also requires DBI
+#' search the orderly database. Returns a list of model fits, warning might be
+#' large, since this is only run on my PC with large amounts of RAM, this is fine.
+#' Also \code{iso3cs} can be used to reduce the list size.
+#'
+#' @param repo The file path of the global-lmic-reports-orderly repo.
+#' @param iso3cs Which countries should be collected? Default = NULL, collects all available.
+#' @param excess Collect excess fits? Default = FALSE.
+#' @param date Collect the reports from which date, should be a string.
+#' @return A named (iso3 codes) list of fit objects.
+#' @examples
+#' #get fits from my orderly repo
+#' \dontrun{
+#' get_fits(
+#'    "C:\\Users\\gbarnsle\\Documents\\Covid Vaccine Impact\\global-lmic-reports-orderly",
+#'    "2021-11-21",
+#'    iso3cs = NULL,
+#'    excess = TRUE
+#' )
+#' }
 #' @export
 get_fits <- function(repo, date, iso3cs = NULL, excess = FALSE){
+  if(!dir.exists(repo)){
+    stop("Repo directory does not exist")
+  }
+  if(!requireNamespace("orderly", quietly = TRUE)){
+    stop('This function requires orderly, please download with install.packages("orderly")')
+  }
+  if(!requireNamespace("DBI", quietly = TRUE)){
+    stop('This function requires DBI, please download with install.packages("DBI")')
+  }
   if(excess){
     report <- "excess_mortality"
     file <- "res.Rds"

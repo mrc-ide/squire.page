@@ -1,5 +1,8 @@
 
-#' Add long covid outputs
+#' Add long COVID outputs
+#'
+#' For use nimue_format
+#'
 #' @noRd
 get_lc <- function(res,
                    mean_over_80_age = 82.5,
