@@ -1,4 +1,8 @@
+#' Get iso3 codes of recipient countries in COVAX
 #'
+#' \url{https://www.who.int/initiatives/act-accelerator/covax}
+#'
+#' @return Vector of iso3 codes.
 #' @export
 get_covax_iso3c <- function(){
   c(
@@ -16,8 +20,12 @@ get_covax_iso3c <- function(){
     "VCT",  "VNM",  "VUT",  "WSM",  "XKX",  "YEM",  "ZMB",  "ZWE"
   )
 }
+#' Get iso3 codes of recipient countries in GAVI
 #'
-#'@export
+#' @source \url{https://www.gavi.org/}
+#'
+#' @return Vector of iso3 codes.
+#' @export
 get_gavi_iso3c <- function(){
   c(
     "AFG","BGD","BEN","BFA","BDI","KHM","CMR","CAF","TCD","COM","COD","COG",
@@ -27,8 +35,12 @@ get_gavi_iso3c <- function(){
     "TJK","TZA","TGO","UGA","UZB","YEM","ZMB","ZWE"
   )
 }
+#' Get iso3 codes of recipient countries in TheGlobalFund
 #'
-#'@export
+#' @source \url{https://www.theglobalfund.org/en/}
+#'
+#' @return Vector of iso3 codes.
+#' @export
 get_global_fund_iso3c <- function(){
   c(
     "AFG", "DZA", "AGO", "ARM", "AZE", "BGD", "BLR", "BLZ", "BEN", "BTN", "BOL",
@@ -41,8 +53,16 @@ get_global_fund_iso3c <- function(){
     "TLS", "TGO", "TUN", "TKM", "UGA", "UKR", "UZB", "VEN", "VNM", "ZMB", "ZWE"
   )
 }
+#' Get the World Bank Income Categories for a given set of iso3 codes
 #'
-#'@export
+#' Note that some countries that are currently unclassified have been given either
+#' their previous classification (i.e Venezuela) or the classification of the country
+#' that they are a territory of (i.e. Hong Kong).
+#'
+#' @source \url{https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups}
+#' @param iso3cs Vector of iso 3 codes.
+#' @return Ordered factor of classifications codes.
+#' @export
 get_income_group <- function(iso3cs){
   #list categories
   LIC <- c(
@@ -95,8 +115,15 @@ get_income_group <- function(iso3cs){
   }
   return(output)
 }
+#' Get the WHO Regions for a given set of iso3 codes
 #'
-#'@export
+#' Note that some countries that are currently unclassified have been given the
+#' classification of the country that they are a territory of (i.e. Hong Kong).
+#'
+#' @source \url{https://www.who.int/countries}
+#' @param iso3cs Vector of iso 3 codes.
+#' @return Vector of WHO regions.
+#' @export
 get_WHO_region <- function(iso3cs){
   AFR <- c(
     "DZA", "AGO", "BEN", "BWA", "BFA", "BDI", "CPV", "CMR", "CAF", "TCD", "COM",

@@ -15,7 +15,7 @@ nimue_format(
 )
 }
 \arguments{
-\item{out}{nimue_simulation object}
+\item{out}{nimue_simulation or squire_simulation object}
 
 \item{var_select}{Vector of compartment names, e.g. \code{c("S", "R")}. In
 addition a number of summary compartment can be requested. These include:
@@ -29,7 +29,8 @@ addition a number of summary compartment can be requested. These include:
 \item{"hospital_incidence"}{ Incidence of hospitilisation }
 \item{"ICU_incidence"}{ Incidence of ICU admissions }
 \item{"hospitilisations"}{ Incidence of hospital+ICU admissions }
-\item{""vaccines", "unvaccinated", "vaccinated", "priorvaccinated"}{ Vaccine outputs }
+\item{"vaccines", "unvaccinated", "vaccinated", "priorvaccinated"}{ Vaccine outputs }
+\item{"long_covid"}{ Long COVID estimates}
 }}
 
 \item{reduce_age}{Collapse age-dimension, calculating the total in the
@@ -50,5 +51,15 @@ calculation. Default = 0.195 from UK ONS analyses}
 Formatted long data.frame
 }
 \description{
-Nimue format that returns just compartments/summaries requested
+If a squire object is provided out it should be feed through to
+\code{squire::format_output}. However, please note that not all variables can
+be select for squire.
+}
+\examples{
+#generate some outputs for the afghanistan fit and pass through to format
+#getting deaths and long covid estimates
+\dontrun{
+generate_draws(afg_fit) \%>\%
+  nimue_format(var_select = c("deaths", "long_covid"))
+}
 }

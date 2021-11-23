@@ -400,7 +400,7 @@ sero_plot <- function(res, sero_df) {
 
 
   # get symptom onset data
-  inf <- nim_sq_format(res, c("infections"), date_0 = date_0) %>%
+  inf <- nimue_format(res, c("infections"), date_0 = date_0) %>%
     dplyr::rename(symptoms = .data$y) %>%
     dplyr::left_join(nim_sq_format(res, "S", date_0 = date_0),
               by = c("replicate", "t", "date")) %>%

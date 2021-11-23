@@ -1,5 +1,17 @@
+#' Scale a Nimue MCMC output by the number of reported cases
 #'
-#'@export
+#' Performs a simple grid search, adding or subtracting from the final fitted
+#' effect (in all replicates of the model object). Chooses the value that
+#' minimises the error from the total number of infections in the final
+#' \code{grad_dur} days of the epidemic, adjusted by a reporting fraction
+#' calculated over the previous few days (14 by default, determined by
+#' \code{Rt_rw_duration}). A legacy function and is no longer used.
+#'
+#' @param out A nimue model object.
+#' @param n_particles How many replicates to draw from the adjust object.
+#' @param grad_dur How many days into the past to adjust.
+#' @return A nimue model object, with the adjusted replicate parameters.
+#' @export
 generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_dur = 21) {
 
   pmcmc <- out$pmcmc_results
@@ -179,8 +191,20 @@ generate_draws_pmcmc_nimue_case_fitted <- function(out, n_particles = 10, grad_d
 
 }
 
+#' Scale a Squire MCMC output by the number of reported cases
 #'
-#'@export
+#' Performs a simple grid search, adding or subtracting from the final fitted
+#' effect (in all replicates of the model object). Chooses the value that
+#' minimises the error from the total number of infections in the final
+#' \code{grad_dur} days of the epidemic, adjusted by a reporting fraction
+#' calculated over the previous few days (14 by default, determined by
+#' \code{Rt_rw_duration}). A legacy function and is no longer used.
+#'
+#' @param out A squire model object.
+#' @param n_particles How many replicates to draw from the adjust object.
+#' @param grad_dur How many days into the past to adjust.
+#' @return A squire model object, with the adjusted replicate parameters.
+#' @export
 generate_draws_pmcmc_case_fitted <- function(out, n_particles = 10, grad_dur = 21) {
 
   pmcmc <- out$pmcmc_results

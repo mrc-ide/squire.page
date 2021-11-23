@@ -1,6 +1,10 @@
 #' Nimue format that returns just compartments/summaries requested
 #'
-#' @param out nimue_simulation object
+#' If a squire object is provided out it should be feed through to
+#' \code{squire::format_output}. However, please note that not all variables can
+#' be select for squire.
+#'
+#' @param out nimue_simulation or squire_simulation object
 #' @param var_select Vector of compartment names, e.g. \code{c("S", "R")}. In
 #'   addition a number of summary compartment can be requested. These include:
 #' \itemize{
@@ -13,7 +17,8 @@
 #'       \item{"hospital_incidence"}{ Incidence of hospitilisation }
 #'       \item{"ICU_incidence"}{ Incidence of ICU admissions }
 #'       \item{"hospitilisations"}{ Incidence of hospital+ICU admissions }
-#'       \item{""vaccines", "unvaccinated", "vaccinated", "priorvaccinated"}{ Vaccine outputs }
+#'       \item{"vaccines", "unvaccinated", "vaccinated", "priorvaccinated"}{ Vaccine outputs }
+#'       \item{"long_covid"}{ Long COVID estimates}
 #'       }
 #' @param reduce_age Collapse age-dimension, calculating the total in the
 #'   compartment.
@@ -24,10 +29,15 @@
 #'   covid incidence. Default = 82.5
 #' @param case_to_infection_ratio Ratio of infections to cases for long covid
 #'   calculation. Default = 0.195 from UK ONS analyses
-#'
 #' @return Formatted long data.frame
+#' @examples
+#' #generate some outputs for the afghanistan fit and pass through to format
+#' #getting deaths and long covid estimates
+#' \dontrun{
+#' generate_draws(afg_fit) %>%
+#'   nimue_format(var_select = c("deaths", "long_covid"))
+#' }
 #' @export
-
 nimue_format <- function(out,
                          var_select = NULL,
                          reduce_age = TRUE,
@@ -36,6 +46,13 @@ nimue_format <- function(out,
                          mean_over_80_age = 82.5,
                          case_to_infection_ratio = 0.195) {
 
+
+  #a check for if a squire object then we use that instead
+  if(!"tt_vaccine" %in% out$model$.__enclos_env__$private$user) {
+    return(
+      squire::format_output(out, var_select, reduce_age, combine_compartments, date_0)
+    )
+  }
 
   # work out what compartments are being plotted
   compartments = c("S", "E",
@@ -139,25 +156,5 @@ nimue_format <- function(out,
     pd$date <- as.Date(pd$t + as.Date(date_0),
                        format = "%Y-%m-%d")
   }
-
-
   return(pd)
-
-}
-
-#move this into nimue format as a check at the start
-#'
-#'@export
-nim_sq_format <- function(out,
-                          var_select = NULL,
-                          reduce_age = TRUE,
-                          combine_compartments = TRUE,
-                          date_0 = NULL) {
-
-  if("tt_vaccine" %in% out$model$.__enclos_env__$private$user) {
-    nimue_format(out, var_select, reduce_age, combine_compartments, date_0)
-  } else {
-    squire::format_output(out, var_select, reduce_age, combine_compartments, date_0)
-  }
-
 }
