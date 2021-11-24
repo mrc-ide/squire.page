@@ -6,8 +6,11 @@
 #' e.g. Iso3c code, age_group or date.
 #' @param quantileSamples Only used if dataset it not grouped by country. The
 #' number of combinations to randomly draw. Defaults to 2000.
+#' @param exclude_iso3cs A vector of iso3cs to exclude from the summaries,
+#' default = NULL.
 #' @export
-loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 2000){
+loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 2000,
+                                   exclude_iso3cs = NULL){
   #keep country if grouping by iso3c
   if("iso3c" %in% group_by | "country" %in% group_by){
     group_by <- unique(c(group_by, "iso3c", "country"))
@@ -50,7 +53,8 @@ loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 
     dplyr::summarise(
       baseline_infections = sum(.data$infections),
       baseline_deaths = sum(.data$deaths)
-    ))
+    )) %>%
+    dplyr::filter(!.data$iso3c %in% exclude_iso3cs)
 
   #for each counterfactual
   start <- TRUE
@@ -72,7 +76,8 @@ loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 
         infections = sum(.data$infections),
         deaths = sum(.data$deaths)
       )) %>%
-      dplyr::mutate(counterfactual = thisCounterfactual)
+      dplyr::mutate(counterfactual = thisCounterfactual) %>%
+      dplyr::filter(!.data$iso3c %in% exclude_iso3cs)
     if(start){
       counterfactual_data <- thisCounterfactual_data
       start <- FALSE
