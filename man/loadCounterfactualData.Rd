@@ -4,7 +4,12 @@
 \alias{loadCounterfactualData}
 \title{A function to load and summarise the deaths averted data}
 \usage{
-loadCounterfactualData(counterfactuals, group_by, quantileSamples = 2000)
+loadCounterfactualData(
+  counterfactuals,
+  group_by,
+  quantileSamples = 2000,
+  exclude_iso3cs = NULL
+)
 }
 \arguments{
 \item{counterfactuals}{Which counterfactuals to load. A vector of strings.
@@ -16,6 +21,9 @@ e.g. Iso3c code, age_group or date.}
 
 \item{quantileSamples}{Only used if dataset it not grouped by country. The
 number of combinations to randomly draw. Defaults to 2000.}
+
+\item{exclude_iso3cs}{A vector of iso3cs to exclude from the summaries,
+default = NULL.}
 }
 \description{
 A function to load and summarise the deaths averted data
