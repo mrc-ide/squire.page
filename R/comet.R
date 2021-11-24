@@ -39,8 +39,7 @@ prepare_input_json_df <- function(out, ox_interventions = NULL){
   if(is.null(all_chains)) {
     all_chains <- out$pmcmc_results$results
   }
-
-  date_0 <- out$pmcmc_results$inputs$data$date[1]
+  date_0 <- get_data_start_date(out)
 
   #extract parameters with highest posterior density
   best <- as.data.frame(all_chains[which.max(all_chains$log_posterior), ])
@@ -100,13 +99,26 @@ prepare_input_json_df <- function(out, ox_interventions = NULL){
   }
 
   # add in the deaths to the json fits themselves
-  df$deaths <- out$pmcmc_results$inputs$data$deaths[match(df$date, out$pmcmc_results$inputs$data$date)]
+
+  if("excess_nimue_simulation" %in% class(out)){
+    #catch for if its excess
+    #create deaths vector
+    df_deaths <- out$pmcmc_results$inputs$data %>%
+      dplyr::mutate(deaths = .data$deaths/as.numeric(.data$week_end - .data$week_start)) %>%
+      purrr::pmap_dfr(function(iso3c, week_start, week_end, deaths){
+        data.frame(date = seq(week_start, week_end, by = 1), deaths = deaths)
+        })
+    df$deaths <- df_deaths$deaths[match(df$date, df_deaths$date)]
+    remove(df_deaths)
+  } else {
+    df$deaths <- out$pmcmc_results$inputs$data$deaths[match(df$date, out$pmcmc_results$inputs$data$date)]
+  }
   #extend the df for a given period of time
   df <- extend_df_for_covidsim(df = df, out = out, ext = 240)
   df$iso3c <- iso3c
 
   #make adjustments for the vaccines if needed
-  if(class(out) == "nimue_simulation"){
+  if("nimue_simulation" %in% class(out)){
     if(is.null(out$interventions$vaccine_strategy)){
       stop("Vaccine strategy is not attached, if this is output of regular Squire functions manually add to out$interventions$vaccine_strategy as a string.")
     }
@@ -116,6 +128,8 @@ prepare_input_json_df <- function(out, ox_interventions = NULL){
                                          out$interventions$vaccine_strategy,
                                        iso3c = iso3c)
   }
+
+  #add adjustments for the delta variant, or no adjustments if not needed
 
   return(df)
 }
@@ -141,6 +155,8 @@ ammend_df_covidsim_for_vaccs <- function(df, out, strategy, iso3c) {
     function(x){ out$interventions$vaccine_efficacy_disease[[x]][1] },
     numeric(1)
   )[-1]
+
+  #todo:assume something about dose ratio
 
   # and adjust to be the reported efficacy rather than the breakthrough impact on disease after infection blocking
 
@@ -218,7 +234,8 @@ extend_df_for_covidsim <- function(df, out, ext = 240) {
   df2 <- df %>%
     tidyr::complete(tt_beta = seq(0, max(df$tt_beta) + ext, 1)) %>%
     dplyr::mutate(date = seq.Date(min(df$date), max(df$date)+ext,1)) %>%
-    tidyr::fill(c("beta_set",4:10), .direction = "down") %>%
+    tidyr::fill(tidyselect::all_of(c("beta_set","Rt", "grey_bar_start", "Rt_min", "Rt_max",
+                         "beta_set_min", "beta_set_max", "recent_deaths")), .direction = "down") %>%
     dplyr::mutate(Reff = ratios*.data$Rt)
 
   return(df2)

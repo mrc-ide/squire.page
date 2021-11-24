@@ -1,6 +1,9 @@
 #'
 #'@export
 get_future_Rt <- function(model_out, forcast_days){
+  if("excess_nimue_simulation" %in% class(model_out)){
+    stop("This function cannot be used with excess_nimue_simulation at the moment")
+  }
   #cut overall Rt values up by Rt period and calculate all positive and negative
   #trends
   #get values used

@@ -54,7 +54,7 @@ loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 
       baseline_infections = sum(.data$infections),
       baseline_deaths = sum(.data$deaths)
     )) %>%
-    dplyr::filter(!iso3c %in% exclude_iso3cs)
+    dplyr::filter(!.data$iso3c %in% exclude_iso3cs)
 
   #for each counterfactual
   start <- TRUE
@@ -77,7 +77,7 @@ loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 
         deaths = sum(.data$deaths)
       )) %>%
       dplyr::mutate(counterfactual = thisCounterfactual) %>%
-      dplyr::filter(!iso3c %in% exclude_iso3cs)
+      dplyr::filter(!.data$iso3c %in% exclude_iso3cs)
     if(start){
       counterfactual_data <- thisCounterfactual_data
       start <- FALSE

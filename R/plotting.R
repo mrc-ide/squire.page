@@ -78,10 +78,7 @@ compare_adjustment_plot <- function(out, grad_dur, extend_past = 10){
 #'@export
 get_immunity_ratios <- function(out, max_date = NULL) {
 
-  #compatibility with weekly fits
-  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
-    out$pmcmc_results$inputs$data$date <- out$pmcmc_results$inputs$data$week_start
-  }
+  out$pmcmc_results$inputs$data$date <- get_dates(out)
 
   mixing_matrix <- squire:::process_contact_matrix_scaled_age(
     out$pmcmc_results$inputs$model_params$contact_matrix_set[[1]],
@@ -149,10 +146,7 @@ get_immunity_ratios <- function(out, max_date = NULL) {
 #'@export
 get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
 
-  #compatibility with weekly fits
-  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
-    out$pmcmc_results$inputs$data$date <- out$pmcmc_results$inputs$data$week_start
-  }
+  out$pmcmc_results$inputs$data$date <- get_dates(out)
 
   mixing_matrix <- squire:::process_contact_matrix_scaled_age(
     out$pmcmc_results$inputs$model_params$contact_matrix_set[[1]],
@@ -314,12 +308,8 @@ rt_plot_immunity <- function(out, vaccine = TRUE, R0_plot = FALSE, Rt_plot = FAL
 
 
   iso3c <- squire::get_population(out$parameters$country)$iso3c[1]
-  #compatibility with weekly fits
-  if("week_start" %in% names(out$pmcmc_results$inputs$data)){
-    date_0 <- max(as.Date(out$pmcmc_results$inputs$data$week_start))
-  } else {
-    date_0 <- max(as.Date(out$pmcmc_results$inputs$data$date))
-  }
+
+  date_0 <- get_data_end_date(out)
 
   # impact of immunity ratios
   if(vaccine){
@@ -377,12 +367,7 @@ rt_plot_immunity <- function(out, vaccine = TRUE, R0_plot = FALSE, Rt_plot = FAL
 sero_plot <- function(res, sero_df) {
 
   #compatibility with weekly fits
-  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
-    res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
-    date_0 <- max(res$pmcmc_results$inputs$data$week_end)
-  } else {
-    date_0 <- max(res$pmcmc_results$inputs$data$date)
-  }
+  date_0 <- get_data_end_date(res)
 
   # seroconversion data from brazeay report 34
   sero_det <- res$pmcmc_results$inputs$pars_obs$sero_det
@@ -402,7 +387,7 @@ sero_plot <- function(res, sero_df) {
   # get symptom onset data
   inf <- nimue_format(res, c("infections"), date_0 = date_0) %>%
     dplyr::rename(symptoms = .data$y) %>%
-    dplyr::left_join(nim_sq_format(res, "S", date_0 = date_0),
+    dplyr::left_join(nimue_format(res, "S", date_0 = date_0),
               by = c("replicate", "t", "date")) %>%
     dplyr::rename(S = .data$y) %>%
     dplyr::select(.data$replicate,.data$t, .data$date, .data$S, .data$symptoms)
@@ -438,15 +423,11 @@ sero_plot <- function(res, sero_df) {
 ar_plot <- function(res) {
 
   #compatibility with weekly fits
-  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
-    res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
-    date_0 <- max(res$pmcmc_results$inputs$data$week_end)
-  } else {
-    date_0 <- max(res$pmcmc_results$inputs$data$date)
-  }
+  date_0 <- get_data_end_date(res)
+
 
   S_tot <- sum(res$pmcmc_results$inputs$model_params$population)
-  inf <- nim_sq_format(res, "infections", date_0 = date_0) %>%
+  inf <- nimue_format(res, "infections", date_0 = date_0) %>%
     dplyr::mutate(infections = as.integer(.data$y)) %>%
     dplyr::select(replicate, .data$t, .data$date, .data$infections) %>%
     dplyr::group_by(replicate) %>%
@@ -464,13 +445,7 @@ ar_plot <- function(res) {
 #'@export
 cdp_plot <- function(res) {
 
-  #compatibility with weekly fits
-  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
-    res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
-    date_0 <- max(res$pmcmc_results$inputs$data$week_end)
-  } else {
-    date_0 <- max(res$pmcmc_results$inputs$data$date)
-  }
+  date_0 <- get_data_end_date(res)
 
   suppressWarnings(
     cdp <- plot(res, "D", date_0 = date_0, x_var = "date") +
@@ -487,9 +462,7 @@ cdp_plot <- function(res) {
 #'@export
 dp_plot <- function(res) {
 
-  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
-    res$pmcmc_results$inputs$data$date <- res$pmcmc_results$inputs$data$week_start
-  }
+  res$pmcmc_results$inputs$data$date <- get_dates(res)
 
   suppressWarnings(
     dp <- plot(res, particle_fit = TRUE) +
