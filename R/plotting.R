@@ -443,9 +443,15 @@ ar_plot <- function(res) {
 
 #'
 #'@export
-cdp_plot <- function(res) {
+cdp_plot <- function(res, extra_df = NULL) {
 
   date_0 <- get_data_end_date(res)
+
+  #summarise deaths
+  data <- res$pmcmc_results$inputs$data
+  data$date <- get_dates_greater(res) #assume reaches the cumulative sum at this
+  #date works for both daily and weekly
+  data$deaths <- cumsum(data$deaths)
 
   suppressWarnings(
     cdp <- plot(res, "D", date_0 = date_0, x_var = "date") +
@@ -453,8 +459,35 @@ cdp_plot <- function(res) {
       ggplot2::theme(legend.position = "none", axis.title.x = ggplot2::element_blank()) +
       ggplot2::ylab("Cumulative Deaths") +
       ggplot2::scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
-      ggplot2::xlab("")
+      ggplot2::xlab("") +
+      ggplot2::geom_line(
+        data = data,
+        ggplot2::aes(
+          x = date, y = deaths
+        ),
+        linetype = "dashed"
+      )
   )
+
+  if(!is.null(extra_df)){
+    cdp <- cdp +
+      ggplot2::geom_line(
+        data = extra_df,
+        ggplot2::aes(
+          x = date, y = cumsum(deaths)
+        ),
+        alpha = 0.5,
+        colour = "green"
+      )+
+      ggplot2::geom_ribbon(
+        data = extra_df,
+        ggplot2::aes(
+          x = date, ymin = cumsum(bot), ymax = cumsum(top)
+        ),
+        alpha = 0.25,
+        fill = "green"
+      )
+  }
 
   cdp
 }
