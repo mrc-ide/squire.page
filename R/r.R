@@ -3,6 +3,8 @@
 get_Rt <- function(model_out){
   UseMethod("get_Rt")
 }
+#'
+#'@export
 get_Rt.nimue_simulation <- function(model_out){
   date_0 <- max(as.Date(model_out$pmcmc_results$inputs$data$date))
   #get iso3c to attach
@@ -47,6 +49,8 @@ get_Rt.nimue_simulation <- function(model_out){
     )
   )
 }
+#'
+#'@export
 get_Rt.excess_nimue_simulation <- function(model_out){
   date_0 <- max(as.Date(model_out$pmcmc_results$inputs$data$week_start))
   #get iso3c to attach

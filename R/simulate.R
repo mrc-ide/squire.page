@@ -97,7 +97,11 @@ generate_draws_inner <- function(out, pars.list, draws = 10, parallel, intervent
   log_likelihood <- get_model_likelihood(out)
   replicates <- draws
   #recreate params_smpl object
-  params_smpl <- rbind(pars.list[[1]], pars.list[[2]])
+  params_smpl <-
+    do.call(
+      rbind,
+      pars.list
+    )
 
   #instead of using squire:::sample_pmcmc we use the pars.list values provided
   #the following code is taken from squire:::sample_pmcmc and will need updating
@@ -171,7 +175,7 @@ generate_draws_inner <- function(out, pars.list, draws = 10, parallel, intervent
   saved_full <- r$output[,"time",full_row]
   for(i in seq_len(replicates)) {
     na_pos <- which(is.na(r$output[,"time",i]))
-    full_to_place <- saved_full - which(rownames(r$output) == as.Date(get_data_end_date(out))) + 1L
+    full_to_place <- saved_full - which(rownames(r$output) == as.Date(get_data_end_date_inner(out))) + 1L
     if(length(na_pos) > 0) {
       full_to_place[na_pos] <- NA
     }
@@ -190,6 +194,9 @@ generate_draws_inner <- function(out, pars.list, draws = 10, parallel, intervent
   r$parameters$replicates <- replicates
   r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
   r$parameters$dt <- pmcmc$inputs$model_params$dt
+
+  #assign the same class as before
+  class(r) <- class(out)
 
   return(r)
 }
