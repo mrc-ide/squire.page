@@ -54,6 +54,8 @@ get_future_Rt <- function(model_out, forcast_days){
       )
     #check we have at least on gradient of positive and negative
     pos_neg <- rts %>%
+      dplyr::group_by(.data$rep, .data$period) %>%
+      dplyr::filter(dplyr::n() > 2) %>%
       dplyr::group_by(.data$rep) %>%
       dplyr::filter(.data$period > 0) %>%
       dplyr::mutate(

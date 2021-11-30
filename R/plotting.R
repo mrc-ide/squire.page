@@ -463,7 +463,7 @@ cdp_plot <- function(res, extra_df = NULL) {
       ggplot2::geom_line(
         data = data,
         ggplot2::aes(
-          x = date, y = deaths
+          x = .data$date, y = .data$deaths
         ),
         linetype = "dashed"
       )
@@ -474,7 +474,7 @@ cdp_plot <- function(res, extra_df = NULL) {
       ggplot2::geom_line(
         data = extra_df,
         ggplot2::aes(
-          x = date, y = cumsum(deaths)
+          x = .data$date, y = cumsum(.data$deaths)
         ),
         alpha = 0.5,
         colour = "green"
@@ -482,7 +482,7 @@ cdp_plot <- function(res, extra_df = NULL) {
       ggplot2::geom_ribbon(
         data = extra_df,
         ggplot2::aes(
-          x = date, ymin = cumsum(bot), ymax = cumsum(top)
+          x = .data$date, ymin = cumsum(.data$bot), ymax = cumsum(.data$top)
         ),
         alpha = 0.25,
         fill = "green"
