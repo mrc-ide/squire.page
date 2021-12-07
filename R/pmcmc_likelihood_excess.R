@@ -218,10 +218,16 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
     }
   }
 
-  # run model
+  # run model with wrapper so that if it fails we try again with lower tolerances
   model_func <- squire_model$odin_model(user = model_params,
                                         unused_user_action = "ignore")
-  out <- model_func$run(t = seq(0, utils::tail(data$week_end, 1), 1), atol = 1e-8, rtol = 1e-8, step_size_min_allow = TRUE)
+  out <- tryCatch(
+    model_func$run(t = seq(0, utils::tail(data$week_end, 1), 1), atol = 1e-6, rtol = 1e-6),
+    error = "FAIL"
+  )
+  if(identical(out, "FAIL")){
+    out <- model_func$run(t = seq(0, utils::tail(data$week_end, 1), 1), atol = 1e-8, rtol = 1e-8, step_size_min_allow = TRUE)
+  }
   index <- squire:::odin_index(model_func)
 
   #calculate the deaths for each week
