@@ -24,7 +24,8 @@ generate_parameters.}
 \item{vaccineStart}{The date the vaccination is to start. Should be a character
 in the format "YYYY-MM-DD". Default = NULL}
 
-\item{draws}{Number of draws from mcmc chain. Default = 10}
+\item{draws}{Number of draws from mcmc chain. Default = 10, if NULL then uses
+replicate parameters.}
 
 \item{parallel}{Are simulations done in parallel? Default = TRUE}
 }

@@ -18,7 +18,8 @@ generate_draws(
 \item{pars.list}{Output of generate_parameters(), default = NULL calls
 generate_parameters.}
 
-\item{draws}{Number of draws from mcmc chain. Default = 10}
+\item{draws}{Number of draws from mcmc chain. Default = 10, if NULL then uses
+replicate_parameters as the parameters}
 
 \item{parallel}{Are simulations done in parallel? Default = TRUE}
 
