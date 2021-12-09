@@ -9,8 +9,7 @@ generate_draws_counterfactual(
   pars.list,
   assignedVaccine,
   vaccineStart = NULL,
-  draws = 10,
-  parallel = TRUE
+  draws = 10
 )
 }
 \arguments{
@@ -24,10 +23,9 @@ generate_parameters.}
 \item{vaccineStart}{The date the vaccination is to start. Should be a character
 in the format "YYYY-MM-DD". Default = NULL}
 
-\item{draws}{Number of draws from mcmc chain. Default = 10}
-
-\item{parallel}{Are simulations done in parallel? Default = TRUE}
+\item{draws}{Number of draws from mcmc chain. Default = 10, if NULL then uses
+replicate parameters.}
 }
 \description{
-Generate Draws from pmcmc run with a counter factual based on vaccines
+Uses furrr, so can be called in parallel.
 }

@@ -28,8 +28,7 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   date_vaccine_efficacy_disease_change <- interventions$date_vaccine_efficacy_disease_change
   if (is.null(date_Rt_change)) {
     tt_beta <- 0
-  }
-  else {
+  } else {
     #get the Rt values from R0 and the Rt_change values
     Rt <- evaluate_Rt_pmcmc_custom(R0 = R0, pars = pars, Rt_args = Rt_args)
     #get the dates in t and the corresponding Rt indexes
@@ -42,8 +41,7 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   }
   if (is.null(date_contact_matrix_set_change)) {
     tt_contact_matrix <- 0
-  }
-  else {
+  } else {
     tt_list <- squire:::intervention_dates_for_odin(dates = date_contact_matrix_set_change,
                                                     change = seq_along(interventions$contact_matrix_set)[-1],
                                                     start_date = start_date, steps_per_day = round(1/model_params$dt),
@@ -53,8 +51,7 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   }
   if (is.null(date_ICU_bed_capacity_change)) {
     tt_ICU_beds <- 0
-  }
-  else {
+  } else {
     tt_list <- squire:::intervention_dates_for_odin(dates = date_ICU_bed_capacity_change,
                                                     change = interventions$ICU_bed_capacity[-1], start_date = start_date,
                                                     steps_per_day = round(1/model_params$dt), starting_change = interventions$ICU_bed_capacity[1])
@@ -63,8 +60,7 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   }
   if (is.null(date_hosp_bed_capacity_change)) {
     tt_hosp_beds <- 0
-  }
-  else {
+  } else {
     tt_list <- squire:::intervention_dates_for_odin(dates = date_hosp_bed_capacity_change,
                                                     change = interventions$hosp_bed_capacity[-1], start_date = start_date,
                                                     steps_per_day = round(1/model_params$dt), starting_change = interventions$hosp_bed_capacity[1])
@@ -73,8 +69,7 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   }
   if (is.null(date_vaccine_change)) {
     tt_vaccine <- 0
-  }
-  else {
+  } else {
     tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_change,
                                                     change = interventions$max_vaccine[-1], start_date = start_date,
                                                     steps_per_day = round(1/model_params$dt), starting_change = interventions$max_vaccine[1])
@@ -83,8 +78,7 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   }
   if (is.null(date_vaccine_efficacy_infection_change)) {
     tt_vaccine_efficacy_infection <- 0
-  }
-  else {
+  } else {
     tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_efficacy_infection_change,
                                                     change = seq_along(interventions$vaccine_efficacy_infection)[-1],
                                                     start_date = start_date, steps_per_day = round(1/model_params$dt),
@@ -95,8 +89,7 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   }
   if (is.null(date_vaccine_efficacy_disease_change)) {
     tt_vaccine_efficacy_disease <- 0
-  }
-  else {
+  } else {
     tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_efficacy_disease_change,
                                                     change = seq_along(interventions$vaccine_efficacy_disease)[-1],
                                                     start_date = start_date, steps_per_day = round(1/model_params$dt),
@@ -115,8 +108,7 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
                                               obs_params = pars_obs, n_particles = n_particles,
                                               forecast_days = forecast_days, save_particles = save_particles,
                                               full_output = full_output, return = pf_return)
-  }
-  else if (inherits(squire_model, "deterministic")) {
+  } else if (inherits(squire_model, "deterministic")) {
     pf_result <- run_deterministic_comparison_excess(data = data,
                                                      squire_model = squire_model, model_params = model_params,
                                                      model_start_date = start_date, obs_params = pars_obs,
@@ -148,7 +140,7 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   if (!(return %in% c("full", "ll", "sample", "single"))) {
     stop("return argument must be full, ll, sample", "single")
   }
-  if (as.Date(data$week_start[data$deaths > 0][1], "%Y-%m-%d") <
+  if (as.Date(data$week_start[1], "%Y-%m-%d") <
       as.Date(model_start_date, "%Y-%m-%d")) {
     stop("Model start date is later than data start date")
   }
@@ -236,7 +228,26 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   Ds[Ds < 0] <- 0
   deaths <- data$deaths[-1]
 
+
   ll <- obs_params$likelihood(Ds, deaths)
+
+  #plotting code for debug
+  # print(ggplot2::ggplot() +
+  #   ggplot2::geom_line(
+  #     ggplot2::aes(
+  #       x = seq_along(Ds),
+  #       y = Ds,
+  #       colour = "red"
+  #     )
+  #   ) +
+  #   ggplot2::geom_line(
+  #     ggplot2::aes(
+  #       x = seq_along(deaths),
+  #       y = deaths
+  #     ),
+  #     linetype = "dashed"
+  #   ) +
+  #   ggplot2::labs(title = sum(ll)))
 
 
   # and wrap up as normal

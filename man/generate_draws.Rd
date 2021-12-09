@@ -4,13 +4,7 @@
 \alias{generate_draws}
 \title{Generate Draws from pmcmc run}
 \usage{
-generate_draws(
-  out,
-  pars.list = NULL,
-  draws = 10,
-  parallel = TRUE,
-  noInfectionProtect = FALSE
-)
+generate_draws(out, pars.list = NULL, draws = 10, noInfectionProtect = FALSE)
 }
 \arguments{
 \item{out}{Output of \code{squire::pmcmc}}
@@ -18,12 +12,11 @@ generate_draws(
 \item{pars.list}{Output of generate_parameters(), default = NULL calls
 generate_parameters.}
 
-\item{draws}{Number of draws from mcmc chain. Default = 10}
-
-\item{parallel}{Are simulations done in parallel? Default = TRUE}
+\item{draws}{Number of draws from mcmc chain. Default = 10, if NULL then uses
+replicate_parameters as the parameters}
 
 \item{noInfectionProtect}{Should the vaccine prevent infections. Default = FALSE}
 }
 \description{
-Generate Draws from pmcmc run
+Uses furrr, so can be called in parallel.
 }
