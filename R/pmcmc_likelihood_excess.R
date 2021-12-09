@@ -215,7 +215,7 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
                                         unused_user_action = "ignore")
   out <- tryCatch(
     model_func$run(t = seq(0, utils::tail(data$week_end, 1), 1), atol = 1e-6, rtol = 1e-6),
-    error = "FAIL"
+    error = function(x){"FAIL"}
   )
   if(identical(out, "FAIL")){
     out <- model_func$run(t = seq(0, utils::tail(data$week_end, 1), 1), atol = 1e-8, rtol = 1e-8, step_size_min_allow = TRUE)

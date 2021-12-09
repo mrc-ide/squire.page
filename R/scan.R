@@ -143,7 +143,7 @@ scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, 
     for(i in seq_along(data_indexes)) {
       if(length(data_indexes[[i]]) > 2){
 
-        message(paste0("Parameter:", i))
+        #message(paste0("Parameter:", i))
         data_i <- data[data_indexes[[i]],]
         name <- paste0("Rt_rw_", i)
         change <- c(
@@ -189,7 +189,6 @@ scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, 
   res <- generate_draws(res, pars.list = NULL, draws = NULL)
   #this does not effect the chain itself so we scale that now and recalculate
   #posterior
-  res_back <- res
   res$pmcmc_results$results[, pars_names] <-
     sweep(
       res$pmcmc_results$results[, pars_names],
