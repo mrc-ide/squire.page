@@ -135,7 +135,7 @@ scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, 
   pars <- as.data.frame(t(avg_pars))
   #add start date and R0
   pars$start_date <- stats::median(res$replicate_parameters[,"start_date"])
-  pars$R0 <- stats::mean(res$replicate_parameters[,"R0"])
+  pars$R0 <- mean(res$replicate_parameters[,"R0"])
   #run through repeats and parameters
   for(rep in seq.int(repeats)){
     message(paste0("Repeat: ", rep))
