@@ -18,90 +18,19 @@
 #' @param width_end The final width to check, so that the algorithm to move to
 #' a finer resolution as the proceeds, default NULL means the same as width
 #' @param repeats How many times to iterate through the process
+#' @param data_window How many data points to include onwards from the date the
+#' Rt effect comes into effect, default = NULL.
+#' @param min_data_window If an effects data window is less than this value then
+#' we skip it. Useful since the scan has issues with effects with only 1 or 2 data
+#' points, default = 3.
 #' @return Model object tuned to the data
 #' @export
-# scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, repeats = 5) {
-#   if(is.null(width_end)){
-#     widths = rep(width, repeats)
-#   } else {
-#     widths = round(seq(width, width_end, length.out = repeats))
-#   }
-#   if(is.null(data)){
-#     data <- res$pmcmc_results$inputs$data
-#   }
-#   #calculate the data rows, from time kicks in to plus 20 days
-#   if("excess_nimue_simulation" %in% class(res)){
-#     dates_Rt <- res$interventions$date_Rt_change
-#     #now get the relevant dates
-#     data_indexes <- suppressWarnings(
-#       lapply(dates_Rt, function(date){
-#         start_index <- min(which(data$week_start > date))
-#         end_index <- max(
-#           max(which(data$week_start < date + 21)),
-#           1)
-#         seq(start_index, end_index, 1)
-#       })
-#     )
-#   } else {
-#     stop("This function is currently step up to work excess fits only")
-#   }
-#   #get the likelihood function
-#   likelihood_func <- get_model_likelihood(res)
-#   #get pars from the replicates for now
-#   pars <- res$replicate_parameters
-#   #run through repeats and parameters
-#   for(rep in seq.int(repeats)){
-#     message(paste0("Repeat: ", rep))
-#     # loop over each parameter and scan values
-#     for(i in seq_along(data_indexes)) {
-#       message(paste0("Parameter:", i))
-#       data_i <- data[data_indexes[[i]],]
-#       name <- paste0("Rt_rw_", i)
-#       change <- c(
-#         setdiff(seq(-widths[rep], widths[rep], length.out = n_span), 0),
-#         0
-#         )
-#       #calculate likelihood
-#       ll_i <- furrr::future_map_dbl(
-#         .x = change,
-#         .f = function(change){
-#           pars_temp <- pars
-#           pars_temp[, name] <- pars[, name] + change
-#           #pars[, name]  <- pars[, name] + change
-#           purrr::map_dbl(
-#             .x = seq.int(nrow(pars)),
-#             .f = function(x){
-#               likelihood_func(
-#                 pars = pars_temp[x,],
-#                 data = data_i,
-#                 squire_model = res$pmcmc_results$inputs$squire_model,
-#                 model_params = res$pmcmc_results$inputs$model_params,
-#                 pars_obs = res$pmcmc_results$inputs$pars_obs,
-#                 n_particles = 2, forecast_days = 0, return = "ll",
-#                 Rt_args = res$pmcmc_results$inputs$Rt_args,
-#                 interventions = res$pmcmc_results$inputs$interventions
-#               )$log_likelihood
-#             }
-#           ) %>%
-#             mean()
-#         },
-#         .options = furrr::furrr_options(seed = TRUE)
-#         #this requires more thought, since now might not be reproducible,
-#         #however the effect of the noise is so small that it has almost
-#         #no impact and so should be fine for now
-#       )
-#       #update parameter
-#       pars[, name] <- pars[, name] + change[which.max(ll_i)]
-#     }
-#   }
-#   #now we need to update our replicates with the new pars and an output
-#   res$replicate_parameters <- pars
-#   #make the pars into a pars_list and then simulate and output
-#   #NOTE: as of now this leaves the chain itself as it is
-#   res <- generate_draws(res, pars.list = NULL, draws = NULL)
-#   return(res)
-# }
-scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, repeats = 5) {
+scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, repeats = 5,
+                     data_window = 4, min_data_window = 3) {
+  if(min_data_window > data_window){
+    warning("min_data_window must be less than data window, setting min_data_window <- data_window")
+    min_data_window <- data_window
+  }
   if(is.null(width_end)){
     widths = rep(width, repeats)
   } else {
@@ -117,14 +46,14 @@ scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, 
     data_indexes <- suppressWarnings(
       lapply(dates_Rt, function(date){
         start_index <- max(max(which(data$week_start < date)), 1)
-        end_index <- max(
-          max(which(data$week_start <= date + 21)),
-          1)
+        end_index <- min(
+          start_index + data_window - 1,
+          nrow(data))
         seq(start_index, end_index, 1)
       })
     )
   } else {
-    stop("This function is currently step up to work excess fits only")
+    stop("This function is currently set up to work excess fits only")
   }
   #get the likelihood function
   likelihood_func <- get_model_likelihood(res)
@@ -141,7 +70,7 @@ scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, 
     message(paste0("Repeat: ", rep))
     # loop over each parameter and scan values
     for(i in seq_along(data_indexes)) {
-      if(length(data_indexes[[i]]) > 2){
+      if(length(data_indexes[[i]]) >= min_data_window){
 
         #message(paste0("Parameter:", i))
         data_i <- data[data_indexes[[i]],]

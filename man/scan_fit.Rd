@@ -10,7 +10,9 @@ scan_fit(
   width = 2,
   n_span = 8,
   width_end = NULL,
-  repeats = 5
+  repeats = 5,
+  data_window = 4,
+  min_data_window = 3
 )
 }
 \arguments{
@@ -29,6 +31,13 @@ value}
 a finer resolution as the proceeds, default NULL means the same as width}
 
 \item{repeats}{How many times to iterate through the process}
+
+\item{data_window}{How many data points to include onwards from the date the
+Rt effect comes into effect, default = NULL.}
+
+\item{min_data_window}{If an effects data window is less than this value then
+we skip it. Useful since the scan has issues with effects with only 1 or 2 data
+points, default = 3.}
 }
 \value{
 Model object tuned to the data
