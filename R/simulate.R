@@ -62,9 +62,17 @@ convert_pars.list <- function(params_smpl){
   return(pars.list)
 }
 
-#' A function to reduce redundancy in generate programmes
-#' @noRd
-generate_draws_inner <- function(out, pars.list, draws = 10, interventions = NULL){
+#' Generate Draws from pmcmc run
+#'
+#' Uses furrr, so can be called in parallel.
+#'
+#' @param out Output of `squire::pmcmc`
+#' @param pars.list Output of generate_parameters(), default = NULL calls
+#' generate_parameters.
+#' @param draws Number of draws from mcmc chain. Default = 10, if NULL then uses
+#' replicate_parameters as the parameters
+#' @export
+generate_draws <- function(out, pars.list = NULL, draws = 10) {
   #generate parameters if needed
   if(is.null(pars.list)){
     if(is.null(draws)){
@@ -90,13 +98,7 @@ generate_draws_inner <- function(out, pars.list, draws = 10, interventions = NUL
   population <- out$parameters$population
   data <- out$pmcmc_results$inputs$data
 
-  if(!is.null(interventions)){
-    #if making a change add that intervention here
-    pmcmc$inputs$interventions <- interventions
-  }else{
-    #else this is the interventions that come with the object
-    interventions <- out$interventions
-  }
+  interventions <- out$interventions
 
   #--------------------------------------------------------
   # Section 3 of pMCMC Wrapper: Sample PMCMC Results
@@ -147,10 +149,10 @@ generate_draws_inner <- function(out, pars.list, draws = 10, interventions = NUL
     trajectories[utils::tail(seq_max, nrow(traces[[i]])), , i] <- traces[[i]]
   }
   pmcmc_samples <- list(trajectories = trajectories, sampled_PMCMC_Results = params_smpl,
-              inputs = list(squire_model = pmcmc_results$inputs$squire_model,
-                            model_params = pmcmc_results$inputs$model_params,
-                            interventions = pmcmc_results$inputs$interventions,
-                            data = pmcmc_results$inputs$data, pars_obs = pmcmc_results$inputs$pars_obs))
+                        inputs = list(squire_model = pmcmc_results$inputs$squire_model,
+                                      model_params = pmcmc_results$inputs$model_params,
+                                      interventions = pmcmc_results$inputs$interventions,
+                                      data = pmcmc_results$inputs$data, pars_obs = pmcmc_results$inputs$pars_obs))
   class(pmcmc_samples) <- "squire_sample_PMCMC"
 
 
@@ -209,128 +211,6 @@ generate_draws_inner <- function(out, pars.list, draws = 10, interventions = NUL
 
   #assign the same class as before
   class(r) <- class(out)
-
-  return(r)
-}
-
-#' Generate Draws from pmcmc run
-#'
-#' Uses furrr, so can be called in parallel.
-#'
-#' @param out Output of `squire::pmcmc`
-#' @param pars.list Output of generate_parameters(), default = NULL calls
-#' generate_parameters.
-#' @param draws Number of draws from mcmc chain. Default = 10, if NULL then uses
-#' replicate_parameters as the parameters
-#' @param noInfectionProtect Should the vaccine prevent infections. Default = FALSE
-#' @export
-generate_draws <- function(out, pars.list = NULL, draws = 10, noInfectionProtect = FALSE) {
-  if(noInfectionProtect){
-    out$odin_parameters$vaccine_efficacy_infection <- matrix(0.5,
-                                                             nrow = nrow(out$odin_parameters$vaccine_efficacy_infection),
-                                                             ncol = ncol(out$odin_parameters$vaccine_efficacy_infection))
-    #scale up protection against disease to keep the same efficacy
-    if(any(out$interventions$date_vaccine_efficacy_infection_change != out$interventions$date_vaccine_efficacy_disease_change)){
-      "Different efficacy change times against disease and infection"
-    }
-    trueEff <-
-      Map("+",
-          out$interventions$vaccine_efficacy_infection,
-          Map("*",
-              Map("-", 1, out$interventions$vaccine_efficacy_infection),
-              out$interventions$vaccine_efficacy_disease
-          )
-      )
-    out$parameters$vaccine_efficacy_disease <- trueEff
-    out$interventions$vaccine_efficacy_disease <- trueEff
-    out$pmcmc_results$inputs$interventions$vaccine_efficacy_disease <- trueEff
-
-    #set infection efficacy in interventions
-    out$pmcmc_results$inputs$interventions$vaccine_efficacy_infection <- lapply(
-      out$pmcmc_results$inputs$interventions$vaccine_efficacy_infection, function(x) {
-        rep(0,17)
-        })
-    out$interventions$vaccine_efficacy_infection <- lapply(
-      out$pmcmc_results$inputs$interventions$vaccine_efficacy_infection, function(x) {
-        rep(0,17)
-      })
-    # the calc_loglikelihood function samples from the model_params for vaccine pars rather than recalculating
-    # so we need to update this here
-    out$pmcmc_results$inputs$model_params$vaccine_efficacy_infection <- nimue:::format_ve_i_for_odin(
-      vaccine_efficacy_infection = out$interventions$vaccine_efficacy_infection,
-      tt_vaccine_efficacy_infection = out$pmcmc_results$inputs$model_params$tt_vaccine_efficacy_infection
-      )
-
-    out$pmcmc_results$inputs$model_params$prob_hosp <- nimue:::format_ve_d_for_odin(
-      vaccine_efficacy_disease = trueEff,
-      tt_vaccine_efficacy_disease = out$pmcmc_results$inputs$model_params$tt_vaccine_efficacy_disease,
-      prob_hosp = nimue:::probs$prob_hosp)
-
-    #set relative infectiousness to 1
-    out$pmcmc_results$inputs$model_params$rel_infectiousness_vaccinated <-
-      matrix(1,
-             nrow = nrow(out$pmcmc_results$inputs$model_params$rel_infectiousness_vaccinated),
-             ncol = ncol(out$pmcmc_results$inputs$model_params$rel_infectiousness_vaccinated)
-             )
-    out$odin_parameters$rel_infectiousness_vaccinated <-
-      matrix(1,
-             nrow = nrow(out$odin_parameters$rel_infectiousness_vaccinated),
-             ncol = ncol(out$odin_parameters$rel_infectiousness_vaccinated)
-      )
-    out$parameters$rel_infectiousness_vaccinated <-
-      rep(1, length(out$parameters$rel_infectiousness_vaccinated))
-  }
-  r <- generate_draws_inner(out, pars.list, draws)
-  return(r)
-}
-
-#' Generate Draws from pmcmc run with a counter factual based on vaccines
-#'
-#' Uses furrr, so can be called in parallel.
-#'
-#' @param out Output of `squire::pmcmc`
-#' @param pars.list Output of generate_parameters(), default = NULL calls
-#' generate_parameters.
-#' @param assignedVaccine The number of doses given to the country at this date.
-#' @param vaccineStart The date the vaccination is to start. Should be a character
-#' in the format "YYYY-MM-DD". Default = NULL
-#' @param draws Number of draws from mcmc chain. Default = 10, if NULL then uses
-#' replicate parameters.
-#' @export
-generate_draws_counterfactual <- function(out, pars.list, assignedVaccine,
-                                          vaccineStart = NULL,
-                                          draws = 10) {
-  #get interventions
-  interventions <- out$interventions
-  #get original start date if one not given
-  #the current date (one day before so that we hit correct number on the last day)
-  modelEnd <- get_data_end_date(out) - 1
-  if(is.na(vaccineStart)){
-    if(sum(interventions$max_vaccine) == 0 & assignedVaccine != 0){
-      stop("This country has not begun to give vaccinations, please provide a
-           vaccine start date")
-    }
-    vaccineStart <- min(interventions$date_vaccine_change, modelEnd - 1)
-    #the minimum is between these to prevent errors in countries that have started
-    #vaccinations on the last date
-  }
-  # allow number of vaccines to change every day from this time to today
-  if(as.Date(vaccineStart) >= modelEnd){
-    #a check for if there isn't data up to the end data (for example if using weekly excess)
-    date_vaccine_change <- seq(modelEnd - 1, modelEnd, by = 1)
-  } else{
-    date_vaccine_change <- seq(as.Date(vaccineStart), modelEnd, by = 1)
-  }
-  # now assign vaccines so that they'll sum to the assignVaccine
-  max_vaccine <- seq(0, 2*assignedVaccine/(length(date_vaccine_change)+1),
-                                  length.out = length(date_vaccine_change) + 1)
-
-  #add to interventions
-  interventions$max_vaccine <- max_vaccine
-  interventions$date_vaccine_change <- date_vaccine_change
-
-  #generate results
-  r <- generate_draws_inner(out, pars.list, draws, interventions)
 
   return(r)
 }
