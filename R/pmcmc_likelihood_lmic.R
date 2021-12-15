@@ -219,20 +219,6 @@ calc_loglikelihood_delta <- function(pars, data, squire_model, model_params,
   beta_set <- squire:::beta_est(squire_model = squire_model,
                                 model_params = model_params,
                                 R0 = R0)
-  if(pars_obs$cases_fitting){
-    #we'll save the date that fitting should start and the date from which we'll
-    #estimate the reporting fraction
-    cases_fitting_start_date <- min(
-      data$date[
-        data$date > (max(data$date) - pars_obs$cases_days)
-      ]
-    )
-    cases_reporting_start_date <- min(
-      data$date[
-        data$date > cases_fitting_start_date - Rt_args$Rt_rw_duration
-      ]
-    )
-  }
 
   #----------------..
   # update the model params accordingly from new inputs
@@ -248,8 +234,6 @@ calc_loglikelihood_delta <- function(pars, data, squire_model, model_params,
       squire_model = squire_model,
       model_params = model_params,
       model_start_date = start_date,
-      cases_fitting_start_date,
-      cases_reporting_start_date,
       obs_params = pars_obs,
       forecast_days = forecast_days,
       save_history = save_particles,
@@ -291,8 +275,6 @@ run_deterministic_comparison_cases <- function(data,
                                                squire_model,
                                                model_params,
                                                model_start_date = "2020-02-02",
-                                               cases_fitting_start_date,
-                                               cases_reporting_start_date,
                                                obs_params = list(phi_cases = 0.1,
                                                                  k_cases = 2,
                                                                  phi_death = 1,
@@ -365,6 +347,11 @@ run_deterministic_comparison_cases <- function(data,
   # calculate ll for the cases for last few days
   llc <- 0
   if(obs_params$cases_fitting){
+    #calculate the relevant dates
+    final_date <- max(data$date)
+    cases_fitting_start_date <- final_date - obs_params$cases_days
+    cases_reporting_start_date <- cases_fitting_start_date -
+      obs_params$cases_reporting
     #get the relevant data
     data_reporting <- data %>%
       dplyr::filter(
