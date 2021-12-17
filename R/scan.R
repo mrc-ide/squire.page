@@ -106,13 +106,13 @@ scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, 
   #now we need to update our replicates with the new pars and an output
   #scale replicates to get their mean to our current replicate
   #calculate difference from average
-  avg_diff <- avg_pars[pars_names] - unlist(pars[1, pars_names])[pars_names]
+  avg_diff <- unlist(pars[1, pars_names])[pars_names] - avg_pars[pars_names]
   #scale just the replicate for now
   res$replicate_parameters[, pars_names] <- sweep(
     res$replicate_parameters[, pars_names],
     2,
     avg_diff[pars_names],
-    FUN = "-"
+    FUN = "+"
   )
   #make the pars into a pars_list and then simulate and output
   res <- generate_draws(res, pars.list = NULL, draws = NULL)
@@ -123,7 +123,7 @@ scan_fit <- function(res, data = NULL, width = 2, n_span = 8, width_end = NULL, 
       res$pmcmc_results$results[, pars_names],
       2,
       avg_diff[pars_names],
-      FUN = "-"
+      FUN = "+"
     )
   #we do not update the posterior/priors/likelihood for now as this would take too long
   # #update prior, likelihood and posterior
