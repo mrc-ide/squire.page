@@ -377,6 +377,8 @@ run_deterministic_comparison_cases <- function(data,
       )
     #get infections
     model_infections <- rowSums(out[,index$E2]) * model_params$gamma_E
+    #ensure non negative
+    model_infections[model_infections < 0] <- 0
     #check that cases are formatted correctly and exists
     if(all(is.na(data_reporting$cases)) |
        all(is.na(data_fitting$cases))){
