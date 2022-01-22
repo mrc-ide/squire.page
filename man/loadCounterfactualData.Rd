@@ -20,7 +20,8 @@ at a time.}
 e.g. Iso3c code, age_group or date.}
 
 \item{quantileSamples}{Only used if dataset it not grouped by country. The
-number of combinations to randomly draw. Defaults to 2000.}
+number of combinations to randomly draw. Defaults to 2000. If NULL creates
+a wider interval based on ordering samples.}
 
 \item{exclude_iso3cs}{A vector of iso3cs to exclude from the summaries,
 default = NULL.}
