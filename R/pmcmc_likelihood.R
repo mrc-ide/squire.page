@@ -7,6 +7,9 @@ get_model_likelihood.nimue_simulation <- function(model_out){
 get_model_likelihood.excess_nimue_simulation <- function(model_out){
   excess_log_likelihood
 }
+get_model_likelihood.vacc_durR_nimue_simulation <- function(model_out){
+  excess_log_likelihood_vaccine
+}
 get_model_likelihood.lmic_nimue_simulation <- function(model_out){
   calc_loglikelihood_delta
 }

@@ -102,6 +102,53 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
   beta_set <- squire:::beta_est(squire_model = squire_model, model_params = model_params,
                                 R0 = Rt)
   model_params$beta_set <- beta_set
+
+  #make the delta adjustments
+  if("prob_hosp_multiplier" %in% names(pars_obs) |
+     "dur_R" %in% names(pars_obs)) {
+    #get the dates in the shift as t
+    shift_start <- as.integer(as.Date(pars_obs$delta_start_date) - start_date)
+    shift_end <- as.integer(as.Date(pars_obs$delta_start_date) -
+                              start_date +
+                              pars_obs$shift_duration)
+    #if the epidemic starts before the end of the shift we just swap over the numbers
+    if(shift_end <= 0 & "prob_hosp_multiplier" %in% names(pars_obs)){
+      model_params$prob_hosp_multiplier <- pars_obs$prob_hosp_multiplier
+    } else {
+      #we must figure where along we are and fit that in, slowly increase the
+      #modified parameter until we reach the end of the shift
+      if("prob_hosp_multiplier" %in% names(pars_obs) & (
+        pars_obs$prob_hosp_multiplier != model_params$prob_hosp_multiplier
+        | is.null(model_params$prob_hosp_multiplier)
+      )){
+        #update prob_hosp
+        tt_prob_hosp_multiplier <- seq(shift_start, shift_end, by = 1)
+        prob_hosp_multiplier <- seq(model_params$prob_hosp_multiplier,
+                                    pars_obs$prob_hosp_multiplier,
+                                    length.out = length(tt_prob_hosp_multiplier))
+        if(!(0 %in% tt_prob_hosp_multiplier)){
+          #since we've already covered before the start we must be after and just
+          #change the first entry to 0
+          tt_prob_hosp_multiplier[1] <- 0
+        }
+        model_params$tt_prob_hosp_multiplier <- tt_prob_hosp_multiplier
+        model_params$prob_hosp_multiplier <- prob_hosp_multiplier
+      }
+      if("dur_R" %in% names(pars_obs) & (
+        2/pars_obs$dur_R != model_params$gamma_R
+      )){
+        tt_dur_R <- c(shift_start, shift_end)
+        gamma_R <- c(2/pars_obs$dur_R, model_params$gamma_R)
+        if(shift_start > 0){
+          tt_dur_R <- c(0, tt_dur_R)
+          gamma_R <- c(model_params$gamma_R, gamma_R)
+        }
+        model_params$tt_dur_R <- tt_dur_R
+        model_params$gamma_R <- gamma_R
+      }
+    }
+  }
+
   if (inherits(squire_model, "stochastic")) {
     pf_result <- squire:::run_particle_filter(data = data, squire_model = squire_model,
                                               model_params = model_params, model_start_date = start_date,
@@ -163,52 +210,6 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   #set the last day to the same distance as the previous one
   data$week_end[nrow(data)] <- data$week_start[nrow(data)] +
     data$week_end[nrow(data)-1]  - data$week_start[nrow(data)-1]
-
-  #make the delta adjustments
-  if("prob_hosp_multiplier" %in% names(obs_params) |
-     "dur_R" %in% names(obs_params)) {
-    #get the dates in the shift as t
-    shift_start <- as.integer(as.Date(obs_params$delta_start_date) - model_start_date)
-    shift_end <- as.integer(as.Date(obs_params$delta_start_date) -
-                              model_start_date +
-                              obs_params$shift_duration)
-    #if the epidemic starts before the end of the shift we just swap over the numbers
-    if(shift_end <= 0 & "prob_hosp_multiplier" %in% names(obs_params)){
-      model_params$prob_hosp_multiplier <- obs_params$prob_hosp_multiplier
-    } else {
-      #we must figure where along we are and fit that in, slowly increase the
-      #modified parameter until we reach the end of the shift
-      if("prob_hosp_multiplier" %in% names(obs_params) & (
-        obs_params$prob_hosp_multiplier != model_params$prob_hosp_multiplier
-        | is.null(model_params$prob_hosp_multiplier)
-      )){
-        #update prob_hosp
-        tt_prob_hosp_multiplier <- seq(shift_start, shift_end, by = 1)
-        prob_hosp_multiplier <- seq(model_params$prob_hosp_multiplier,
-                                    obs_params$prob_hosp_multiplier,
-                                    length.out = length(tt_prob_hosp_multiplier))
-        if(!(0 %in% tt_prob_hosp_multiplier)){
-          #since we've already covered before the start we must be after and just
-          #change the first entry to 0
-          tt_prob_hosp_multiplier[1] <- 0
-        }
-        model_params$tt_prob_hosp_multiplier <- tt_prob_hosp_multiplier
-        model_params$prob_hosp_multiplier <- prob_hosp_multiplier
-      }
-      if("dur_R" %in% names(obs_params) & (
-        2/obs_params$dur_R != model_params$gamma_R
-      )){
-        tt_dur_R <- c(shift_start, shift_end)
-        gamma_R <- c(2/obs_params$dur_R, model_params$gamma_R)
-        if(shift_start > 0){
-          tt_dur_R <- c(0, tt_dur_R)
-          gamma_R <- c(model_params$gamma_R, gamma_R)
-        }
-        model_params$tt_dur_R <- tt_dur_R
-        model_params$gamma_R <- gamma_R
-      }
-    }
-  }
 
   # run model with wrapper so that if it fails we try again with lower tolerances
   model_func <- squire_model$odin_model(user = model_params,

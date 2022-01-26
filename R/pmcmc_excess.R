@@ -73,6 +73,9 @@ pmcmc_excess <- function(data,
                          gibbs_sampling = FALSE,
                          gibbs_days = NULL,
                          dur_R = 365,
+                         dose_ratio = NULL,
+                         date_vaccine_efficacy = NULL,
+                         vaccine_efficacies = NULL,
                          ...) {
 
   #------------------------------------------------------------
@@ -421,21 +424,39 @@ pmcmc_excess <- function(data,
   }
 
   # collect interventions for odin model likelihood
-  interventions <- list(
-    date_Rt_change = date_Rt_change,
-    date_contact_matrix_set_change = date_contact_matrix_set_change,
-    contact_matrix_set = contact_matrix_set,
-    date_ICU_bed_capacity_change = date_ICU_bed_capacity_change,
-    ICU_bed_capacity = ICU_bed_capacity,
-    date_hosp_bed_capacity_change = date_hosp_bed_capacity_change,
-    hosp_bed_capacity = hosp_bed_capacity,
-    date_vaccine_change = date_vaccine_change,
-    max_vaccine = max_vaccine,
-    date_vaccine_efficacy_disease_change = date_vaccine_efficacy_disease_change,
-    vaccine_efficacy_disease = vaccine_efficacy_disease,
-    date_vaccine_efficacy_infection_change = date_vaccine_efficacy_infection_change,
-    vaccine_efficacy_infection = vaccine_efficacy_infection
-  )
+  #check if we are fitting vaccine and durR
+  if("ves" %in% names(pars_init[[1]]) & "delta_dur_R" %in% names(pars_init[[1]])){
+    interventions <- list(
+      date_Rt_change = date_Rt_change,
+      date_contact_matrix_set_change = date_contact_matrix_set_change,
+      contact_matrix_set = contact_matrix_set,
+      date_ICU_bed_capacity_change = date_ICU_bed_capacity_change,
+      ICU_bed_capacity = ICU_bed_capacity,
+      date_hosp_bed_capacity_change = date_hosp_bed_capacity_change,
+      hosp_bed_capacity = hosp_bed_capacity,
+      date_vaccine_change = date_vaccine_change,
+      max_vaccine = max_vaccine,
+      date_vaccine_efficacy = date_vaccine_efficacy,
+      dose_ratio = dose_ratio,
+      vaccine_efficacies = vaccine_efficacies
+    )
+  } else {
+    interventions <- list(
+      date_Rt_change = date_Rt_change,
+      date_contact_matrix_set_change = date_contact_matrix_set_change,
+      contact_matrix_set = contact_matrix_set,
+      date_ICU_bed_capacity_change = date_ICU_bed_capacity_change,
+      ICU_bed_capacity = ICU_bed_capacity,
+      date_hosp_bed_capacity_change = date_hosp_bed_capacity_change,
+      hosp_bed_capacity = hosp_bed_capacity,
+      date_vaccine_change = date_vaccine_change,
+      max_vaccine = max_vaccine,
+      date_vaccine_efficacy_disease_change = date_vaccine_efficacy_disease_change,
+      vaccine_efficacy_disease = vaccine_efficacy_disease,
+      date_vaccine_efficacy_infection_change = date_vaccine_efficacy_infection_change,
+      vaccine_efficacy_infection = vaccine_efficacy_infection
+    )
+  }
 
   #----------------..
   # Collect Odin and MCMC Inputs
