@@ -208,6 +208,8 @@ generate_draws <- function(out, pars.list = NULL, draws = 10) {
   r$parameters$replicates <- replicates
   r$parameters$time_period <- as.numeric(diff(as.Date(range(rownames(r$output)))))
   r$parameters$dt <- pmcmc$inputs$model_params$dt
+  r$parameters$seeding_cases <- out$parameters$seeding_cases
+  r$parameters$seed <- out$parameters$seed
 
   #assign the same class as before
   class(r) <- class(out)
