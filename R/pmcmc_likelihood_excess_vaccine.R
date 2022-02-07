@@ -37,7 +37,7 @@ excess_log_likelihood_vaccine <- function(pars, data, squire_model, model_params
     tt_beta <- 0
   } else {
     #get the Rt values from R0 and the Rt_change values
-    Rt <- evaluate_Rt_pmcmc_custom(R0 = R0, pars = pars, Rt_args = Rt_args)
+    Rt <- evaluate_Rt_pmcmc_simple(R0 = R0, pars = pars)
     #get the dates in t and the corresponding Rt indexes
     tt_list <- squire:::intervention_dates_for_odin(dates = date_Rt_change,
                                                     change = seq(2, length(Rt)), start_date = start_date, steps_per_day = round(1/model_params$dt),
@@ -214,5 +214,9 @@ get_delta_prop <- function(delta_start_date, shift_duration, date_vaccine_effica
       rep(1, sum(date_vaccine_efficacy > delta_start_date + shift_duration))
     )
   }
+}
+#' @noRD
+evaluate_Rt_pmcmc_simple <- function(R0 = R0, pars = pars){
+  as.numeric(c(R0, unlist(pars[grepl("Rt_", names(pars))])))
 }
 
