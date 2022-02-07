@@ -37,6 +37,11 @@ loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 
   } else{
     add_week <- FALSE
   }
+  if("month" %in% group_by){
+    add_month <- TRUE
+  } else{
+    add_month <- FALSE
+  }
   #Load the Baseline data
   baseline_data <- readRDS(
    "Baseline.Rds"
@@ -46,6 +51,13 @@ loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 
     baseline_data <- baseline_data %>%
       dplyr::mutate(
         week = as.Date(cut(date, "week"))
+      )
+  }
+  if(add_month){
+    #get weeks if needed
+    baseline_data <- baseline_data %>%
+      dplyr::mutate(
+        month = as.Date(cut(date, "month"))
       )
   }
   #summarise
@@ -68,6 +80,13 @@ loadCounterfactualData <- function(counterfactuals, group_by, quantileSamples = 
       thisCounterfactual_data <- thisCounterfactual_data %>%
         dplyr::mutate(
           week = as.Date(cut(date, "week"))
+        )
+    }
+    if(add_month){
+      #get weeks if needed
+      thisCounterfactual_data <- thisCounterfactual_data %>%
+        dplyr::mutate(
+          month = as.Date(cut(date, "month"))
         )
     }
     #summarise data
