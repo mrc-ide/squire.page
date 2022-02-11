@@ -69,6 +69,16 @@ nimue_format <- function(out,
   comps <- var_select[var_select %in% compartments]
   summs <- var_select[var_select %in% summaries]
 
+  if(!combine_compartments){
+    single_comps <- c("S", "IMild", "IICU", "D")
+    comps_single <- intersect(comps, single_comps)
+    comps_multi <- setdiff(comps, single_comps)
+    comps <- c(
+      comps_single,
+      if(length(comps_multi) > 0){paste0(comps_multi, c(1, 2))}
+      )
+  }
+
   # to match with squire uses
   if("hospital_incidence" %in% summs) {
     summs <- summs[-which(summs == "hospital_incidence")]

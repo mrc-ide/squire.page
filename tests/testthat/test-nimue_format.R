@@ -53,7 +53,7 @@ test_that("options", {
           var_select = "E",
           reduce_age = FALSE,
           combine_compartments = TRUE
-        )$compartment
+        )
       )
   )
 })

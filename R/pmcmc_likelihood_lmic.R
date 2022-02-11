@@ -1,8 +1,9 @@
-#taken from squire, has added ability to update prob hospital multiplier,
-# and duration in R. As incorporates adjustment to cases for last few days
+#taken from squire, has added ability to update prob hospital multiplier, and
+# variant dependant variables and duration in R. Also incorporates adjustment
+# to cases for last few days
 #'
 #'@export
-calc_loglikelihood_delta <- function(pars, data, squire_model, model_params,
+calc_loglikelihood_variant <- function(pars, data, squire_model, model_params,
                                      pars_obs, n_particles,
                                      forecast_days = 0, return = "ll",
                                      Rt_args,
@@ -173,35 +174,81 @@ calc_loglikelihood_delta <- function(pars, data, squire_model, model_params,
   }
 
   #nimue specific functions (currently stored in pars_obs, may one day be interventions with the rest)
-  if(!is.null(pars_obs$delta_adjust)){
+  if(!is.null(pars_obs$variant_adjust)){
     #check if we are using NIMUE
     if(!("nimue_model" %in% class(nimue::nimue_deterministic_model()))){
-      stop("Can only specify delta adjustments (pars_obs and dur_R change) for Nimue")
+      stop("Can only specify variant adjustments for Nimue")
     }
+
     #update dur_R if needed
-    if(!is.null(pars_obs$delta_adjust$dur_R)){
-      gamma_R <- 2/pars_obs$delta_adjust$dur_R
-      if(any(!gamma_R %in% model_params$gamma_R)){
-        tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$delta_adjust$date_dur_R_change,
-                                                        change = seq_along(gamma_R)[-1],
-                                                        start_date = start_date,
-                                                        steps_per_day = round(1/model_params$dt),
-                                                        starting_change = 1)
-        model_params$tt_dur_R <- tt_list$tt
-        model_params$gamma_R <- gamma_R[tt_list$change]
-      }
+    if(!is.null(pars_obs$variant_adjust$gamma_R)){
+      tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$variant_adjust$date_dur_R_change,
+                                                      change = seq_along(pars_obs$variant_adjust$gamma_R)[-1],
+                                                      start_date = start_date,
+                                                      steps_per_day = round(1/model_params$dt),
+                                                      starting_change = 1)
+      model_params$tt_dur_R <- tt_list$tt
+      model_params$gamma_R <- pars_obs$variant_adjust$gamma_R[tt_list$change]
     }
     #update prob_hosp if needed
-    if(!is.null(pars_obs$delta_adjust$prob_hosp_multiplier)){
-      if(any(!pars_obs$delta_adjust$prob_hosp_multiplier %in% model_params$prob_hosp_multiplier)){
-        tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$delta_adjust$date_prob_hosp_multiplier_change,
-                                                        change = seq_along(pars_obs$delta_adjust$prob_hosp_multiplier)[-1],
-                                                        start_date = start_date,
-                                                        steps_per_day = round(1/model_params$dt),
-                                                        starting_change = 1)
-        model_params$tt_prob_hosp_multiplier <- tt_list$tt
-        model_params$prob_hosp_multiplier <- pars_obs$delta_adjust$prob_hosp_multiplier[tt_list$change]
-      }
+    if(!is.null(pars_obs$variant_adjust$prob_hosp_multiplier)){
+      tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$variant_adjust$date_prob_hosp_multiplier_change,
+                                                      change = seq_along(pars_obs$variant_adjust$prob_hosp_multiplier)[-1],
+                                                      start_date = start_date,
+                                                      steps_per_day = round(1/model_params$dt),
+                                                      starting_change = 1)
+      model_params$tt_prob_hosp_multiplier <- tt_list$tt
+      model_params$prob_hosp_multiplier <- pars_obs$variant_adjust$prob_hosp_multiplier[tt_list$change]
+    }
+    #update prob_severe if needed
+    if(!is.null(pars_obs$variant_adjust$prob_severe_multiplier)){
+      tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$variant_adjust$date_prob_severe_multiplier_change,
+                                                      change = seq_along(pars_obs$variant_adjust$prob_severe_multiplier)[-1],
+                                                      start_date = start_date,
+                                                      steps_per_day = round(1/model_params$dt),
+                                                      starting_change = 1)
+      model_params$tt_prob_severe_multiplier <- tt_list$tt
+      model_params$prob_severe_multiplier <- pars_obs$variant_adjust$prob_severe_multiplier[tt_list$change]
+    }
+    #update dur_ICU if needed
+    if(!is.null(pars_obs$variant_adjust$gamma_get_mv_survive)){
+      tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$variant_adjust$date_dur_get_mv_survive_change,
+                                                      change = seq_along(pars_obs$variant_adjust$gamma_get_mv_survive)[-1],
+                                                      start_date = start_date,
+                                                      steps_per_day = round(1/model_params$dt),
+                                                      starting_change = 1)
+      model_params$tt_dur_get_mv_survive  <- tt_list$tt
+      model_params$gamma_get_mv_survive  <- pars_obs$variant_adjust$gamma_get_mv_survive[tt_list$change]
+    }
+    #update dur_ICU_death if needed
+    if(!is.null(pars_obs$variant_adjust$gamma_get_mv_die)){
+      tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$variant_adjust$date_dur_get_mv_die_change,
+                                                      change = seq_along(pars_obs$variant_adjust$gamma_get_mv_die)[-1],
+                                                      start_date = start_date,
+                                                      steps_per_day = round(1/model_params$dt),
+                                                      starting_change = 1)
+      model_params$tt_dur_get_mv_die  <- tt_list$tt
+      model_params$gamma_get_mv_die  <-pars_obs$variant_adjust$gamma_get_mv_die[tt_list$change]
+    }
+    #update dur_hosp if needed
+    if(!is.null(pars_obs$variant_adjust$gamma_get_ox_survive)){
+      tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$variant_adjust$date_dur_get_ox_survive_change,
+                                                      change = seq_along(pars_obs$variant_adjust$gamma_get_ox_survive)[-1],
+                                                      start_date = start_date,
+                                                      steps_per_day = round(1/model_params$dt),
+                                                      starting_change = 1)
+      model_params$tt_dur_get_ox_survive  <- tt_list$tt
+      model_params$gamma_get_ox_survive  <-pars_obs$variant_adjust$gamma_get_ox_survive[tt_list$change]
+    }
+    #update dur_hosp_death if needed
+    if(!is.null(pars_obs$variant_adjust$gamma_get_ox_die)){
+      tt_list <- squire:::intervention_dates_for_odin(dates = pars_obs$variant_adjust$date_dur_get_ox_die_change,
+                                                      change = seq_along(pars_obs$variant_adjust$gamma_get_ox_die)[-1],
+                                                      start_date = start_date,
+                                                      steps_per_day = round(1/model_params$dt),
+                                                      starting_change = 1)
+      model_params$tt_dur_get_ox_die <- tt_list$tt
+      model_params$gamma_get_ox_die  <-pars_obs$variant_adjust$gamma_get_ox_die[tt_list$change]
     }
   }
 
@@ -239,19 +286,6 @@ calc_loglikelihood_delta <- function(pars, data, squire_model, model_params,
       save_history = save_particles,
       return = pf_return
     )
-  } else if (inherits(squire_model, "stochastic")) {
-
-    pf_result <- squire:::run_particle_filter(data = data,
-                                              squire_model = squire_model,
-                                              model_params = model_params,
-                                              model_start_date = start_date,
-                                              obs_params = pars_obs,
-                                              n_particles = n_particles,
-                                              forecast_days = forecast_days,
-                                              save_particles = save_particles,
-                                              full_output = full_output,
-                                              return = pf_return)
-
   } else if (inherits(squire_model, "deterministic")) {
 
     pf_result <- squire:::run_deterministic_comparison(data = data,
@@ -345,8 +379,6 @@ run_deterministic_comparison_cases <- function(data,
   }
 
   # calculate ll for the cases for last few days
-  llc <- 0
-  if(obs_params$cases_fitting){
     #calculate the relevant dates
     final_date <- max(data$date)
     cases_fitting_start_date <- final_date - obs_params$cases_days
@@ -389,6 +421,8 @@ run_deterministic_comparison_cases <- function(data,
       data_reporting$cases/model_infections[data_reporting$day_end],
       na.rm = TRUE
     )
+    #cap how high this can be (prevents Infinities and is unlikely)
+    est_reporting_fraction <- min(c(est_reporting_fraction, 1000))
     #note that though this can be larger than 1, then the model output is small,
     #this should correct as the model fits, this should still follow the shape of
     #the infections
@@ -402,7 +436,7 @@ run_deterministic_comparison_cases <- function(data,
       obs_params$k_cases, obs_params$exp_noise
     )
     #note that we still fit to deaths in this time period
-  }
+
 
   # format the out object
   date <- data$date[[1]] + seq_len(nrow(out)) - 1L
