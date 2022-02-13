@@ -143,20 +143,12 @@ excess_log_likelihood_vaccine <- function(pars, data, squire_model, model_params
     model_params$tt_dur_R <- tt_dur_R
     model_params$gamma_R <- gamma_R
   }
-  if (inherits(squire_model, "stochastic")) {
-    pf_result <- squire:::run_particle_filter(data = data, squire_model = squire_model,
-                                              model_params = model_params, model_start_date = start_date,
-                                              obs_params = pars_obs, n_particles = n_particles,
-                                              forecast_days = forecast_days, save_particles = save_particles,
-                                              full_output = full_output, return = pf_return)
-  } else if (inherits(squire_model, "deterministic")) {
-    pf_result <- run_deterministic_comparison_excess(data = data,
-                                                     squire_model = squire_model, model_params = model_params,
-                                                     model_start_date = start_date, obs_params = pars_obs,
-                                                     forecast_days = forecast_days, save_history = save_particles,
-                                                     return = pf_return)
-  }
-  pf_result
+
+  run_deterministic_comparison_excess(data = data,
+                                                   squire_model = squire_model, model_params = model_params,
+                                                   model_start_date = start_date, obs_params = pars_obs,
+                                                   forecast_days = forecast_days, save_history = save_particles,
+                                                   return = pf_return)
 
 }
 
