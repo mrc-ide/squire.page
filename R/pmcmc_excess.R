@@ -558,7 +558,7 @@ pmcmc_excess <- function(data,
     # Are we debuggine
     if (Sys.getenv("SQUIRE_PARALLEL_DEBUG") == "TRUE") {
       # if debug remove the cluster
-      drjacoby_list$cl <- NULL
+      drjacoby_list$cluster <- NULL
     }
 
     message("Running drjacoby...")
