@@ -2,18 +2,6 @@
 #'@export
 excess_log_likelihood_vaccine <- function(pars, data, squire_model, model_params, pars_obs, n_particles,
                                   forecast_days = 0, return = "ll", Rt_args, interventions, ...) {
-  switch(return, full = {
-    save_particles <- TRUE
-    full_output <- TRUE
-    pf_return <- "sample"
-  }, ll = {
-    save_particles <- FALSE
-    forecast_days <- 0
-    full_output <- FALSE
-    pf_return <- "single"
-  }, {
-    stop("Unknown return type to calc_loglikelihood")
-  })
   squire:::assert_in(c("R0", "start_date"), names(pars), message = "Must specify R0, start date to infer")
   R0 <- pars[["R0"]]
   start_date <- pars[["start_date"]]
@@ -147,11 +135,11 @@ excess_log_likelihood_vaccine <- function(pars, data, squire_model, model_params
   run_deterministic_comparison_excess(data = data,
                                                    squire_model = squire_model, model_params = model_params,
                                                    model_start_date = start_date, obs_params = pars_obs,
-                                                   forecast_days = forecast_days, save_history = save_particles,
-                                                   return = pf_return)
+                                                   return = return)
 
 }
-
+#'
+#' @noRd
 vaccine_efficacies_to_efficacy_ts <- function(
   ves, vaccine_efficacies, dose_ratio,
   date_vaccine_efficacy, delta_start_date, shift_duration, prob_hosp
@@ -160,6 +148,10 @@ vaccine_efficacies_to_efficacy_ts <- function(
   effs <- scale_ves(ves, vaccine_efficacies)
   #generate delta adjust times on the same frame as dose ratios
   delta_prop <- get_delta_prop(delta_start_date, shift_duration, date_vaccine_efficacy)
+  #add values for starting (shouldn't matter as there won't be vaccine when these are in effect)
+  #just makes it consitent with other dates and variables
+  dose_ratio <- c(0, dose_ratio)
+  delta_prop <- c(utils::head(delta_prop, 1), delta_prop)
   #calculate efficacy at each change of dose and delta
   ve_i <- (effs$ve_i_low * (1 - dose_ratio) + dose_ratio * effs$ve_i_high) * delta_prop +
     (effs$ve_i_low_d * (1 - dose_ratio) + dose_ratio * effs$ve_i_high_d) * (1 - delta_prop)
@@ -168,8 +160,8 @@ vaccine_efficacies_to_efficacy_ts <- function(
   #scale for break through
   ve_d <- (ve_d - ve_i)/(1-ve_i)
   #convert into nimue formats
-  vaccine_efficacy_infection <- nimue:::format_ve_i_for_odin(purrr::map(ve_i, ~.x), seq_along(date_vaccine_efficacy))
-  vaccine_efficacy_disease <- nimue:::format_ve_d_for_odin(purrr::map(ve_d, ~.x), seq_along(date_vaccine_efficacy),
+  vaccine_efficacy_infection <- nimue:::format_ve_i_for_odin(purrr::map(ve_i, ~.x), c(0, seq_along(date_vaccine_efficacy)))
+  vaccine_efficacy_disease <- nimue:::format_ve_d_for_odin(purrr::map(ve_d, ~.x), c(0, seq_along(date_vaccine_efficacy)),
                                                            prob_hosp = prob_hosp[1,,1])
   #return
   list(
@@ -177,12 +169,14 @@ vaccine_efficacies_to_efficacy_ts <- function(
     vaccine_efficacy_disease = vaccine_efficacy_disease
   )
 }
+#'
 #' @noRd
 scale_ves <- function(ves, vaccine_efficacies){
   purrr::map(vaccine_efficacies, function(eff){
     eff[1] - (pos((0.5-ves))/0.5)*(eff[1] - eff[2]) + (pos((ves-0.5))/0.5)*(eff[3] - eff[1])
   })
 }
+#'
 #' @noRd
 pos <- function(x){
   if(x<0) {
@@ -190,6 +184,7 @@ pos <- function(x){
   } else {
     return(x)
   }}
+#'
 #' @noRd
 get_delta_prop <- function(delta_start_date, shift_duration, date_vaccine_efficacy){
   if(delta_start_date + shift_duration < min(date_vaccine_efficacy)){
@@ -207,6 +202,7 @@ get_delta_prop <- function(delta_start_date, shift_duration, date_vaccine_effica
     )
   }
 }
+#'
 #' @noRD
 evaluate_Rt_pmcmc_simple <- function(R0 = R0, pars = pars){
   as.numeric(c(R0, unlist(pars[grepl("Rt_", names(pars))])))

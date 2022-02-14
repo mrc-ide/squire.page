@@ -2,18 +2,6 @@
 #'@export
 excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_obs, n_particles,
                                   forecast_days = 0, return = "ll", Rt_args, interventions, ...) {
-  switch(return, full = {
-    save_particles <- TRUE
-    full_output <- TRUE
-    pf_return <- "sample"
-  }, ll = {
-    save_particles <- FALSE
-    forecast_days <- 0
-    full_output <- FALSE
-    pf_return <- "single"
-  }, {
-    stop("Unknown return type to calc_loglikelihood")
-  })
   squire:::assert_in(c("R0", "start_date"), names(pars), message = "Must specify R0, start date to infer")
   R0 <- pars[["R0"]]
   start_date <- pars[["start_date"]]
@@ -148,21 +136,10 @@ excess_log_likelihood <- function(pars, data, squire_model, model_params, pars_o
       }
     }
   }
-
-  if (inherits(squire_model, "stochastic")) {
-    pf_result <- squire:::run_particle_filter(data = data, squire_model = squire_model,
-                                              model_params = model_params, model_start_date = start_date,
-                                              obs_params = pars_obs, n_particles = n_particles,
-                                              forecast_days = forecast_days, save_particles = save_particles,
-                                              full_output = full_output, return = pf_return)
-  } else if (inherits(squire_model, "deterministic")) {
-    pf_result <- run_deterministic_comparison_excess(data = data,
+  run_deterministic_comparison_excess(data = data,
                                                      squire_model = squire_model, model_params = model_params,
                                                      model_start_date = start_date, obs_params = pars_obs,
-                                                     forecast_days = forecast_days, save_history = save_particles,
-                                                     return = pf_return)
-  }
-  pf_result
+                                                     return = return)
 
 }
 
@@ -181,7 +158,7 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
                                                                        obs_params$k_death,
                                                                        obs_params$exp_noise)
                                                   }
-                                                ), forecast_days = 0, save_history = FALSE,
+                                                ),
                                                 return = "ll") {
 
   if (!(return %in% c("full", "ll", "sample", "single"))) {
@@ -192,14 +169,33 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
     stop("Model start date is later than data start date")
   }
 
-  #set up to use our weekly data instead of perday
+  #set up tolerances
+  #if tolerances are null use 1e-6
+  if(is.null(obs_params$atol)) {
+    atol <- 1e-6
+  } else {
+    atol <- obs_params$atol
+  }
+  if(is.null(obs_params$rtol)) {
+    rtol <- 1e-6
+  } else {
+    rtol <- obs_params$rtol
+  }
+  #if full we use a low tolerance
+  if(return == "full") {
+    atol <- 1e-8
+    rtol <- 1e-8
+  }
+
+  #set up to use our weekly data instead of per day
   model_params$tt_beta <- round(model_params$tt_beta * model_params$dt)
   model_params$tt_contact_matrix <- round(model_params$tt_contact_matrix *
-                                            model_params$dt)
+                                          model_params$dt)
   model_params$tt_hosp_beds <- round(model_params$tt_hosp_beds *
-                                       model_params$dt)
+                                     model_params$dt)
   model_params$tt_ICU_beds <- round(model_params$tt_ICU_beds *
-                                      model_params$dt)
+                                    model_params$dt)
+
   #convert weeks into days relevant to our start_date
   data$date <- data$week_start
   data <- squire:::particle_filter_data(data = data, start_date = model_start_date,
@@ -215,64 +211,41 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
   model_func <- squire_model$odin_model(user = model_params,
                                         unused_user_action = "ignore")
   out <- tryCatch(
-    model_func$run(t = seq(0, utils::tail(data$week_end, 1), 1), atol = 1e-6, rtol = 1e-6),
+    model_func$run(t = seq(0, utils::tail(data$week_end, 1), 1), atol = atol, rtol = rtol),
     error = function(x){"FAIL"}
   )
-  if(identical(out, "FAIL")){
-    out <- model_func$run(t = seq(0, utils::tail(data$week_end, 1), 1), atol = 1e-8, rtol = 1e-8, step_size_min_allow = TRUE)
-  }
-  index <- squire:::odin_index(model_func)
+  if(!identical(out, "FAIL")){
+    #if it worked
+    index <- squire:::odin_index(model_func)
 
-  #calculate the deaths for each week
-  cumDs <- rowSums(out[, index$D])
-  Ds <- cumDs[data$week_end[-1]] - cumDs[data$week_start[-1]]
-  Ds[Ds < 0] <- 0
-  deaths <- data$deaths[-1]
-
-
-  ll <- obs_params$likelihood(Ds, deaths)
-
-  #plotting code for debug
-  # print(ggplot2::ggplot() +
-  #   ggplot2::geom_line(
-  #     ggplot2::aes(
-  #       x = seq_along(Ds),
-  #       y = Ds,
-  #       colour = "red"
-  #     )
-  #   ) +
-  #   ggplot2::geom_line(
-  #     ggplot2::aes(
-  #       x = seq_along(deaths),
-  #       y = deaths
-  #     ),
-  #     linetype = "dashed"
-  #   ) +
-  #   ggplot2::labs(title = sum(ll)))
-
-
-  # and wrap up as normal
-  date <- data$date[[1]] + seq_len(nrow(out)) - 1L
-  rownames(out) <- as.character(date)
-  attr(out, "date") <- date
-  pf_results <- list()
-  pf_results$log_likelihood <- sum(ll)
-  if (save_history) {
-    pf_results$states <- out
+    #calculate the deaths for each week
+    cumDs <- rowSums(out[, index$D])
+    Ds <- cumDs[data$week_end[-1]] - cumDs[data$week_start[-1]]
+    Ds[Ds < 0] <- 0
+    deaths <- data$deaths[-1]
+    #write into cpp?
+    ll <- obs_params$likelihood(Ds, deaths)
+    # and wrap up as normal
+    date <- data$date[[1]] + seq_len(nrow(out)) - 1L
+    rownames(out) <- as.character(date)
+    attr(out, "date") <- date
+    # allow full return for simulations
+    if (return == "ll") {
+      ret <- list(log_likelihood = sum(ll),
+                 sample_state = out[nrow(out), ])
+    } else if(return == "full") {
+      ret <- out
+    }
+  } else {
+    #if the model failed
+    if (return == "ll") {
+      ret <- list(log_likelihood = -.Machine$double.xmax,
+                  sample_state = NULL)
+    } else if(return == "full") {
+      ret <- NULL
+    }
   }
-  else if (return == "single") {
-    pf_results$sample_state <- out[nrow(out), ]
-  }
-  if (return == "ll") {
-    ret <- pf_results$log_likelihood
-  }
-  else if (return == "sample") {
-    ret <- pf_results$states
-  }
-  else if (return == "single" || return == "full") {
-    ret <- pf_results
-  }
-  ret
+  return(ret)
 }
 
 #'

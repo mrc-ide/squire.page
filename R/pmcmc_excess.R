@@ -7,7 +7,7 @@ pmcmc_excess <- function(data,
                          use_drjacoby = FALSE,
                          drjacoby_list = NULL,
                          n_particles = 1e2,
-                         steps_per_day = 4,
+                         steps_per_day = 1,
                          output_proposals = FALSE,
                          n_chains = 1,
                          squire_model = squire::explicit_model(),
@@ -466,6 +466,9 @@ pmcmc_excess <- function(data,
   # Collect Odin and MCMC Inputs
   #----------------..
   if(!use_drjacoby){
+    #accurate but slow
+    pars_obs$atol <- 1e-8
+    pars_obs$rtol <- 1e-8
     inputs_pars <- list(pars_obs = pars_obs,
                         pars_init = pars_init,
                         pars_min = pars_min,
@@ -474,6 +477,9 @@ pmcmc_excess <- function(data,
                         scaling_factor = scaling_factor,
                         pars_discrete = pars_discrete)
   } else {
+    #low tolerance for drjacoby, so it is fast
+    pars_obs$atol <- 1e-3
+    pars_obs$rtol <- 1e-3
     inputs_pars <- list(pars_obs = pars_obs,
                         pars_init = pars_init,
                         pars_min = pars_min,
