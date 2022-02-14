@@ -91,3 +91,44 @@ get_Rt.excess_nimue_simulation <- function(model_out){
     )
   )
 }
+#'
+#'@export
+get_Rt.vacc_durR_nimue_simulation <- function(model_out){
+  date_0 <- max(as.Date(model_out$pmcmc_results$inputs$data$week_start))
+  #get iso3c to attach
+  iso3c <- squire::get_population(model_out$parameters$country)$iso3c[1]
+  return(
+    do.call(
+      rbind,
+      lapply(seq_along(model_out$replicate_parameters$R0), function(y) {
+
+        #get the Rt values from R0 and the Rt_change values
+        Rt <- evaluate_Rt_pmcmc_simple(R0 = model_out$replicate_parameters$R0[y],
+                                       pars = as.list(model_out$replicate_parameters[y,]))
+        #get the dates in t and the corresponding Rt indexes
+        tt <- squire:::intervention_dates_for_odin(dates = model_out$interventions$date_Rt_change,
+                                                   change = seq(2, length(Rt)),
+                                                   start_date = model_out$replicate_parameters$start_date[y],
+                                                   steps_per_day = 1/model_out$parameters$dt,
+                                                   starting_change = 1)
+        #reduce Rt to the values needed
+        Rt <- Rt[tt$change]
+
+        df <- data.frame(
+          Rt = Rt,
+          date = tt$dates
+        ) %>%
+          tidyr::complete(date = seq(min(.data$date), date_0, by = "days")) %>%
+          dplyr::mutate(
+            t = as.numeric(.data$date - min(.data$date))
+          ) %>%
+          tidyr::fill(.data$Rt) %>%
+          dplyr::mutate(
+            iso3c = iso3c,
+            rep = y
+          )
+        return(df)
+      })
+    )
+  )
+}

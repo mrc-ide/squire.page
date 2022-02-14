@@ -4,8 +4,10 @@ pmcmc_excess <- function(data,
                          n_mcmc,
                          log_likelihood = NULL,
                          log_prior = NULL,
+                         use_drjacoby = FALSE,
+                         drjacoby_list = NULL,
                          n_particles = 1e2,
-                         steps_per_day = 4,
+                         steps_per_day = 1,
                          output_proposals = FALSE,
                          n_chains = 1,
                          squire_model = squire::explicit_model(),
@@ -73,6 +75,9 @@ pmcmc_excess <- function(data,
                          gibbs_sampling = FALSE,
                          gibbs_days = NULL,
                          dur_R = 365,
+                         dose_ratio = NULL,
+                         date_vaccine_efficacy = NULL,
+                         vaccine_efficacies = NULL,
                          ...) {
 
   #------------------------------------------------------------
@@ -157,13 +162,15 @@ pmcmc_excess <- function(data,
   squire:::assert_bounded(pars_init[[1]]$R0, left = pars_min$R0, right = pars_max$R0)
 
   # check proposal kernel
-  squire:::assert_matrix(proposal_kernel)
-  if (gibbs_sampling) {
-    squire:::assert_eq(colnames(proposal_kernel), names(pars_init[[1]][-1]))
-    squire:::assert_eq(rownames(proposal_kernel), names(pars_init[[1]][-1]))
-  } else {
-    squire:::assert_eq(colnames(proposal_kernel), names(pars_init[[1]]))
-    squire:::assert_eq(rownames(proposal_kernel), names(pars_init[[1]]))
+  if(!use_drjacoby){
+    squire:::assert_matrix(proposal_kernel)
+    if (gibbs_sampling) {
+      squire:::assert_eq(colnames(proposal_kernel), names(pars_init[[1]][-1]))
+      squire:::assert_eq(rownames(proposal_kernel), names(pars_init[[1]][-1]))
+    } else {
+      squire:::assert_eq(colnames(proposal_kernel), names(pars_init[[1]]))
+      squire:::assert_eq(rownames(proposal_kernel), names(pars_init[[1]]))
+    }
   }
 
   # check likelihood items
@@ -421,25 +428,65 @@ pmcmc_excess <- function(data,
   }
 
   # collect interventions for odin model likelihood
-  interventions <- list(
-    date_Rt_change = date_Rt_change,
-    date_contact_matrix_set_change = date_contact_matrix_set_change,
-    contact_matrix_set = contact_matrix_set,
-    date_ICU_bed_capacity_change = date_ICU_bed_capacity_change,
-    ICU_bed_capacity = ICU_bed_capacity,
-    date_hosp_bed_capacity_change = date_hosp_bed_capacity_change,
-    hosp_bed_capacity = hosp_bed_capacity,
-    date_vaccine_change = date_vaccine_change,
-    max_vaccine = max_vaccine,
-    date_vaccine_efficacy_disease_change = date_vaccine_efficacy_disease_change,
-    vaccine_efficacy_disease = vaccine_efficacy_disease,
-    date_vaccine_efficacy_infection_change = date_vaccine_efficacy_infection_change,
-    vaccine_efficacy_infection = vaccine_efficacy_infection
-  )
+  #check if we are fitting vaccine and durR
+  if("ves" %in% names(pars_init[[1]]) & "delta_dur_R" %in% names(pars_init[[1]])){
+    interventions <- list(
+      date_Rt_change = date_Rt_change,
+      date_contact_matrix_set_change = date_contact_matrix_set_change,
+      contact_matrix_set = contact_matrix_set,
+      date_ICU_bed_capacity_change = date_ICU_bed_capacity_change,
+      ICU_bed_capacity = ICU_bed_capacity,
+      date_hosp_bed_capacity_change = date_hosp_bed_capacity_change,
+      hosp_bed_capacity = hosp_bed_capacity,
+      date_vaccine_change = date_vaccine_change,
+      max_vaccine = max_vaccine,
+      date_vaccine_efficacy = date_vaccine_efficacy,
+      dose_ratio = dose_ratio,
+      vaccine_efficacies = vaccine_efficacies
+    )
+  } else {
+    interventions <- list(
+      date_Rt_change = date_Rt_change,
+      date_contact_matrix_set_change = date_contact_matrix_set_change,
+      contact_matrix_set = contact_matrix_set,
+      date_ICU_bed_capacity_change = date_ICU_bed_capacity_change,
+      ICU_bed_capacity = ICU_bed_capacity,
+      date_hosp_bed_capacity_change = date_hosp_bed_capacity_change,
+      hosp_bed_capacity = hosp_bed_capacity,
+      date_vaccine_change = date_vaccine_change,
+      max_vaccine = max_vaccine,
+      date_vaccine_efficacy_disease_change = date_vaccine_efficacy_disease_change,
+      vaccine_efficacy_disease = vaccine_efficacy_disease,
+      date_vaccine_efficacy_infection_change = date_vaccine_efficacy_infection_change,
+      vaccine_efficacy_infection = vaccine_efficacy_infection
+    )
+  }
 
   #----------------..
   # Collect Odin and MCMC Inputs
   #----------------..
+  if(!use_drjacoby){
+    #accurate but slow
+    pars_obs$atol <- 1e-8
+    pars_obs$rtol <- 1e-8
+    inputs_pars <- list(pars_obs = pars_obs,
+                        pars_init = pars_init,
+                        pars_min = pars_min,
+                        pars_max = pars_max,
+                        proposal_kernel = proposal_kernel,
+                        scaling_factor = scaling_factor,
+                        pars_discrete = pars_discrete)
+  } else {
+    #low tolerance for drjacoby, so it is fast
+    pars_obs$atol <- 1e-3
+    pars_obs$rtol <- 1e-3
+    inputs_pars <- list(pars_obs = pars_obs,
+                        pars_init = pars_init,
+                        pars_min = pars_min,
+                        pars_max = pars_max,
+                        pars_discrete = pars_discrete)
+    data$date <- data$week_start
+  }
   inputs <- list(
     data = data,
     n_mcmc = n_mcmc,
@@ -448,13 +495,7 @@ pmcmc_excess <- function(data,
     pars_obs = pars_obs,
     Rt_args = Rt_args,
     squire_model = squire_model,
-    pars = list(pars_obs = pars_obs,
-                pars_init = pars_init,
-                pars_min = pars_min,
-                pars_max = pars_max,
-                proposal_kernel = proposal_kernel,
-                scaling_factor = scaling_factor,
-                pars_discrete = pars_discrete),
+    pars = inputs_pars,
     n_particles = n_particles)
 
 
@@ -466,7 +507,13 @@ pmcmc_excess <- function(data,
     # set improper, uninformative prior
     log_prior <- function(pars) log(1e-10)
   }
-  calc_lprior <- log_prior
+  if(use_drjacoby){
+    calc_lprior <- squire:::convert_log_prior_func_for_drjacoby(
+      log_prior
+    )
+  } else {
+    calc_lprior <- log_prior
+  }
 
   if(is.null(log_likelihood)) {
     log_likelihood <- squire:::calc_loglikelihood
@@ -475,38 +522,25 @@ pmcmc_excess <- function(data,
   }
 
   # create shorthand function to calc_ll given main inputs
-  calc_ll <- function(pars) {
-    X <- log_likelihood(pars = pars,
-                        data = data,
-                        squire_model = squire_model,
-                        model_params = model_params,
-                        interventions = interventions,
-                        pars_obs = pars_obs,
-                        n_particles = n_particles,
-                        forecast_days = 0,
-                        Rt_args = Rt_args,
-                        return = "ll"
+  if(use_drjacoby){
+    calc_ll <- squire:::convert_log_likelihood_func_for_drjacoby(
+      log_likelihood
     )
-    X
-  }
-  #----------------
-  # create mcmc run functions depending on whether Gibbs Sampling
-  #----------------
-
-  if(gibbs_sampling) {
-    # checking gibbs days is specified and is an integer
-    if (is.null(gibbs_days)) {
-      stop("if gibbs_sampling == TRUE, gibbs_days must be specified")
-    }
-    squire:::assert_int(gibbs_days)
-
-    # create our gibbs run func wrapper
-    run_mcmc_func <- function(...) {
-      force(gibbs_days)
-      squire:::run_mcmc_chain_gibbs(..., gibbs_days = gibbs_days)
-    }
   } else {
-    run_mcmc_func <- squire:::run_mcmc_chain
+    calc_ll <- function(pars) {
+      X <- log_likelihood(pars = pars,
+                          data = data,
+                          squire_model = squire_model,
+                          model_params = model_params,
+                          interventions = interventions,
+                          pars_obs = pars_obs,
+                          n_particles = n_particles,
+                          forecast_days = 0,
+                          Rt_args = Rt_args,
+                          return = "ll"
+      )
+      X
+    }
   }
 
   #----------------
@@ -518,98 +552,148 @@ pmcmc_excess <- function(data,
   pars_max <- unlist(pars_max)
   pars_discrete <- unlist(pars_discrete)
 
-  #--------------------------------------------------------
-  # Section 2 of pMCMC Wrapper: Run pMCMC
-  #--------------------------------------------------------
+  if(use_drjacoby){
+    #run the drjacoby functions
 
-  # Run the chains in parallel
-  message("Running pMCMC...")
-  if (Sys.getenv("SQUIRE_PARALLEL_DEBUG") == "TRUE") {
+    # Are we debuggine
+    if (Sys.getenv("SQUIRE_PARALLEL_DEBUG") == "TRUE") {
+      # if debug remove the cluster
+      drjacoby_list$cl <- NULL
+    }
 
-    chains <- purrr::pmap(
-      .l =  list(n_mcmc = rep(n_mcmc, n_chains),
-                 curr_pars = pars_init),
-      .f = run_mcmc_func,
-      inputs = inputs,
-      calc_lprior = calc_lprior,
-      calc_ll = calc_ll,
-      first_data_date = data$week_start[1],
-      output_proposals = output_proposals,
-      required_acceptance_ratio = required_acceptance_ratio,
-      start_adaptation = start_adaptation,
-      proposal_kernel = proposal_kernel,
-      scaling_factor = scaling_factor,
-      pars_discrete = pars_discrete,
-      pars_min = pars_min,
-      pars_max = pars_max)
+    message("Running drjacoby...")
+    mcmc_out <- squire:::run_drjacoby_mcmc(loglike = calc_ll,
+                                  logprior = calc_lprior,
+                                  inputs = inputs,
+                                  burnin = burnin,
+                                  chains = n_chains,
+                                  drjacoby_list = drjacoby_list)
 
+    # process output to play with rest of squire
+    chains <- squire:::convert_drjacoby_mcmc(mcmc_out)
+    if(n_chains > 1) {
+      pmcmc <- list(inputs = inputs,
+                    chains = chains,
+                    drjacoby_out = mcmc_out)
+
+      # drjaciby separates these so add them to align with pmcmc
+      pmcmc$inputs$n_mcmc <- burnin + n_chains
+      class(pmcmc) <- 'squire_pmcmc_list'
+    } else {
+      pmcmc <- chains$chain1
+      pmcmc$inputs <- inputs
+      pmcmc$drjacoby_out <- mcmc_out
+      class(pmcmc) <- 'squire_pmcmc'
+    }
+    #we sample with the normal function as we leave the likelihood how it is
   } else {
+    #go ahead as usual
+    #----------------
+    # create mcmc run functions depending on whether Gibbs Sampling
+    #----------------
 
-    chains <- furrr::future_pmap(
-      .l =  list(n_mcmc = rep(n_mcmc, n_chains),
-                 curr_pars = pars_init),
-      .f = run_mcmc_func,
-      inputs = inputs,
-      calc_lprior = calc_lprior,
-      calc_ll = calc_ll,
-      first_data_date = data$week_start[1],
-      output_proposals = output_proposals,
-      required_acceptance_ratio = required_acceptance_ratio,
-      start_adaptation = start_adaptation,
-      proposal_kernel = proposal_kernel,
-      scaling_factor = scaling_factor,
-      pars_discrete = pars_discrete,
-      pars_min = pars_min,
-      pars_max = pars_max,
-      .progress = TRUE,
-      .options = furrr::furrr_options(seed = NULL))
-
-  }
-
-  #----------------
-  # MCMC diagnostics and tidy
-  #----------------
-  if (n_chains > 1) {
-    names(chains) <- paste0('chain', seq_len(n_chains))
-
-    # calculating rhat
-    # convert parallel chains to a coda-friendly format
-    chains_coda <- lapply(chains, function(x) {
-
-      traces <- x$results
-      if('start_date' %in% names(pars_init[[1]])) {
-        traces$start_date <- squire:::start_date_to_offset(data$week_start[1], traces$start_date)
+    if(gibbs_sampling) {
+      # checking gibbs days is specified and is an integer
+      if (is.null(gibbs_days)) {
+        stop("if gibbs_sampling == TRUE, gibbs_days must be specified")
       }
+      squire:::assert_int(gibbs_days)
 
-      coda::as.mcmc(traces[, names(pars_init[[1]])])
-    })
+      # create our gibbs run func wrapper
+      run_mcmc_func <- function(...) {
+        force(gibbs_days)
+        squire:::run_mcmc_chain_gibbs(..., gibbs_days = gibbs_days)
+      }
+    } else {
+      run_mcmc_func <- squire:::run_mcmc_chain
+    }
 
-    rhat <- tryCatch(expr = {
-      x <- coda::gelman.diag(chains_coda)
-      x
-    }, error = function(e) {
-      message('unable to calculate rhat')
-    })
+    #--------------------------------------------------------
+    # Section 2 of pMCMC Wrapper: Run pMCMC
+    #--------------------------------------------------------
 
+    # Run the chains in parallel
+    message("Running pMCMC...")
+    if (Sys.getenv("SQUIRE_PARALLEL_DEBUG") == "TRUE") {
 
-    pmcmc <- list(inputs = chains[[1]]$inputs,
-                  rhat = rhat,
-                  chains = lapply(chains, '[', -1))
+      chains <- purrr::pmap(
+        .l =  list(n_mcmc = rep(n_mcmc, n_chains),
+                   curr_pars = pars_init),
+        .f = run_mcmc_func,
+        inputs = inputs,
+        calc_lprior = calc_lprior,
+        calc_ll = calc_ll,
+        first_data_date = data$week_start[1],
+        output_proposals = output_proposals,
+        required_acceptance_ratio = required_acceptance_ratio,
+        start_adaptation = start_adaptation,
+        proposal_kernel = proposal_kernel,
+        scaling_factor = scaling_factor,
+        pars_discrete = pars_discrete,
+        pars_min = pars_min,
+        pars_max = pars_max)
 
-    class(pmcmc) <- 'squire_pmcmc_list'
+    } else {
 
-  } else {
+      chains <- furrr::future_pmap(
+        .l =  list(n_mcmc = rep(n_mcmc, n_chains),
+                   curr_pars = pars_init),
+        .f = run_mcmc_func,
+        inputs = inputs,
+        calc_lprior = calc_lprior,
+        calc_ll = calc_ll,
+        first_data_date = data$week_start[1],
+        output_proposals = output_proposals,
+        required_acceptance_ratio = required_acceptance_ratio,
+        start_adaptation = start_adaptation,
+        proposal_kernel = proposal_kernel,
+        scaling_factor = scaling_factor,
+        pars_discrete = pars_discrete,
+        pars_min = pars_min,
+        pars_max = pars_max,
+        .progress = TRUE,
+        .options = furrr::furrr_options(seed = NULL))
 
-    pmcmc <- chains[[1]]
-    class(pmcmc) <- "squire_pmcmc"
+    }
 
+    #----------------
+    # MCMC diagnostics and tidy
+    #----------------
+    if (n_chains > 1) {
+      names(chains) <- paste0('chain', seq_len(n_chains))
+      # calculating rhat
+      # convert parallel chains to a coda-friendly format
+      chains_coda <- lapply(chains, function(x) {
+
+        traces <- x$results
+        if('start_date' %in% names(pars_init[[1]])) {
+          traces$start_date <- squire:::start_date_to_offset(data$week_start[1], traces$start_date)
+        }
+
+        coda::as.mcmc(traces[, names(pars_init[[1]])])
+      })
+      rhat <- tryCatch(expr = {
+        x <- coda::gelman.diag(chains_coda)
+        x
+      }, error = function(e) {
+        message('unable to calculate rhat')
+      })
+      pmcmc <- list(inputs = chains[[1]]$inputs,
+                    rhat = rhat,
+                    chains = lapply(chains, '[', -1))
+
+      class(pmcmc) <- 'squire_pmcmc_list'
+    } else {
+      pmcmc <- chains[[1]]
+      class(pmcmc) <- "squire_pmcmc"
+    }
+    #--------------------------------------------------------
+    # Section 3 of pMCMC Wrapper: Sample PMCMC Results
+    #--------------------------------------------------------
+
+    #change to ley the following work
+    pmcmc$inputs$data$date <- pmcmc$inputs$data$week_start
   }
-  #--------------------------------------------------------
-  # Section 3 of pMCMC Wrapper: Sample PMCMC Results
-  #--------------------------------------------------------
-
-  #change to ley the following work
-  pmcmc$inputs$data$date <- pmcmc$inputs$data$week_start
 
   pmcmc_samples <- squire:::sample_pmcmc(pmcmc_results = pmcmc,
                                          burnin = burnin,
