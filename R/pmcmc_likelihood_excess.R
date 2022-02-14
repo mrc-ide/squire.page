@@ -224,7 +224,7 @@ run_deterministic_comparison_excess <- function(data, squire_model, model_params
     Ds[Ds < 0] <- 0
     deaths <- data$deaths[-1]
     #write into cpp?
-    ll <- obs_params$likelihood(Ds, deaths)
+    ll <- obs_params$likelihood(Ds, deaths, obs_params)
     # and wrap up as normal
     date <- data$date[[1]] + seq_len(nrow(out)) - 1L
     rownames(out) <- as.character(date)
