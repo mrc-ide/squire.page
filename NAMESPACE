@@ -2,6 +2,7 @@
 
 S3method(get_Rt,excess_nimue_simulation)
 S3method(get_Rt,nimue_simulation)
+S3method(get_Rt,vacc_durR_nimue_simulation)
 export("%>%")
 export(ar_plot)
 export(calc_loglikelihood_delta)
