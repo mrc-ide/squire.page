@@ -10,26 +10,6 @@ calc_loglikelihood_variant <- function(pars, data, squire_model, model_params,
                                      interventions,
                                      ...) {
   #----------------..
-  # specify particle setup
-  #----------------..
-  switch(return,
-         "full" = {
-           save_particles <- TRUE
-           full_output <- TRUE
-           pf_return <- "sample"
-         },
-         "ll" = {
-           save_particles <- FALSE
-           forecast_days <- 0
-           full_output <- FALSE
-           pf_return <- "single"
-         },
-         {
-           stop("Unknown return type to calc_loglikelihood")
-         }
-  )
-
-  #----------------..
   # (potentially redundant) assertion
   #----------------..
   squire:::assert_in(c("R0", "start_date"), names(pars),
@@ -273,32 +253,18 @@ calc_loglikelihood_variant <- function(pars, data, squire_model, model_params,
   model_params$beta_set <- beta_set
 
   #----------------..
-  # run the particle filter
+  # run the deterministic comparison
   #----------------..
-  if(inherits(squire_model, "deterministic") & pars_obs$cases_fitting){
-    pf_result <- run_deterministic_comparison_cases(
-      data = data,
-      squire_model = squire_model,
-      model_params = model_params,
-      model_start_date = start_date,
-      obs_params = pars_obs,
-      forecast_days = forecast_days,
-      save_history = save_particles,
-      return = pf_return
-    )
-  } else if (inherits(squire_model, "deterministic")) {
-
-    pf_result <- squire:::run_deterministic_comparison(data = data,
-                                                       squire_model = squire_model,
-                                                       model_params = model_params,
-                                                       model_start_date = start_date,
-                                                       obs_params = pars_obs,
-                                                       forecast_days = forecast_days,
-                                                       save_history = save_particles,
-                                                       return = pf_return)
-
-  }
-
+  pf_result <- run_deterministic_comparison_cases(
+    data = data,
+    squire_model = squire_model,
+    model_params = model_params,
+    model_start_date = start_date,
+    obs_params = pars_obs,
+    forecast_days = forecast_days,
+    save_history = FALSE,
+    return = return
+  )
   # out
   pf_result
 }
@@ -355,8 +321,18 @@ run_deterministic_comparison_cases <- function(data,
     atol <- 1e-6
     rtol <- 1e-6
   }
+  #if full we use a low tolerance
+  if(return == "full") {
+    atol <- 1e-8
+    rtol <- 1e-8
+  }
 
-  out <- model_func$run(t = seq(0, utils::tail(steps,1), 1), atol = atol, rtol = rtol)
+  out <- tryCatch(
+    model_func$run(t = seq(0, utils::tail(steps,1), 1), atol = atol, rtol = rtol),
+    error = function(x){"FAIL"}
+  )
+  if(!identical(out, "FAIL")){
+
   index <- squire:::odin_index(model_func)
 
   # get deaths for comparison
@@ -378,7 +354,8 @@ run_deterministic_comparison_cases <- function(data,
 
   }
 
-  # calculate ll for the cases for last few days
+  if(obs_params$cases_fitting){
+    # calculate ll for the cases for last few days
     #calculate the relevant dates
     final_date <- max(data$date)
     cases_fitting_start_date <- final_date - obs_params$cases_days
@@ -436,7 +413,9 @@ run_deterministic_comparison_cases <- function(data,
       obs_params$k_cases, obs_params$exp_noise
     )
     #note that we still fit to deaths in this time period
-
+  } else {
+    llc <- 0
+  }
 
   # format the out object
   date <- data$date[[1]] + seq_len(nrow(out)) - 1L
@@ -444,24 +423,21 @@ run_deterministic_comparison_cases <- function(data,
   attr(out, "date") <- date
 
   # format similar to particle_filter nomenclature
-  pf_results <- list()
-  pf_results$log_likelihood <- sum(ll) + sum(llc)
-
-  # single returns final state
-  if (save_history) {
-    pf_results$states <- out
-  } else if (return == "single") {
-    pf_results$sample_state <- out[nrow(out), ]
-  }
-
-  # create returned object
+  # allow full return for simulations
   if (return == "ll") {
-    ret <- pf_results$log_likelihood
-  } else if (return == "sample") {
-    ret <- pf_results$states
-  } else if (return == "single" || return == "full") {
-    ret <- pf_results
+    ret <- list(log_likelihood = sum(ll) + sum(llc),
+                sample_state = out[nrow(out), ])
+  } else if(return == "full") {
+    ret <- out
   }
-
+  } else {
+    #if the model failed
+    if (return == "ll") {
+      ret <- list(log_likelihood = -.Machine$double.xmax,
+                  sample_state = NULL)
+    } else if(return == "full") {
+      ret <- NULL
+    }
+  }
   ret
 }
