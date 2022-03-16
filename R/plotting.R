@@ -1,13 +1,13 @@
 #'
 #'@export
-compare_adjustment_plot <- function(out, grad_dur, extend_past = 10){
+compare_adjustment_plot <- function(out){
   #get the model infections
   plotting_data <- nimue_format(out, var_select = "infections") %>%
-    dplyr::filter(t >= (max(.data$t, na.rm = TRUE) - grad_dur - extend_past)) %>%
+    dplyr::filter(t >= (max(.data$t, na.rm = TRUE) - out$pmcmc_results$inputs$pars_obs$cases_days - out$pmcmc_results$inputs$pars_obs$cases_reporting)) %>%
     dplyr::rename(model_infections = .data$y) %>%
     dplyr::select(replicate, .data$t, .data$model_infections) %>%
     dplyr::mutate(
-      reporting = .data$t < max(.data$t, na.rm = TRUE) - grad_dur
+      reporting = .data$t < max(.data$t, na.rm = TRUE) - out$pmcmc_results$inputs$pars_obs$cases_days
     ) %>%
     #add the real data
     dplyr::left_join(
@@ -32,7 +32,7 @@ compare_adjustment_plot <- function(out, grad_dur, extend_past = 10){
     )
   #plot
   ggplot2::ggplot(data = plotting_data, ggplot2::aes(x = .data$date, y = .data$adjusted_cases)) +
-    ggplot2::geom_vline(ggplot2::aes(xintercept = max(.data$date)-grad_dur),
+    ggplot2::geom_vline(ggplot2::aes(xintercept = max(.data$date)-out$pmcmc_results$inputs$pars_obs$cases_days),
                linetype = "dashed") +
     ggplot2::geom_point(alpha = 0.25) +
     ggplot2::geom_line(
@@ -510,7 +510,8 @@ dp_plot <- function(res) {
     dp <- dp +
       ggplot2::geom_segment(data = res$pmcmc_results$inputs$data,
                    ggplot2::aes(x = .data$week_start, xend = .data$week_end,
-                       y = .data$deaths/7, yend = .data$deaths/7),
+                       y = .data$deaths/as.numeric(.data$week_end - .data$week_start),
+                       yend = .data$deaths/as.numeric(.data$week_end - .data$week_start)),
                    size = 1)
     dp$layers[[5]] <- NULL
   } else {

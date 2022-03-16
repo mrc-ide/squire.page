@@ -203,7 +203,7 @@ get_delta_prop <- function(delta_start_date, shift_duration, date_vaccine_effica
   }
 }
 #'
-#' @noRD
+#' @noRd
 evaluate_Rt_pmcmc_simple <- function(R0 = R0, pars = pars){
   as.numeric(c(R0, unlist(pars[grepl("Rt_", names(pars))])))
 }

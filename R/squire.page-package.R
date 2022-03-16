@@ -6,4 +6,6 @@
 #' @import squire
 #' @import nimue
 #' @importFrom rlang .data
+#' @importFrom odin odin
+#' @useDynLib squire.page
 NULL
