@@ -48,7 +48,7 @@ nimue_format <- function(out,
 
 
   #a check for if a squire object then we use that instead
-  if(!"tt_vaccine" %in% out$model$.__enclos_env__$private$user) {
+  if(!"nimue_simulation" %in% class(out)) {
     return(
       squire::format_output(out, var_select, reduce_age, combine_compartments, date_0)
     )
@@ -63,8 +63,20 @@ nimue_format <- function(out,
                 "hospital_demand","hospital_occupancy",
                 "ICU_demand", "ICU_occupancy",
                 "vaccines", "unvaccinated", "vaccinated", "priorvaccinated",
+                "vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_waned",
                 "hospital_incidence", "ICU_incidence",
                 "infections", "deaths")
+
+  #check for correct types
+  if("lmic_booster_nimue_simulation" %in% class(out)){
+    if(any(c("vaccinated", "priorvaccinated") %in% var_select)){
+      warning("vaccinated and priorvaccinated cannot be output for this model type")
+    }
+  } else {
+    if(any(c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_waned") %in% var_select)){
+      warning("vaccinated_first_dose, vaccinated_second_dose, and vaccinated_waned cannot be output for this model type")
+    }
+  }
 
   comps <- var_select[var_select %in% compartments]
   summs <- var_select[var_select %in% summaries]
@@ -99,7 +111,7 @@ nimue_format <- function(out,
   if((length(comps) + length(summs)) != 0) {
 
     pd <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
-      nimue::format(out, compartments = comps, summaries = summs, replicate = i, reduce_age = reduce_age)
+      format_squirepage(out, compartments = comps, summaries = summs, replicate = i, reduce_age = reduce_age)
     })) %>%
       dplyr::rename(y = .data$value)
 
@@ -117,7 +129,7 @@ nimue_format <- function(out,
   if (hosp_inc_fix) {
 
     pd_hosp_inc <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
-      nimue::format(out, compartments = "ICase2", summaries = character(0), replicate = i, reduce_age = FALSE)
+      format_squirepage(out, compartments = "ICase2", summaries = character(0), replicate = i, reduce_age = FALSE)
     })) %>%
       dplyr::rename(y = .data$value) %>% dplyr::ungroup()
 
@@ -138,7 +150,7 @@ nimue_format <- function(out,
   if (ICU_inc_fix) {
 
     pd_ICU_inc <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
-      nimue::format(out, compartments = "ICase2", summaries = character(0), replicate = i, reduce_age = FALSE)
+      format_squirepage(out, compartments = "ICase2", summaries = character(0), replicate = i, reduce_age = FALSE)
     })) %>%
       dplyr::rename(y = .data$value) %>% dplyr::ungroup()
 
@@ -167,4 +179,79 @@ nimue_format <- function(out,
                        format = "%Y-%m-%d")
   }
   return(pd)
+}
+
+#' Format vaccine model output
+#'
+#' Take raw odin vaccine model output and formats in long format with the option to select
+#' variables and summarise over age groups. Output variables are ordered as in argument ordering.
+#'
+#' @param x squire_simulation object
+#' @param compartments Vector of compartment names, e.g. \code{c("S", "R")}, or sub-compartment names, e.g. \code{c("S", "E1", "E2")}
+#' @param summaries Vector of summary names, which may be:
+#' \itemize{
+#'       \item{"deaths"}{ Deaths per day }
+#'       \item{"infections"}{ Infections per day. New infections (note this is currently a slightly different definitionto the main Squire mode)}
+#'       \item{"hospitilisations"}{ Hospitalisations per day (Note this takes into account hospital capacity)}
+#'       \item{"hospital_occupancy"}{ Occupied Hospital Beds }
+#'       \item{"ICU_occupancy"}{ Occupied ICU Beds }
+#'       \item{"hospital_demand}{ Required Hospital Beds }
+#'       \item{"ICU_demand}{ Required ICU Beds }
+#'       \item{"vaccinated"}{ Vaccines administered per day}
+#'       }
+#' @param reduce_age Collapse age-dimension, calculating the total in the
+#'   compartment.
+#' @param date_0 Date of time 0 (e.g. "2020-03-01"), if specified a date column will be added
+#' @param replicate Which replicate is being formatted. Default = 1
+#'
+#' @return Formatted long data.frame
+#' @noRd
+format_squirepage <- function(x,
+                   compartments,
+                   summaries,
+                   reduce_age = TRUE,
+                   date_0 = NULL,
+                   replicate = 1){
+
+  # Arg checks
+  squire:::assert_custom_class(x, "nimue_simulation")
+  squire:::assert_logical(reduce_age)
+
+  # Standardise output dimensions
+  if(length(dim(x$output)) == 4){
+    x$output <- abind::adrop(x$output, drop = c(FALSE, FALSE, FALSE, TRUE))
+  }
+
+  # Get columns indices of variables
+  index <- squire:::odin_index(x$model)
+  if(!all(compartments %in% names(index))){
+    stop("Some compartments specified not output by model")
+  }
+
+  # Extract time
+  time <- x$output[,index$time, replicate]
+
+  output <- nimue:::format_internal(x = x, compartments = compartments, summaries = summaries,
+                            reduce_age = reduce_age, index = index,
+                            time = time, replicate = replicate)
+
+  # Set levels (order) of output variables
+  output$compartment <- factor(output$compartment, levels = c(compartments, summaries))
+
+  # Add date
+  if(!is.null(date_0)){
+    squire:::assert_date(date_0)
+    output$date <- as.Date(output$t + as.Date(date_0),
+                           format = "%Y-%m-%d")
+  }
+
+  # Add age-groups if present
+  if("age_index" %in% names(output)){
+    ag <- c(paste0(seq(0, 75, 5), "-", seq(5, 80, 5)), "80+")
+    output$age_group = factor(ag[output$age_index], levels = ag)
+    output <- output  %>%
+      dplyr::select(-.data$age_index)
+  }
+
+  return(output)
 }

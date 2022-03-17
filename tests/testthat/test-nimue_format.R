@@ -9,7 +9,7 @@ test_that("Summaries", {
                  "ICU_demand",
                  "hospital_incidence",
                  "ICU_incidence",
-                 "hospitilisations",
+                 "hospitalisations",
                  "vaccines",
                  "unvaccinated",
                  "vaccinated",

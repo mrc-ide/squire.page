@@ -27,6 +27,7 @@ Imports:
     future,
     nimue (>= 0.1.22),
     squire (>= 0.6.10),
+    odin,
     countrycode
 Suggests:
     orderly,

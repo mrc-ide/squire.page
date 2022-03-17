@@ -13,3 +13,6 @@ get_model_likelihood.vacc_durR_nimue_simulation <- function(model_out){
 get_model_likelihood.lmic_nimue_simulation <- function(model_out){
   calc_loglikelihood_variant
 }
+get_model_likelihood.lmic_booster_nimue_simulation <- function(model_out){
+  calc_loglikelihood_booster
+}
