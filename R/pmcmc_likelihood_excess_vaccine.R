@@ -123,7 +123,11 @@ excess_log_likelihood_vaccine <- function(pars, data, squire_model, model_params
     model_params$prob_hosp_multiplier <- prob_hosp_multiplier
 
     tt_dur_R <- c(shift_start, shift_end)
-    gamma_R <- c(2/pars[["delta_dur_R"]], model_params$gamma_R)
+    if(is.null(pars[["delta_dur_R"]])){
+      gamma_R <- c(2/pars_obs$delta_dur_R, model_params$gamma_R)
+    } else {
+      gamma_R <- c(2/pars[["delta_dur_R"]], model_params$gamma_R)
+    }
     if(shift_start > 0){
       tt_dur_R <- c(0, tt_dur_R)
       gamma_R <- c(model_params$gamma_R, gamma_R)
