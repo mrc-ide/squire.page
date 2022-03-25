@@ -429,7 +429,7 @@ pmcmc_excess <- function(data,
 
   # collect interventions for odin model likelihood
   #check if we are fitting vaccine and durR
-  if("ves" %in% names(pars_init[[1]]) & "delta_dur_R" %in% names(pars_init[[1]])){
+  if("ves" %in% names(pars_init[[1]])){
     interventions <- list(
       date_Rt_change = date_Rt_change,
       date_contact_matrix_set_change = date_contact_matrix_set_change,
