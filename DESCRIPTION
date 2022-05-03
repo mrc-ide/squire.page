@@ -32,8 +32,12 @@ Imports:
 Suggests:
     orderly,
     DBI,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
 Depends: 
     R (>= 2.10)
 LazyData: true
+VignetteBuilder: knitr
+URL: https://mrc-ide.github.io/squire.page/

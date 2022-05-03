@@ -10,10 +10,10 @@
 #' @export
 nimue_booster_model <- function(use_dde = TRUE) {
 
-  model_class <- "nimue_model"
+  model_class <- "booster_model"
 
   compare_model <- function(model, pars_obs, data) {
-    squire:::compare_output(model, pars_obs, data, type=model_class)
+    squire:::compare_output(model, pars_obs, data, type="nimue_model")
   }
 
   # wrap param func in order to remove unused arguments (dt)
@@ -156,7 +156,7 @@ nimue_booster_model <- function(use_dde = TRUE) {
                 run_func = run_func,
                 compare_model = compare_model,
                 use_dde = use_dde)
-  class(model) <- c(model_class, "deterministic", "squire_model")
+  class(model) <- c(model_class, "nimue_model", "deterministic", "squire_model")
   model
 
 }
@@ -167,7 +167,10 @@ nimue_booster_model <- function(use_dde = TRUE) {
 default_probs_booster <- function() {
   c(squire::default_probs(),
     list(rel_infectiousness = rep(1, 17),
-         rel_infectiousness_vaccinated = matrix(1, ncol = 17, nrow = 4),
+         rel_infectiousness_vaccinated = matrix(
+           c(0.5, 1, 0.5, 0.5, 1), ncol = 17, nrow = 5,
+           dimnames = list(c("pV_1", "pV_2", "fV_1", "fV_2", "fV_3"))
+        ),
          prob_hosp_multiplier = 1,
          tt_prob_hosp_multiplier = 0,
          prob_severe_multiplier = 1,
@@ -183,10 +186,16 @@ durs_booster <- nimue:::default_durations()
 default_vaccine_pars_booster <- function() {
   list(dur_R = Inf,
        tt_dur_R = 0,
-       dur_V = c(75, 200),
-       vaccine_efficacy_infection = matrix(c(0.5, 0.9, 0.75, 0.5), ncol = 17, nrow = 4),
+       dur_V = c(1/0.01015148, 1/0.009757324, 1/0.019463164),
+       vaccine_efficacy_infection = matrix(
+         c(0.55, 0, 0.75, 0.100744678, 0.002989531), ncol = 17, nrow = 5,
+         dimnames = list(c("pV_1", "pV_2", "fV_1", "fV_2", "fV_3"))
+        ),
        tt_vaccine_efficacy_infection = 0,
-       vaccine_efficacy_disease = matrix(c(0.5, 0.9, 0.75, 0.5), ncol = 17, nrow = 4),
+       vaccine_efficacy_disease = matrix(
+         c(0.75, 0.01628344, 0.90, 0.90, 0.034275872), ncol = 17, nrow = 5,
+         dimnames = list(c("pV_1", "pV_2", "fV_1", "fV_2", "fV_3"))
+       ),
        tt_vaccine_efficacy_disease = 0,
        first_doses = 1000,
        tt_first_doses = 0,
@@ -333,8 +342,8 @@ parameters_booster <- function(
 
   # Initialise initial conditions
   mod_init <- nimue:::init(population, seeding_cases, seeding_age_order, init)
-  #remove extra columns
-  mod_init <- purrr::map(mod_init, ~.x[,-6])
+  ##remove extra columns
+  #mod_init <- purrr::map(mod_init, ~.x[,6])
 
   # Convert contact matrices to input matrices
   matrices_set <- squire:::matrix_set_explicit(contact_matrix_set, population)
@@ -465,7 +474,7 @@ parameters_booster <- function(
   p_dist <- p_dist/mean(p_dist)
 
   # Format vaccine-specific parameters
-  gamma_vaccine <- c(gamma_V, 0)
+  gamma_vaccine <- c(0, gamma_V[1], 0, gamma_V[2:3], 0)
 
   rel_infectiousness_vaccinated <- format_rel_inf_vacc_for_odin_booster(rel_infectiousness_vaccinated)
 
@@ -541,11 +550,11 @@ parameters_booster <- function(
                  tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
                  tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
                  vaccine_coverage_mat = vaccine_coverage_mat,
-                 N_vaccine = 5,
+                 N_vaccine = 6,
                  N_prioritisation_steps = nrow(vaccine_coverage_mat),
                  gamma_vaccine = gamma_vaccine))
 
-  class(pars) <- c("vaccine_parameters", "nimue_parameters")
+  class(pars) <- c("booster_vaccine_parameters", "vaccine_parameters", "nimue_parameters")
 
   return(pars)
 }
@@ -555,16 +564,17 @@ format_rel_inf_vacc_for_odin_booster <- function(rel_inf_vacc) {
 
   #if only have one assume this holds for all ages/compartments
   if(length(rel_inf_vacc) == 1){
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 4)
-  } else if (is.numeric(rel_inf_vacc) & length(rel_inf_vacc) == 4){
+    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 5)
+  } else if (is.numeric(rel_inf_vacc) & length(rel_inf_vacc) == 5){
     #expand across age groups
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 4)
+    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 5)
   } else if (is.numeric(rel_inf_vacc) & length(rel_inf_vacc) == 17){
     #expand across vaccine comparments
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 4, byrow = TRUE)
-  } else if (!(nrow(rel_inf_vacc) == 4 & ncol(rel_inf_vacc) == 17)){
-    stop("rel_infectiousness_vaccinated must be a single value, a vector of length 4 or 17, or a matrix with 4 rows and 17 columns")
+    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 5, byrow = TRUE)
+  } else if (!(nrow(rel_inf_vacc) == 5 & ncol(rel_inf_vacc) == 17)){
+    stop("rel_infectiousness_vaccinated must be a single value, a vector of length 5 or 17, or a matrix with 5 rows and 17 columns")
   }
+
 
   #add 1 for unvaccinated, then rotate to match model requirements
   return(
@@ -586,23 +596,23 @@ format_ve_i_for_odin_booster <- function(vaccine_efficacy_infection,
   }
 
   # check that the correct length agreement between tt_vaccine_efficacy_infection
-  nimue:::assert_length(vaccine_efficacy_infection, length(tt_vaccine_efficacy_infection))
+  nimue:::assert_length(vaccine_efficacy_infection, length(vaccine_efficacy_infection))
 
   # now check that each vaccine efficacy is correct number of columns (1 or 17)
   vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, function(ve_i) {
 
     #if numeric vector
-    if(any(class(ve_i) == "numeric")){
-      if(length(ve_i) == 4){
+    if(any(class(ve_i) == "numeric")) {
+      if(length(ve_i) == 5) {
         #make into matrix
-        ve_i <- matrix(ve_i, ncol = 17, nrow = 4)
+        ve_i <- matrix(ve_i, ncol = 17, nrow = 5)
       } else {
-        stop("If element of vaccine_efficacy_infection is a vector, it must have 4 values corresponding to first dose, second dose, and the two waning levels")
+        stop("If element of vaccine_efficacy_infection is a vector, it must have 5 values corresponding to a first dose, a waned compartment, second dose, and the two waning levels")
       }
     }
 
-    if(ncol(ve_i) != 17 | nrow(ve_i) != 4){
-      stop("Parameter vaccine_efficacy_infection must be vector of length 4 or a matrix with ncol = 17, nrow = 4")
+    if(ncol(ve_i) != 17 | nrow(ve_i) != 5){
+      stop("Parameter vaccine_efficacy_infection must be vector of length 5 or a matrix with ncol = 17, nrow = 5")
     }
 
     return(ve_i)
@@ -611,14 +621,17 @@ format_ve_i_for_odin_booster <- function(vaccine_efficacy_infection,
 
   # and now format so each list is the vaccine_efficacy_infection at each time
   # point for the 5 vaccine classes
-  ve_i_list <- lapply(vaccine_efficacy_infection, function(ve_i) {
-
-    ve_i = 1 - ve_i
-    #add 1 for unvaccinated
-    rbind(
-      rep(1, ncol(ve_i)),
+  ve_i_list <- lapply(seq_along(tt_vaccine_efficacy_infection), function(ve_i_index) {
+    ve_i <-
+      rbind(
+        vaccine_efficacy_infection[[ve_i_index]]
+      )
+    #add 0 for unvaccinated
+    ve_i <- rbind(
+      rep(0, ncol(ve_i)),
       ve_i
     )
+    ve_i = 1 - ve_i
   })
 
   # and use this list to create an array that is in right format for odin
@@ -644,28 +657,35 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
   }
 
   # check that the correct length agreement between tt_vaccine_efficacy_disease
-  nimue:::assert_length(vaccine_efficacy_disease, length(tt_vaccine_efficacy_disease))
+  nimue:::assert_length(vaccine_efficacy_disease, length(vaccine_efficacy_disease))
 
   # now check that each vaccine efficacy is correct length (1 or 17)
   vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, function(ve_d) {
 
     #if numeric vector
-    if(any(class(ve_d) == "numeric")){
-      if(length(ve_d) == 4){
+    if(any(class(ve_d) == "numeric")) {
+      if(length(ve_d) == 5) {
         #make into matrix
-        ve_d <- matrix(ve_d, ncol = 17, nrow = 4)
+        ve_d <- matrix(ve_d, ncol = 17, nrow = 5)
       } else {
-        stop("If element of vaccine_efficacy_disease is a vector, it must have 4 values corresponding to first dose, second dose, and the two waning levels")
+        stop("If element of vaccine_efficacy_disease is a vector, it must have 5 values corresponding to a first dose, a waned compartment, second dose, and the two waning levels")
       }
+    }
+
+    if(ncol(ve_d) != 17 | nrow(ve_d) != 5){
+      stop("Parameter vaccine_efficacy_disease must be vector of length 5 or a matrix with ncol = 17, nrow = 5")
     }
 
     return(ve_d)
 
   })
-
   # and now format so each list is the prob_hosp at each time
   # point for the 5 vaccine classes
-  prob_hosp_list <- lapply(vaccine_efficacy_disease, function(ve_d) {
+  prob_hosp_list <- lapply(seq_along(tt_vaccine_efficacy_disease), function(ve_d_index) {
+
+    ve_d <-
+      vaccine_efficacy_disease[[ve_d_index]]
+
 
     prob_hosp_vaccine <-
       sweep(
@@ -792,34 +812,34 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
 #' @param dur_R Mean duration of naturally acquired immunity (days). Can be
 #'   time varying, with timing of changes given by tt_dur_R.
 #' @param tt_dur_R Timing of changes in duration of natural immunity.
-#' @param dur_V Mean duration of vaccine-derived immunity (days). Should be a
-#'   numeric vector of length 2, corresponding to the duration of time in each waned compartmenet after recieving a second dose.
+#' @param dur_V Mean duration of vaccine-derived immunity (days) for partial protection and full protection. Should be a
+#'   numeric vector of length 3, corresponding to the duration of time in each waned compartmenet after recieving a first dose and then for the two second dose compartments.
 #' @param vaccine_efficacy_infection Efficacy of vaccine against infection.
-#'   This parameter must either be a length 4 numeric (a single efficacy for
-#'   each vaccine state (first dose, second dose, and the two waned compartments))
-#'   or numeric vector with 17 columns and 4 rows
+#'   This parameter must either be a length 5 numeric (a single efficacy for
+#'   each vaccine state (first dose, waned first dose, second dose, and two waned second dose compartments))
+#'   or numeric vector with 17 columns and 5 rows
 #'   (an efficacy for each age group and vaccine state).
 #'   An efficacy of 1 will reduce FOI by 100 percent, an efficacy of 0.2 will
 #'   reduce FOI by 20 percent etc.
 #'   To specify changes in vaccine efficacy over time, vaccine efficacies must
 #'   be provided as a list, with each list element being the efficacy at each
 #'   time point specified by \code{tt_vaccine_efficacy_infection}. These
-#'   efficacies must also be length 4 numeric or 4x17 numeric matrix.
+#'   efficacies must also be length 5 numeric or 5x17 numeric matrix.
 #' @param tt_vaccine_efficacy_infection Timing of changes in vaccine efficacy
 #'   against infection. Default = 0, which assumes fixed efficacy over time.
 #'   Must be the same length as the length of \code{vaccine_efficacy_infection}
 #'   when provided as a list. Time changing efficacies can occur in response to
 #'   changing vaccines being  given and dosing strategy changes.
-#' @param vaccine_efficacy_disease Efficacy of vaccine against severe
+#' @param vaccine_efficacy_disease Efficacy of partial vaccination against severe
 #'   (requiring hospitilisation) disease (by age). This parameter must either be
-#'   length 4 numeric (a single efficacy for each vaccine state (first dose, second dose, and the two waned compartments)) or numeric vector with 17 columns and 4 rows
+#'   length 5 numeric (a single efficacy for each vaccine state (first dose, waned first dose, second dose, and two waned second dose compartments)) or numeric vector with 17 columns and 5 rows
 #'   (an efficacy for each age group and vaccine state). An efficacy of 1 will
 #'   reduce the probability of hospitalisation by 100 percent, an efficacy of
 #'   0.2 will reduce the probability of hospitalisation by 20 percent etc.
 #'   To specify changes in vaccine efficacy over time, vaccine efficacies must
 #'   be provided as a list, with each list element being the efficacy at each
 #'   time point specified by \code{tt_vaccine_efficacy_disease}. These
-#'   efficacies must also be length 4 numeric or 4x17 numeric matrix.
+#'   efficacies must also be length 5 numeric or 5x17 numeric matrix.
 #' @param tt_vaccine_efficacy_disease Timing of changes in vaccine efficacy
 #'   against disease. Default = 0, which assumes fixed efficacy over time.
 #'   Must be the same length as the length of \code{vaccine_efficacy_disease}
@@ -1014,7 +1034,7 @@ run_booster <- function(
   parameters$contact_matrix_set <- pars$contact_matrix_set
 
   out <- list(output = results, parameters = parameters, model = mod, odin_parameters = pars)
-  out <- structure(out, class = "nimue_simulation")
+  out <- structure(out, class = c("lmic_booster_nimue_simulation", "nimue_simulation"))
   return(out)
 
 }

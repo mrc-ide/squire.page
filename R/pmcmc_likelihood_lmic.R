@@ -369,8 +369,8 @@ run_deterministic_comparison_cases <- function(data,
       dplyr::mutate(
         cases = dplyr::if_else(
           .data$cases < 0,
-          0,
-          .data$cases
+          as.numeric(0),
+          as.numeric(.data$cases)
         )
       )
     data_fitting <- data %>%
@@ -380,8 +380,8 @@ run_deterministic_comparison_cases <- function(data,
       dplyr::mutate(
         cases = dplyr::if_else(
           .data$cases < 0,
-          0,
-          .data$cases
+          as.numeric(0),
+          as.numeric(.data$cases)
         )
       )
     #get infections
