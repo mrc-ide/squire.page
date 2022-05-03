@@ -155,7 +155,7 @@ get_WHO_region <- function(iso3cs){
   WPR <- c(
     "AUS", "BRN", "KHM", "CHN", "COK", "FJI", "JPN", "KIR", "LAO", "MYS", "MHL",
     "FSM", "MNG", "NRU", "NZL", "NIU", "PLW", "PNG", "PHL", "KOR", "WSM", "SGP",
-    "SLB", "TON", "TUV", "VUT", "VNM", "HKG", "TWN", "MAC", "PYF"
+    "SLB", "TON", "TUV", "VUT", "VNM", "HKG", "TWN", "MAC", "PYF", "NCL"
   )
   #create our output
   output <- dplyr::case_when(

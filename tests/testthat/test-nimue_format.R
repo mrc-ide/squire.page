@@ -1,5 +1,5 @@
 #generate data to use
-data <- generate_draws(afg_fit, generate_parameters(afg_fit, draws = 3), draws = 3)
+data <- suppressMessages(generate_draws(afg_fit, generate_parameters(afg_fit, draws = 3), draws = 3))
 test_that("Summaries", {
   summaries <- c("deaths",
                  "infections",

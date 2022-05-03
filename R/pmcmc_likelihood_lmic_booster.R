@@ -42,8 +42,7 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
   date_ICU_bed_capacity_change <- interventions$date_ICU_bed_capacity_change
   date_hosp_bed_capacity_change <- interventions$date_hosp_bed_capacity_change
   date_vaccine_change <- interventions$date_vaccine_change
-  date_vaccine_efficacy_infection_change <- interventions$date_vaccine_efficacy_infection_change
-  date_vaccine_efficacy_disease_change <- interventions$date_vaccine_efficacy_disease_change
+  date_vaccine_efficacy_change <- interventions$date_vaccine_efficacy_change
 
   # change betas
   if (is.null(date_R0_change)) {
@@ -120,13 +119,13 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
   }
 
   # and vaccine efficacy infection
-  if (is.null(date_vaccine_efficacy_infection_change)) {
+  if (is.null(date_vaccine_efficacy_change)) {
     tt_vaccine_efficacy_infection <- 0
   } else {
 
     # here we just pass the change as a position vector as we need to then
     # index the array of vaccine efficacies
-    tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_efficacy_infection_change,
+    tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_efficacy_change,
                                                     change = seq_along(interventions$vaccine_efficacy_infection)[-1],
                                                     start_date = start_date,
                                                     steps_per_day = round(1/model_params$dt),
@@ -136,16 +135,20 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
 
     # here we have to not index the array by the postion vectors that are reutrned by intervention_dates_for_odin
     model_params$vaccine_efficacy_infection <- model_params$vaccine_efficacy_infection[tt_list$change,,]
+
+    if(length(tt_list$tt) == 1){
+      dim(model_params$vaccine_efficacy_infection) <- c(1, dim(model_params$vaccine_efficacy_infection))
+    }
   }
 
   # and vaccine efficacy disease
-  if (is.null(date_vaccine_efficacy_disease_change)) {
+  if (is.null(date_vaccine_efficacy_change)) {
     tt_vaccine_efficacy_disease <- 0
   } else {
 
     # here we just pass the change as a position vector as we need to then
     # index the array of vaccine efficacies
-    tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_efficacy_disease_change,
+    tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_efficacy_change,
                                                     change = seq_along(interventions$vaccine_efficacy_disease)[-1],
                                                     start_date = start_date,
                                                     steps_per_day = round(1/model_params$dt),
@@ -155,6 +158,10 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
 
     # here we have to not index the array by the position vectors that are returned by intervention_dates_for_odin
     model_params$prob_hosp <- model_params$prob_hosp[tt_list$change,,]
+
+    if(length(tt_list$tt) == 1){
+      dim(model_params$prob_hosp) <- c(1, dim(model_params$prob_hosp))
+    }
   }
 
   #nimue specific functions (currently stored in pars_obs, may one day be interventions with the rest)
@@ -241,15 +248,20 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
                                    pars = pars,
                                    Rt_args = Rt_args)
 
+  mod_class <- class(squire_model)
+  class(squire_model) <-  c("nimue_model", "squire_model")
   # which allow us to work out our beta
   beta_set <- squire:::beta_est(squire_model = squire_model,
                                 model_params = model_params,
                                 R0 = R0)
-
+  class(squire_model) <- mod_class
   #----------------..
   # update the model params accordingly from new inputs
   #----------------..
   model_params$beta_set <- beta_set
+
+  #some parameters we won't use
+  pars_obs$treated_deaths_only <- FALSE
 
   #----------------..
   # run the deterministic comparison

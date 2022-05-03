@@ -3,3 +3,9 @@
 ^LICENSE\.md$
 ^README\.Rmd$
 ^meta$
+^doc$
+^Meta$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$

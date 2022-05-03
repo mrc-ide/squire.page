@@ -63,18 +63,28 @@ nimue_format <- function(out,
                 "hospital_demand","hospital_occupancy",
                 "ICU_demand", "ICU_occupancy",
                 "vaccines", "unvaccinated", "vaccinated", "priorvaccinated",
-                "vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_waned",
+                "vaccinated_first_dose", "vaccinated_second_dose",
+                "vaccinated_first_waned", "vaccinated_second_waned",
+                "first_doses_given", "second_doses_given", "booster_doses_given",
                 "hospital_incidence", "ICU_incidence",
                 "infections", "deaths")
 
   #check for correct types
   if("lmic_booster_nimue_simulation" %in% class(out)){
-    if(any(c("vaccinated", "priorvaccinated") %in% var_select)){
-      warning("vaccinated and priorvaccinated cannot be output for this model type")
+    if(any(c("vaccinated", "priorvaccinated", "vaccines") %in% var_select)){
+      warning(paste0(paste0(
+        intersect(c("vaccinated", "priorvaccinated", "vaccines"), var_select),
+        collapse = ", "),
+        " vaccinated and priorvaccinated cannot be output for this model type"))
     }
   } else {
-    if(any(c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_waned") %in% var_select)){
-      warning("vaccinated_first_dose, vaccinated_second_dose, and vaccinated_waned cannot be output for this model type")
+    if(any(c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_first_waned", "vaccinated_second_waned",
+             "first_doses_given", "second_doses_given", "booster_doses_given") %in% var_select)){
+      warning(paste0(
+        paste0(intersect(var_select, c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_first_waned", "vaccinated_second_waned",
+                                       "first_doses_given", "second_doses_given", "booster_doses_given")), collapse = ", "),
+        " cannot be output for this model type")
+      )
     }
   }
 
@@ -89,6 +99,15 @@ nimue_format <- function(out,
       comps_single,
       if(length(comps_multi) > 0){paste0(comps_multi, c(1, 2))}
       )
+  }
+
+  # to match with squire definition
+  if("infections" %in% summs) {
+    comps <- c(comps, "E2")
+    summs <- summs[-which(summs == "infections")]
+    inf_fix <- TRUE
+  } else {
+    inf_fix <- FALSE
   }
 
   # to match with squire uses
@@ -123,6 +142,14 @@ nimue_format <- function(out,
 
   } else {
     pd <- data.frame()
+  }
+
+  # fix the infection
+  if (inf_fix) {
+    pd$y[pd$compartment == "E2"] <- pd$y[pd$compartment == "E2"]*out$odin_parameters$gamma_E
+    pd$compartment <- as.character(pd$compartment)
+    pd$compartment[pd$compartment == "E2"] <- "infections"
+    pd$compartment <- as.factor(pd$compartment)
   }
 
   # add in hosp_inc
