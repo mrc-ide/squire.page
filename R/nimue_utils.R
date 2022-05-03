@@ -101,6 +101,15 @@ nimue_format <- function(out,
       )
   }
 
+  # to match with squire definition
+  if("infections" %in% summs) {
+    comps <- c(comps, "E2")
+    summs <- summs[-which(summs == "infections")]
+    inf_fix <- TRUE
+  } else {
+    inf_fix <- FALSE
+  }
+
   # to match with squire uses
   if("hospital_incidence" %in% summs) {
     summs <- summs[-which(summs == "hospital_incidence")]
@@ -133,6 +142,14 @@ nimue_format <- function(out,
 
   } else {
     pd <- data.frame()
+  }
+
+  # fix the infection
+  if (inf_fix) {
+    pd$y[pd$compartment == "E2"] <- pd$y[pd$compartment == "E2"]*out$odin_parameters$gamma_E
+    pd$compartment <- as.character(pd$compartment)
+    pd$compartment[pd$compartment == "E2"] <- "infections"
+    pd$compartment <- as.factor(pd$compartment)
   }
 
   # add in hosp_inc

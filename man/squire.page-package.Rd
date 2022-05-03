@@ -8,6 +8,13 @@
 \description{
 Contains miscalanious functions used in the repo global-lmic-reports-orderly and other packages that utilise squire or nimue fits. These functions are kept externally to keep them consistent across mutliple repositories and multiple orderly tasks.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://mrc-ide.github.io/squire.page/}
+}
+
+}
 \author{
 \strong{Maintainer}: Gregory Barnsley \email{g.barnsley@imperial.ac.uk} (\href{https://orcid.org/0000-0001-7972-0737}{ORCID})
 
