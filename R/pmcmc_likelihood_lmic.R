@@ -282,7 +282,8 @@ run_deterministic_comparison_cases <- function(data,
                                                                  exp_noise = 1e6),
                                                forecast_days = 0,
                                                save_history = FALSE,
-                                               return = "ll") {
+                                               return = "ll",
+                                               dates_to_fit_over = NULL) {
 
   # parameter checks
   if (!(return %in% c("full", "ll", "sample", "single"))) {
@@ -337,9 +338,14 @@ run_deterministic_comparison_cases <- function(data,
 
   # get deaths for comparison
   Ds <- diff(rowSums(out[,index$D]))
-  Ds <- Ds[data$day_end[-1]]
+  if(!is.null(dates_to_fit_over)){
+    deaths <- data$deaths[data$dates %in% dates_to_fit_over]
+    Ds <- Ds[data$day_end[data$dates %in% dates_to_fit_over]]
+  } else {
+    deaths <- data$deaths[-1]
+    Ds <- Ds[data$day_end[-1]]
+  }
   Ds[Ds < 0] <- 0
-  deaths <- data$deaths[-1]
 
   # calculate ll for deaths
   if (obs_params$treated_deaths_only) {

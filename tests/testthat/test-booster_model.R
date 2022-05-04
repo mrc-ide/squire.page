@@ -110,7 +110,7 @@ test_that("Model Functionality", {
 test_that("LMIC Booster Likelihood Function", {
   set.seed(100)
   #just see if it works
-  pmcmc_output <- suppressMessages(pmcmc_drjacoby(
+  pmcmc_output <- suppressMessages(pmcmc_booster_drjacoby(
     data = data.frame(
       date = seq(as.Date("2020-03-01"), as.Date("2020-03-01") + 99, by = 1),
       deaths = rpois(100, 50),
@@ -119,7 +119,38 @@ test_that("LMIC Booster Likelihood Function", {
     replicates = 10,
     n_mcmc = 100,
     n_burnin = 50,
-    log_likelihood = squire:::convert_log_likelihood_func_for_drjacoby(calc_loglikelihood_booster),
+    quasi_likelihood = FALSE,
+    country = "United Kingdom",
+    first_doses = 4000,
+    second_doses = 3000,
+    booster_doses = 2000,
+    date_vaccine_change = "2020-05-01",
+    R0_change = 1,
+    date_R0_change = "2020-03-01"
+  ))
+
+  expect_s3_class(pmcmc_output, "lmic_booster_nimue_simulation")
+  expect_true(nrow(pmcmc_output$replicate_parameters) == 10)
+
+  #check format works on this
+  output <- nimue_format(pmcmc_output, "deaths")
+  expect_true(length(unique(output$replicate)) == 10)
+
+})
+
+test_that("LMIC Booster Quasi-Likelihood Function", {
+  set.seed(100)
+  #just see if it works
+  pmcmc_output <- suppressMessages(pmcmc_booster_drjacoby(
+    data = data.frame(
+      date = seq(as.Date("2020-03-01"), as.Date("2020-03-01") + 99, by = 1),
+      deaths = rpois(100, 50),
+      cases = rpois(100, 100)
+    ),
+    replicates = 10,
+    n_mcmc = 100,
+    n_burnin = 50,
+    quasi_likelihood = TRUE,
     country = "United Kingdom",
     first_doses = 4000,
     second_doses = 3000,

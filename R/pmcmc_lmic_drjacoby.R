@@ -1,7 +1,9 @@
 #'
 #'@export
-pmcmc_drjacoby <- function(data,
+pmcmc_booster_drjacoby <- function(data,
                            replicates = 100,
+                           quasi_likelihood = TRUE,
+                           blocking_data = NULL,
                           n_mcmc,
                           n_burnin,
                           date_vaccine_change,
@@ -9,10 +11,8 @@ pmcmc_drjacoby <- function(data,
                           second_doses,
                           booster_doses,
                           n_chains = 1,
-                          log_likelihood = NULL,
                           log_prior = NULL,
                           drjacoby_list = list(),
-                          squire_model = nimue_booster_model(),
                           pars_obs = list(phi_cases = 1,
                                           k_cases = 2,
                                           phi_death = 1,
@@ -62,6 +62,7 @@ pmcmc_drjacoby <- function(data,
                           Rt_args = NULL,
                           ...
 ) {
+  squire_model <- nimue_booster_model()
 
   #------------------------------------------------------------
   # Section 1 of pMCMC Wrapper: Checks & Setup
@@ -137,12 +138,8 @@ pmcmc_drjacoby <- function(data,
   squire:::assert_pos(pars_init[[1]]$R0)
   squire:::assert_bounded(pars_init[[1]]$R0, left = pars_min$R0, right = pars_max$R0)
 
-  # check likelihood items
-  if ( !(is.null(log_likelihood) | inherits(log_likelihood, "function")) ) {
-    stop("Log Likelihood (log_likelihood) must be null or a user specified function")
-  }
   if ( !(is.null(log_prior) | inherits(log_prior, "function")) ) {
-    stop("Log Likelihood (log_likelihood) must be null or a user specified function")
+    stop("Log Prior (log_prior) must be null or a user specified function")
   }
   squire:::assert_logical(unlist(pars_discrete))
   squire:::assert_list(pars_obs)
@@ -430,28 +427,34 @@ pmcmc_drjacoby <- function(data,
   # create prior and likelihood functions given the inputs
   #----------------
 
+  #default values
+  pars_block <- purrr::map(pars_init, ~1)
+  misc_blocks <- NULL
+  if(quasi_likelihood){
+    log_likelihood <- calc_loglikelihood_quasi_booster
+    if(is.null(blocking_data)){
+      warning("quasi likelihood specified by blocking_data is null, assuming all parameters are in a single block (that uses all data)")
+    } else{
+      for(par_index in seq_along(blocking_data)){
+        #check our dates are in the data
+        dates_to_block <- blocking_data[[par_index]]$dates
+        if(!all(dates_to_block %in% data$date)){
+          stop("Not all dates in blocking_data are in the data")
+        }
+        #assign a number to this parameter
+        pars_block[[names(blocking_data)[par_index]]] <- par_index + 1 #1 is already taken by the complete likelihood
+      }
+      misc_blocks <- blocking_data
+    }
+  } else {
+    log_likelihood <- squire:::convert_log_likelihood_func_for_drjacoby(calc_loglikelihood_booster)
+  }
+
   if(is.null(log_prior)) {
     # set improper, uninformative prior
     log_prior <- function(params, misc) log(1e-10)
   }
-  calc_lprior <- log_prior
-  squire:::check_drjacoby_logprior(calc_lprior)
-
-  if(is.null(log_likelihood)) {
-    log_likelihood <- squire:::calc_loglikelihood_drjacoby()
-  }
-  calc_ll <- log_likelihood
-  squire:::check_drjacoby_loglike(calc_ll)
-
-  #----------------
-  # set run_mcmc_func here to out drjacoby one
-  #----------------
-  run_mcmc_func <- squire:::run_drjacoby_mcmc
-
-  # needs to be a vector to pass to reflecting boundary function
-  pars_min <- unlist(pars_min)
-  pars_max <- unlist(pars_max)
-  pars_discrete <- unlist(pars_discrete)
+  squire:::check_drjacoby_logprior(log_prior)
 
   #--------------------------------------------------------
   # Section 2 of pMCMC Wrapper: Run pMCMC
@@ -467,12 +470,23 @@ pmcmc_drjacoby <- function(data,
 
   # run drjacoby
   message("Running drjacoby...")
-  mcmc_out <- squire:::run_drjacoby_mcmc(loglike = calc_ll,
-                                         logprior = calc_lprior,
-                                         inputs = inputs,
-                                         burnin = n_burnin,
-                                         chains = n_chains,
-                                         drjacoby_list = drjacoby_list)
+
+  df_params <- data.frame(name = names(inputs$pars$pars_max),
+                          min = as.numeric(inputs$pars$pars_min), max = as.numeric(inputs$pars$pars_max),
+                          init = as.numeric(inputs$pars$pars_init[[1]]),
+                          block = as.numeric(pars_block))
+
+  data_list <- list(data = inputs$data)
+  misc <- list(squire_model = inputs$squire_model, model_params = inputs$model_params,
+               interventions = inputs$interventions, pars_obs = inputs$pars$pars_obs,
+               Rt_args = inputs$Rt_args,
+               return = "ll", first_date = inputs$data$date[1])
+  args <- list(data = data_list, df_params = df_params, loglike = log_likelihood,
+               logprior = log_prior, burnin = n_burnin, samples = inputs$n_mcmc,
+               misc = c(misc, list(misc_blocks = misc_blocks, forecast_days = 0)), chains = n_chains)
+  args <- append(args, drjacoby_list)
+  mcmc_out <- do.call(drjacoby::run_mcmc, args)
+  mcmc_out$parameters$misc <- c(misc, list(misc_blocks = misc_blocks, forecast_days = 0))
 
   # process output to play with rest of squire
   chains <- squire:::convert_drjacoby_mcmc(mcmc_out)
