@@ -46,6 +46,12 @@ nimue_format <- function(out,
                          mean_over_80_age = 82.5,
                          case_to_infection_ratio = 0.195) {
 
+  #if a particle fit we do a bit of adjusting so it plays nice with the squire functions
+  if("particle_fit" %in% class(out)){
+    out$parameters$day_return <- TRUE
+    out$parameters$replicates <- length(out$samples)
+    #RESOVLE THE ISSUES WITH SUMMARIES
+  }
 
   #a check for if a squire object then we use that instead
   if(!"nimue_simulation" %in% class(out)) {

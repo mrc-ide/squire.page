@@ -11,7 +11,7 @@ compare_adjustment_plot <- function(out){
     ) %>%
     #add the real data
     dplyr::left_join(
-      out$pmcmc_results$inputs$data %>%
+      get_data(out) %>%
         dplyr::mutate(t = as.numeric(.data$date - max(.data$date))) %>%
         dplyr::select(!.data$deaths),
       by = "t"
@@ -78,8 +78,6 @@ compare_adjustment_plot <- function(out){
 #'@export
 get_immunity_ratios <- function(out, max_date = NULL) {
 
-  out$pmcmc_results$inputs$data$date <- get_dates(out)
-
   mixing_matrix <- squire:::process_contact_matrix_scaled_age(
     out$pmcmc_results$inputs$model_params$contact_matrix_set[[1]],
     out$pmcmc_results$inputs$model_params$population
@@ -109,7 +107,7 @@ get_immunity_ratios <- function(out, max_date = NULL) {
   pop <- out$parameters$population
 
   if(is.null(max_date)) {
-    max_date <- max(out$pmcmc_results$inputs$data$date)
+    max_date <- max(get_dates(out))
   }
   t_now <- which(as.Date(rownames(out$output)) == max_date)
   prop_susc <- lapply(seq_len(dim(out$output)[3]), function(x) {
@@ -177,7 +175,7 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
   pop <- out$parameters$population
 
   if(is.null(max_date)) {
-    max_date <- max(out$pmcmc_results$inputs$data$date)
+    max_date <- max(get_dates(out))
   }
   t_now <- which(as.Date(rownames(out$output)) == max_date)
 
@@ -426,7 +424,7 @@ ar_plot <- function(res) {
   date_0 <- get_data_end_date(res)
 
 
-  S_tot <- sum(res$pmcmc_results$inputs$model_params$population)
+  S_tot <- get_total_s(res)
   inf <- nimue_format(res, "infections", date_0 = date_0) %>%
     dplyr::mutate(infections = as.integer(.data$y)) %>%
     dplyr::select(replicate, .data$t, .data$date, .data$infections) %>%
@@ -448,13 +446,13 @@ cdp_plot <- function(res, extra_df = NULL) {
   date_0 <- get_data_end_date(res)
 
   #summarise deaths
-  data <- res$pmcmc_results$inputs$data
+  data <- get_data(res)
   data$date <- get_dates_greater(res) #assume reaches the cumulative sum at this
   #date works for both daily and weekly
   data$deaths <- cumsum(data$deaths)
 
   suppressWarnings(
-    cdp <- plot(res, "D", date_0 = date_0, x_var = "date") +
+    cdp <- plot(res, var_select = "D", date_0 = date_0, x_var = "date") +
       ggplot2::theme_bw() +
       ggplot2::theme(legend.position = "none", axis.title.x = ggplot2::element_blank()) +
       ggplot2::ylab("Cumulative Deaths") +
@@ -491,11 +489,20 @@ cdp_plot <- function(res, extra_df = NULL) {
 
   cdp
 }
+#' Plot daily model deaths.
 #'
+#' Returns a ggplot2 object with median (95% CI) modelled deaths and the data it
+#' has been fitted too.
+#'
+#' @param res A squire/nimue model object with generated fits (i.e. output of
+#' generate_draws)
+#' @return A ggplot2 object
 #'@export
 dp_plot <- function(res) {
 
-  res$pmcmc_results$inputs$data$date <- get_dates(res)
+  data <- get_data(res)
+
+  data$date <- get_dates(res)
 
   suppressWarnings(
     dp <- plot(res, particle_fit = TRUE) +
@@ -506,17 +513,17 @@ dp_plot <- function(res) {
   )
 
   #compatibility with weekly fits
-  if("week_start" %in% names(res$pmcmc_results$inputs$data)){
+  if(any(c("particle_fit", "excess_nimue_simulation") %in% class(res))){
     dp <- dp +
-      ggplot2::geom_segment(data = res$pmcmc_results$inputs$data,
-                   ggplot2::aes(x = .data$week_start, xend = .data$week_end,
-                       y = .data$deaths/as.numeric(.data$week_end - .data$week_start),
-                       yend = .data$deaths/as.numeric(.data$week_end - .data$week_start)),
+      ggplot2::geom_segment(data = get_data(res),
+                   ggplot2::aes(x = .data$date_start, xend = .data$date_end,
+                       y = .data$deaths/as.numeric(.data$date_end - .data$date_start),
+                       yend = .data$deaths/as.numeric(.data$date_end - .data$date_start)),
                    size = 1)
     dp$layers[[5]] <- NULL
   } else {
     dp <- dp +
-      ggplot2::geom_point(data = res$pmcmc_results$inputs$data,
+      ggplot2::geom_point(data = get_data(res),
                    ggplot2::aes(x = .data$date, y = .data$deaths),
                    size = 1)
   }
