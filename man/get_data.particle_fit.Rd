@@ -6,6 +6,9 @@
 \usage{
 \method{get_data}{particle_fit}(model_out)
 }
+\arguments{
+\item{model_out}{A nimue/squire mcmc or particle fit output}
+}
 \description{
 S3 Method to get all the data of a model
 }

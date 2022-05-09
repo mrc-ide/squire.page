@@ -10,6 +10,7 @@
   replicates = TRUE,
   summarise = FALSE,
   ci = TRUE,
+  particle_fit = FALSE,
   ...
 )
 }
@@ -23,6 +24,8 @@
 \item{summarise}{Logical, add summary line}
 
 \item{ci}{logical add confidence interval ribbon}
+
+\item{particle_fit}{For compatibility, if TRUE deaths are cumulative, else deaths are daily}
 
 \item{...}{placeholder for compatibility does nothing.}
 }

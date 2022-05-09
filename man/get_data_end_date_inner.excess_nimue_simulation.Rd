@@ -6,6 +6,9 @@
 \usage{
 \method{get_data_end_date_inner}{excess_nimue_simulation}(model_out)
 }
+\arguments{
+\item{model_out}{A nimue/squire mcmc or particle fit output}
+}
 \description{
 S3 Method to get start date of the final time-period in the data from a model
 }

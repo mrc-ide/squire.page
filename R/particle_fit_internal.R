@@ -69,7 +69,7 @@ generate_model_function <- function(squire_model, parameters){
 #' should for all types, with the caveat that there must be a psedo method in
 #' squire:::beta_est that works with the model.
 #' @noRd
-generate_deaths_function <- function(model_func, parameters){
+generate_deaths_function <- function(model_func, squire_model, parameters){
   N_age <- do.call(squire_model$parameter_func, parameters)$N_age
   #define a function that gets the deaths for a requested period
   get_deaths <- function(Rt, t_start, t_end, initial_state = NULL){
@@ -91,8 +91,9 @@ assign_infections <- function(initial_state, initial_infections){
 }
 
 #' Update initial state with model output
+#' @noRd
 update_initial_state <- function(initial_state, model_output){
-  model_output <- tail(model_output, 1)
+  model_output <- utils::tail(model_output, 1)
   #get_values to update
   pars <- stringr::str_replace(names(initial_state)[stringr::str_detect(names(initial_state), "_0")], "_0", "")
   names(pars) <- pars

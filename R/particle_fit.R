@@ -12,6 +12,8 @@
 #' @param distribution A list of samples(a list) with names specifying parameters.
 #' @param squire_model A model object of the desired type to use, i.e. squire, nimue.
 #' @param parameters A list of parameters to keep the same across all samples.
+#' @param start_date Date when the epidemic begins, parameters and distribution
+#' should be formatted relative to this date, where necessary.
 #'
 #' @param rt_spacing Number of days between each Rt trend, default = 14 days.
 #' @param initial_r The value of R0 to centre on initially, default = 3.
@@ -63,18 +65,18 @@ particle_fit <- function(data, distribution, squire_model, parameters,
   if(!purrr::every(rt_change_dates, function(rt_date){
     #check a death period occurs in its coverage period
     (data %>%
-     dplyr::filter(date_start >= rt_date, date_start == min(date_start)) %>%
-     dplyr::pull(date_end) %>%
+     dplyr::filter(.data$date_start >= rt_date, .data$date_start == min(.data$date_start)) %>%
+     dplyr::pull(.data$date_end) %>%
      `<=`(rt_date + rt_spacing)) &
       #check that there is no overlap on the low end
       (data %>%
-       dplyr::filter(date_end > rt_date, date_end == min(date_end)) %>%
-       dplyr::pull(date_start) %>%
+       dplyr::filter(.data$date_end > rt_date, .data$date_end == min(.data$date_end)) %>%
+       dplyr::pull(.data$date_start) %>%
        `>=`(rt_date)) &
       #check that there is no overlap on the high end
       (data %>%
-       dplyr::filter(date_start < rt_date + rt_spacing, date_start == max(date_start)) %>%
-       dplyr::pull(date_end) %>%
+       dplyr::filter(.data$date_start < rt_date + rt_spacing, .data$date_start == max(.data$date_start)) %>%
+       dplyr::pull(.data$date_end) %>%
        `<=`(rt_date + rt_spacing))
   })){
     stop("data is not compatible with rt_spacing, every period of change in Rt must
@@ -109,7 +111,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
       #generate function that just returns model output
       model <- generate_model_function(squire_model, parameters)
       #generate function that returns the deaths from this output
-      deaths_function <- generate_deaths_function(model, parameters)
+      deaths_function <- generate_deaths_function(model, squire_model, parameters)
       #basic likelihood function
       likelihood <- function(Rt, rt_index, initial_state){
         cumulative_deaths <- deaths_function(Rt, rt_change_t[rt_index], rt_change_t[rt_index + 1], initial_state)
@@ -148,7 +150,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
         )
       }
       #calculate R0 + initial number of infections, just optim for now
-      res <- optim(c(R0 = initial_r, initial_infections),
+      res <- stats::optim(c(R0 = initial_r, initial_infections),
                    function(pars){R0_likelihood(pars[1], pars[2])},
                    lower = c(1, 1), upper = c(10, 1000), method = "L-BFGS-B",
                    control = list(fnscale = -1))
@@ -163,7 +165,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
         seq_along(rt_change_t)[-length(rt_change_t)][-1],
         function(state_trend, rt_index){
           #just use optim for now
-          res <- optim(c(Rt = tail(state_trend$Rt_trend, 1)),
+          res <- stats::optim(c(Rt = utils::tail(state_trend$Rt_trend, 1)),
                 function(par){likelihood(par, rt_index, state_trend$initial_state)},
                 lower = 0.00001, upper = 50, method = "Brent",
                 control = list(fnscale = -1))
@@ -183,7 +185,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
 
       #calculate final model output
       model_output <- model(rt_trend, t_start = 0,
-                            t_end = tail(tail(split_data, 1)[[1]]$t_end, 1),
+                            t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
                             initial_state = assign_infections(do.call(squire_model$parameter_func, parameters), initial_infections),
                             tt_Rt = rt_change_t[-length(rt_change_t)])
 

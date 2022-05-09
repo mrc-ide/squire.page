@@ -29,6 +29,9 @@ default) and no period can overlap these changes.}
 
 \item{parameters}{A list of parameters to keep the same across all samples.}
 
+\item{start_date}{Date when the epidemic begins, parameters and distribution
+should be formatted relative to this date, where necessary.}
+
 \item{rt_spacing}{Number of days between each Rt trend, default = 14 days.}
 
 \item{initial_r}{The value of R0 to centre on initially, default = 3.}

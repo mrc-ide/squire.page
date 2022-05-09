@@ -6,6 +6,9 @@
 \usage{
 \method{get_data_start_date}{particle_fit}(model_out)
 }
+\arguments{
+\item{model_out}{A nimue/squire mcmc or particle fit output}
+}
 \description{
 S3 Method to get the start date of the data in a model
 }

@@ -8,16 +8,19 @@ get_data_end_date <- function(model_out){
   UseMethod("get_data_end_date")
 }
 #' S3 Method to get final date in the data from a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_end_date.nimue_simulation <- function(model_out){
   max(model_out$pmcmc_results$inputs$data$date)
 }
 #' S3 Method to get final date in the data from a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_end_date.excess_nimue_simulation <- function(model_out){
   max(model_out$pmcmc_results$inputs$data$week_end)
 }
 #' S3 Method to get final date in the data from a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_end_date.particle_fit <- function(model_out){
   max(model_out$inputs$data$date_end)
@@ -33,16 +36,19 @@ get_data_end_date_inner <- function(model_out){
   UseMethod("get_data_end_date_inner")
 }
 #' S3 Method to get start date of the final time-period in the data from a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_end_date_inner.nimue_simulation <- function(model_out){
   max(model_out$pmcmc_results$inputs$data$date)
 }
 #' S3 Method to get start date of the final time-period in the data from a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_end_date_inner.excess_nimue_simulation <- function(model_out){
   max(model_out$pmcmc_results$inputs$data$week_start)
 }
 #' S3 Method to get start date of the final time-period in the data from a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_end_date_inner.particle_fit <- function(model_out){
   max(model_out$inputs$data$date_start)
@@ -58,16 +64,19 @@ get_data_start_date <- function(model_out){
   UseMethod("get_data_start_date")
 }
 #' S3 Method to get the start date of the data in a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_start_date.nimue_simulation <- function(model_out){
   min(model_out$pmcmc_results$inputs$data$date)
 }
 #' S3 Method to get the start date of the data in a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_start_date.excess_nimue_simulation <- function(model_out){
   min(model_out$pmcmc_results$inputs$data$week_start)
 }
 #' S3 Method to get the start date of the data in a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data_start_date.particle_fit <- function(model_out){
   min(model_out$inputs$data$date_start)
@@ -83,16 +92,19 @@ get_dates <- function(model_out){
   UseMethod("get_dates")
 }
 #' S3 Method to get all the start dates of time-periods in the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_dates.nimue_simulation <- function(model_out){
   model_out$pmcmc_results$inputs$data$date
 }
 #' S3 Method to get all the start dates of time-periods in the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_dates.excess_nimue_simulation <- function(model_out){
   model_out$pmcmc_results$inputs$data$week_start
 }
 #' S3 Method to get all the start dates of time-periods in the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_dates.particle_fit <- function(model_out){
   model_out$inputs$data$date_start
@@ -108,16 +120,19 @@ get_dates_greater <- function(model_out){
   UseMethod("get_dates_greater")
 }
 #' S3 Method to get all the end dates of time-periods in the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_dates_greater.nimue_simulation <- function(model_out){
   model_out$pmcmc_results$inputs$data$date
 }
 #' S3 Method to get all the end dates of time-periods in the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_dates_greater.excess_nimue_simulation <- function(model_out){
   model_out$pmcmc_results$inputs$data$week_end
 }
 #' S3 Method to get all the end dates of time-periods in the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_dates_greater.particle_fit <- function(model_out){
   model_out$inputs$data$date_end
@@ -133,11 +148,13 @@ get_data <- function(model_out){
   UseMethod("get_data")
 }
 #' S3 Method to get all the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data.nimue_simulation <- function(model_out){
   model_out$pmcmc_results$inputs$data
 }
 #' S3 Method to get all the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data.excess_nimue_simulation <- function(model_out){
   data <- model_out$pmcmc_results$inputs$data
@@ -148,6 +165,7 @@ get_data.excess_nimue_simulation <- function(model_out){
   data
 }
 #' S3 Method to get all the data of a model
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_data.particle_fit <- function(model_out){
   model_out$inputs$data
@@ -242,13 +260,13 @@ plot.particle_fit <- function(x, q = c(0.025, 0.975), replicates = TRUE, summari
     p <- p +
       ggplot2::geom_line(ggplot2::aes(y=.data$ymin, x=.data$date), data = df %>%
                                  dplyr::group_by(.data$date, .data$compartment) %>%
-                                 dplyr::summarise(ymin = quantile(.data$y, q[1]),
-                                                  ymax = quantile(.data$y, q[2]),
+                                 dplyr::summarise(ymin = stats::quantile(.data$y, q[1]),
+                                                  ymax = stats::quantile(.data$y, q[2]),
                                                   .groups = "keep") , linetype="dashed") +
       ggplot2::geom_line(ggplot2::aes(y=.data$ymax, x=.data$date), data = df %>%
                            dplyr::group_by(.data$date, .data$compartment) %>%
-                           dplyr::summarise(ymin = quantile(.data$y, q[1]),
-                                            ymax = quantile(.data$y, q[2]),
+                           dplyr::summarise(ymin = stats::quantile(.data$y, q[1]),
+                                            ymax = stats::quantile(.data$y, q[2]),
                                             .groups = "keep"), linetype="dashed")
   }
   if(replicates){
@@ -265,7 +283,7 @@ plot.particle_fit <- function(x, q = c(0.025, 0.975), replicates = TRUE, summari
     p <- p +
       ggplot2::geom_line(data = df %>%
                            dplyr::group_by(.data$compartment, .data$date) %>%
-                           dplyr::summarise(y = median(.data$y), .groups = "keep"),
+                           dplyr::summarise(y = stats::median(.data$y), .groups = "keep"),
                          ggplot2::aes(x = .data$date,
                                       y = .data$y,
                                       col = .data$compartment)
@@ -285,11 +303,13 @@ get_total_s <- function(model_out){
   UseMethod("get_total_s")
 }
 #' S3 Method to get total susceptible population
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_total_s.default <- function(model_out){
-  sum(res$pmcmc_results$inputs$model_params$population)
+  sum(model_out$pmcmc_results$inputs$model_params$population)
 }
 #' S3 Method to get total susceptible population
+#' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_total_s.particle_fit <- function(model_out){
   if("population" %in% names(model_out$samples[[1]])){

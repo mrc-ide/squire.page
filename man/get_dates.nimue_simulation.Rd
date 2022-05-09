@@ -6,6 +6,9 @@
 \usage{
 \method{get_dates}{nimue_simulation}(model_out)
 }
+\arguments{
+\item{model_out}{A nimue/squire mcmc or particle fit output}
+}
 \description{
 S3 Method to get all the start dates of time-periods in the data of a model
 }
