@@ -2,6 +2,7 @@
 
 S3method(get_Rt,excess_nimue_simulation)
 S3method(get_Rt,nimue_simulation)
+S3method(get_Rt,particle_fit)
 S3method(get_Rt,vacc_durR_nimue_simulation)
 S3method(get_data,excess_nimue_simulation)
 S3method(get_data,nimue_simulation)

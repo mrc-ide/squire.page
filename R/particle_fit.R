@@ -19,7 +19,7 @@
 #' @param initial_r The value of R0 to centre on initially, default = 3.
 #' @param proposal_width What proportion of the previous Rt trend to explore, default = 50%.
 #' @param n_particles How many particles to explore uniformly across that range, default = 7.
-#' @param k Control the dispersion on the negative binomial likelihood, default = 14.
+#' @param k Control the dispersion on the negative binomial likelihood, default = 2.
 #'
 #' @return An object of type particle_fit, (model type).
 #'
@@ -30,7 +30,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
                          initial_r = 3,
                          proposal_width = 0.5,
                          n_particles = 7,
-                         k = 14) {
+                         k = 2) {
   ##Initial Checks and Housekeeping
 
   #checks
@@ -57,12 +57,14 @@ particle_fit <- function(data, distribution, squire_model, parameters,
   #calculate convience parameters
   data_start_date <- min(data$date_start)
   data_end_date <- max(data$date_end)
-  rt_change_dates <- unique(c(seq(data_start_date, data_end_date, by = rt_spacing), data_end_date))
+  #set dates so that start_date = 0
+  data$t_start <- as.numeric(data$date_start - start_date)
+  data$t_end <- as.numeric(data$date_end - start_date)
 
   #check that distribution and model are compatible?
 
   #check that rt_spacing and data are compatible
-  if(!purrr::every(rt_change_dates, function(rt_date){
+  if(!purrr::every(seq(data_start_date, data_end_date, by = rt_spacing), function(rt_date){
     #check a death period occurs in its coverage period
     (data %>%
      dplyr::filter(.data$date_start >= rt_date, .data$date_start == min(.data$date_start)) %>%
@@ -87,43 +89,40 @@ particle_fit <- function(data, distribution, squire_model, parameters,
   #set values
   initial_infections <- 10
 
-  #set dates so that start_date = 0
-  data$t_start <- as.numeric(data$date_start - start_date)
-  data$t_end <- as.numeric(data$date_end - start_date)
-  rt_change_t <- as.numeric(rt_change_dates - start_date)
   #assume no deaths in this start period
-  data <- rbind(
-    data.frame(deaths = 0, date_start = start_date, date_end = data$date_start[1],
-               t_start = 0, t_end = data$t_start[1]),
-    data
-  )
-  #merge with Rt trend with R0
-  rt_change_t[1] <- 0
-  #split dataframe into the revelant Rt trends
-  data$rt_change <- purrr::map_int(data$t_start, ~max(which(rt_change_t <= .x)))
-  split_data <- split(data, data$rt_change)
+  # data <- rbind(
+  #   data.frame(deaths = 0, date_start = start_date, date_end = data$date_start[1],
+  #              t_start = 0, t_end = data$t_start[1]),
+  #   data
+  # )
 
 
   ##Run the Fitting Process
   particle_output <- purrr::map(
     purrr::map(distribution, ~append(.x, parameters)),
-    function(parameters, split_data, rt_change_t, initial_r, initial_infections, proposal_width, n_particles, k, squire_model){
+    function(parameters, data, initial_r, initial_infections, proposal_width, n_particles, k, squire_model){
+      temp <-  get_time_series(squire_model, parameters, data, rt_spacing)
+      rt_df <- temp$rt_df
+      split_data <- temp$split_data
+      rm(temp)
+
       #generate function that just returns model output
       model <- generate_model_function(squire_model, parameters)
       #generate function that returns the deaths from this output
       deaths_function <- generate_deaths_function(model, squire_model, parameters)
       #basic likelihood function
       likelihood <- function(Rt, rt_index, initial_state){
-        cumulative_deaths <- deaths_function(Rt, rt_change_t[rt_index], rt_change_t[rt_index + 1], initial_state)
+        cumulative_deaths <- deaths_function(Rt, rt_df$death_start_t[rt_index], rt_df$death_end_t[rt_index], initial_state)
         #calculate likelihood for each timeperiod then sum
         this_data <- split_data[[rt_index]]
         this_data$t_end <-  this_data$t_end - this_data$t_start[1] + 1
         this_data$t_start <-  this_data$t_start - this_data$t_start[1] + 1
+        # print(cumulative_deaths[this_data$t_end] - cumulative_deaths[this_data$t_start])
         squire:::ll_nbinom(
           data = this_data$deaths,
           model = cumulative_deaths[this_data$t_end] - cumulative_deaths[this_data$t_start],
           phi = 1,
-          k = 7,
+          k = k,
           exp_noise = Inf #no noise
         ) %>%
           sum()
@@ -131,7 +130,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
       #function to get the initial state value from a model
       get_initial_state <- function(Rt, rt_index, initial_state){
         #will probably need a model specific method
-        model_output <- model(Rt, rt_change_t[rt_index], rt_change_t[rt_index + 1], initial_state)
+        model_output <- model(Rt, rt_df$rt_change_t[rt_index], rt_df$initial_target[rt_index], initial_state)
         update_initial_state(initial_state, model_output)
       }
       #R0 specific likelihood function
@@ -152,7 +151,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
       #calculate R0 + initial number of infections, just optim for now
       res <- stats::optim(c(R0 = initial_r, initial_infections),
                    function(pars){R0_likelihood(pars[1], pars[2])},
-                   lower = c(1, 1), upper = c(10, 1000), method = "L-BFGS-B",
+                   lower = c(1, 1), upper = c(10, 100), method = "L-BFGS-B",
                    control = list(fnscale = -1))
       #get the initial state state from this setup
       initial_state <- R0_initial_state(res$par[1], res$par[2])
@@ -162,12 +161,12 @@ particle_fit <- function(data, distribution, squire_model, parameters,
 
       #calculate each Rt trend onwards
       rt_trend <- purrr::reduce(
-        seq_along(rt_change_t)[-length(rt_change_t)][-1],
+        seq_along(rt_df$rt_change_t)[-1],
         function(state_trend, rt_index){
           #just use optim for now
           res <- stats::optim(c(Rt = utils::tail(state_trend$Rt_trend, 1)),
                 function(par){likelihood(par, rt_index, state_trend$initial_state)},
-                lower = 0.00001, upper = 50, method = "Brent",
+                lower = 0.001, upper = 10, method = "Brent",
                 control = list(fnscale = -1))
           if(res$convergence != 0){
             stop(res$message)
@@ -187,7 +186,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
       model_output <- model(rt_trend, t_start = 0,
                             t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
                             initial_state = assign_infections(do.call(squire_model$parameter_func, parameters), initial_infections),
-                            tt_Rt = rt_change_t[-length(rt_change_t)])
+                            tt_Rt = rt_df$rt_change_t)
 
       #diagnostics are null for now
       diagnostics <- NULL
@@ -195,12 +194,13 @@ particle_fit <- function(data, distribution, squire_model, parameters,
       #output values
       list(
         rt_trend = rt_trend,
+        rt_change_t = rt_df$rt_change_t,
         initial_infections = initial_infections,
         model_output = model_output,
         diagnostics = diagnostics
       )
     },
-    split_data, rt_change_t, initial_r, initial_infections, proposal_width, n_particles, k, squire_model
+    data, initial_r, initial_infections, proposal_width, n_particles, k, squire_model
   )
   #return model object
   return_obj <- list(
@@ -211,7 +211,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
     samples = purrr::map(seq_along(distribution), ~append( #add fitted Rt trends to distribution
       distribution[[.x]], list(
         R0 = particle_output[[.x]]$rt_trend,
-        tt_R0 = rt_change_t[-length(rt_change_t)],
+        tt_R0 = particle_output[[.x]]$rt_change_t,
         initial_infections = particle_output[[.x]]$initial_infections
       )
     )),

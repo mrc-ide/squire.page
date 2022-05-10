@@ -1,12 +1,12 @@
 test_that("basic functionality", {
   data <- tibble(
-    deaths = rpois(100, 100),
+    deaths = rpois(100, 1000),
     date_start = seq(as.Date("2020-01-01"), by = 2, length.out = 100),
     date_end = seq(as.Date("2020-01-01"), by = 2, length.out = 101)[-1]
   )
   start_date <- as.Date("2020-01-01") - 30
   distribution <- map(
-    seq_len(3), ~list(
+    seq_len(10), ~list(
       dur_R = rpois(1, 365),
       ICU_bed_capacity  = rpois(1, 7805)
     )
@@ -16,7 +16,18 @@ test_that("basic functionality", {
   )
   squire_model <- squire:::deterministic_model()
 
-  out <- particle_fit(data, distribution, squire_model, parameters, start_date)
+  out <- particle_fit(data, distribution, squire_model, parameters, start_date, k = 7, rt_spacing = 14)
+
+  # get_Rt(out) %>%
+  #   group_by(date) %>%
+  #   summarise(
+  #     Rt = median(Rt)
+  #   ) %>%
+  #   ggplot(aes(x = date, y = Rt)) +
+  #   geom_step()
+  #
+  # dp_plot(out)
+  # cdp_plot(out)
 
   expect_s3_class(out, "particle_fit")
 

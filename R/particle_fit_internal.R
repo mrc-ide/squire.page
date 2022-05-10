@@ -108,3 +108,49 @@ update_initial_state <- function(initial_state, model_output){
   initial_state[paste0(names(new_values), "_0")] <- new_values
   initial_state
 }
+
+#' Get the delay in the Rt effects on death
+#' A change in Rt has a delay until it effects deaths
+#' For now we will set it to be the shortest possible time
+#' @noRd
+get_delay <- function(squire_model, parameters){
+  pars <- do.call(squire_model$parameter_func, parameters)
+  vals <- pars$dur_ICase + pars$dur_E + unlist(pars[c("dur_get_mv_die", "dur_get_ox_die",
+                                                      "dur_not_get_mv_die", "dur_not_get_ox_die")])
+  round(c(min(vals), max(vals)))#max(vals)))
+}
+#' Get the time series of Rt trend changes and split data up
+#' @noRd
+get_time_series <- function(squire_model, parameters, data, rt_spacing){
+  # Set up delay parameter
+  rt_death_delay <- get_delay(squire_model, parameters)
+  #calculate when rt should change, so that it aligns with the data
+  rt_change_t <- seq(data$t_start[2], utils::tail(data$t_end, 1), by = rt_spacing) - rt_death_delay[1]
+  to_remove <- which(rt_change_t > utils::tail(data$t_end, 1) - 30)
+  if(length(to_remove) > 0){
+    rt_change_t <- c(0, rt_change_t[-to_remove])
+  } else {
+    rt_change_t <- c(0, rt_change_t)
+  }
+
+  rt_df <- data.frame(rt_change_t = rt_change_t)
+  rt_df$initial_target <- c(rt_change_t[-1], utils::tail(data$t_end, 1))
+  rt_df$death_start_t <- rt_df$rt_change_t + rt_death_delay[1]
+  rt_df$death_start_t[1] <- 0
+  rt_df$death_end_t <- rt_df$initial_target + rt_death_delay[2]
+  rt_df$death_end_t[length(rt_df$death_end_t)] <- utils::tail(data$t_end, 1)
+
+  # data$rt_change <- c(1, purrr::map_int(data$t_start[-1], ~max(which(death_change_t <= .x))))
+  # split_data <- split(data, data$rt_change)
+
+  split_data <- purrr::map(seq_len(nrow(rt_df)), function(x){
+    data %>%
+      dplyr::filter(
+        .data$t_start >= rt_df$death_start_t[x] &
+          .data$t_end <= rt_df$death_end_t[x]
+      )
+  })
+  #Some kind of check on the data?
+
+  list(rt_df = rt_df, split_data = split_data)
+}

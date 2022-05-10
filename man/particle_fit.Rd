@@ -14,7 +14,7 @@ particle_fit(
   initial_r = 3,
   proposal_width = 0.5,
   n_particles = 7,
-  k = 14
+  k = 2
 )
 }
 \arguments{
@@ -40,7 +40,7 @@ should be formatted relative to this date, where necessary.}
 
 \item{n_particles}{How many particles to explore uniformly across that range, default = 7.}
 
-\item{k}{Control the dispersion on the negative binomial likelihood, default = 14.}
+\item{k}{Control the dispersion on the negative binomial likelihood, default = 2.}
 }
 \value{
 An object of type particle_fit, (model type).

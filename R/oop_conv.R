@@ -245,18 +245,7 @@ plot.particle_fit <- function(x, q = c(0.025, 0.975), replicates = TRUE, summari
   }
   p <- ggplot2::ggplot()
 
-  if(ci){
-    # p <- p +
-    #   ggplot2::geom_ribbon(
-    #     data = df %>%
-    #       dplyr::group_by(.data$date, .data$compartment) %>%
-    #       dplyr::summarise(ymin = quantile(.data$y, q[1]),
-    #                        ymax = quantile(.data$y, q[2]),
-    #                        .groups = "keep"),
-    #     ggplot2::aes(x = .data$date, ymin = .data$ymin, ymax = .data$ymax,
-    #                  fill = .data$compartment),
-    #     alpha = 0.25, col = NA
-    #   )
+  if(ci & particle_fit){
     p <- p +
       ggplot2::geom_line(ggplot2::aes(y=.data$ymin, x=.data$date), data = df %>%
                                  dplyr::group_by(.data$date, .data$compartment) %>%
@@ -269,6 +258,21 @@ plot.particle_fit <- function(x, q = c(0.025, 0.975), replicates = TRUE, summari
                                             ymax = stats::quantile(.data$y, q[2]),
                                             .groups = "keep"), linetype="dashed")
   }
+
+  if(ci & !particle_fit){
+    p <- p +
+      ggplot2::geom_ribbon(
+        data = df %>%
+          dplyr::group_by(.data$date, .data$compartment) %>%
+          dplyr::summarise(ymin = stats::quantile(.data$y, q[1]),
+                           ymax =  stats::quantile(.data$y, q[2]),
+                           .groups = "keep"),
+        ggplot2::aes(x = .data$date, ymin = .data$ymin, ymax = .data$ymax,
+                     fill = .data$compartment),
+        alpha = 0.25, col = NA
+      )
+  }
+
   if(replicates){
     p <- p +
       ggplot2::geom_line(data = df,
