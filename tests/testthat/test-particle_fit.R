@@ -16,16 +16,19 @@ test_that("basic functionality", {
   )
   squire_model <- squire:::deterministic_model()
 
-  out <- particle_fit(data, distribution, squire_model, parameters, start_date, k = 7, rt_spacing = 14)
+  out <- particle_fit(data, distribution, squire_model, parameters, start_date, k = 7, rt_spacing = 14, initial_r = 1)
 
   # get_Rt(out) %>%
   #   group_by(date) %>%
   #   summarise(
-  #     Rt = median(Rt)
+  #     Rt_med = median(Rt),
+  #     Rt_low = quantile(Rt, 0.025),
+  #     Rt_high = quantile(Rt, 0.975)
   #   ) %>%
-  #   ggplot(aes(x = date, y = Rt)) +
-  #   geom_step()
-  #
+  #   ggplot(aes(x = date, y = Rt_med)) +
+  #   geom_step() +
+  #   geom_step(aes(y = Rt_low), linetype = "dashed") +
+  #   geom_step(aes(y = Rt_high), linetype = "dashed")
   # dp_plot(out)
   # cdp_plot(out)
 

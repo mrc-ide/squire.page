@@ -12,8 +12,9 @@ particle_fit(
   start_date,
   rt_spacing = 14,
   initial_r = 3,
+  initial_infections = 100,
   proposal_width = 0.5,
-  n_particles = 7,
+  n_particles = 14,
   k = 2
 )
 }
@@ -35,6 +36,8 @@ should be formatted relative to this date, where necessary.}
 \item{rt_spacing}{Number of days between each Rt trend, default = 14 days.}
 
 \item{initial_r}{The value of R0 to centre on initially, default = 3.}
+
+\item{initial_infections}{The initial number of infections to centre on initially, default = 100.}
 
 \item{proposal_width}{What proportion of the previous Rt trend to explore, default = 50\%.}
 

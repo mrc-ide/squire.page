@@ -46,8 +46,6 @@ generate_model_function <- function(squire_model, parameters){
           initial_state[[par]] <- initial_state[[par]] - t_start
         }
       }
-      t_end <- t_end - t_start
-      t_start <- 0
       squire_parameters <- initial_state
     }
     #calculate beta value for Rt
@@ -117,16 +115,20 @@ get_delay <- function(squire_model, parameters){
   pars <- do.call(squire_model$parameter_func, parameters)
   vals <- pars$dur_ICase + pars$dur_E + unlist(pars[c("dur_get_mv_die", "dur_get_ox_die",
                                                       "dur_not_get_mv_die", "dur_not_get_ox_die")])
-  round(c(min(vals), max(vals)))#max(vals)))
+  list(min = round(min(vals)), max = round(max(vals)))#max(vals)))
 }
 #' Get the time series of Rt trend changes and split data up
 #' @noRd
 get_time_series <- function(squire_model, parameters, data, rt_spacing){
   # Set up delay parameter
   rt_death_delay <- get_delay(squire_model, parameters)
+  #first t occures before first death so we ignore 0s
   #calculate when rt should change, so that it aligns with the data
-  rt_change_t <- seq(data$t_start[2], utils::tail(data$t_end, 1), by = rt_spacing) - rt_death_delay[1]
-  to_remove <- which(rt_change_t > utils::tail(data$t_end, 1) - 30)
+  rt_change_t <- seq(data$t_start[data$deaths > 0][1], utils::tail(data$t_end, 1), by = rt_spacing) - rt_death_delay$min
+  #remove any trends that occures on or before 0, we add R0 later anyway
+  rt_change_t <- rt_change_t[rt_change_t > 0]
+  #ensure no changes estiamted in last max delay period
+  to_remove <- which(rt_change_t > utils::tail(data$t_end, 1) - rt_death_delay$max)
   if(length(to_remove) > 0){
     rt_change_t <- c(0, rt_change_t[-to_remove])
   } else {
@@ -135,13 +137,10 @@ get_time_series <- function(squire_model, parameters, data, rt_spacing){
 
   rt_df <- data.frame(rt_change_t = rt_change_t)
   rt_df$initial_target <- c(rt_change_t[-1], utils::tail(data$t_end, 1))
-  rt_df$death_start_t <- rt_df$rt_change_t + rt_death_delay[1]
+  rt_df$death_start_t <- rt_df$rt_change_t + rt_death_delay$min
   rt_df$death_start_t[1] <- 0
-  rt_df$death_end_t <- rt_df$initial_target + rt_death_delay[2]
+  rt_df$death_end_t <- rt_df$initial_target + rt_death_delay$max
   rt_df$death_end_t[length(rt_df$death_end_t)] <- utils::tail(data$t_end, 1)
-
-  # data$rt_change <- c(1, purrr::map_int(data$t_start[-1], ~max(which(death_change_t <= .x))))
-  # split_data <- split(data, data$rt_change)
 
   split_data <- purrr::map(seq_len(nrow(rt_df)), function(x){
     data %>%
@@ -153,4 +152,83 @@ get_time_series <- function(squire_model, parameters, data, rt_spacing){
   #Some kind of check on the data?
 
   list(rt_df = rt_df, split_data = split_data)
+}
+#' Find the particle that maximises the likelihood for R0 and initial conditions
+#' @noRd
+particle_optimise_R0 <- function(initial_r, initial_infections, n_particles, proposal_width, R0_likelihood){
+  repeat_limit <- 5
+  repeats <- 0
+  searching <- TRUE
+  while(searching){
+    values <- data.frame(
+      R0 = get_Rt_to_explore(initial_r, proposal_width, n_particles),
+      initial_infections = seq(initial_infections * (1-proposal_width), initial_infections/(1-proposal_width), length.out = n_particles)
+    ) %>%
+      tidyr::expand(.data$R0, .data$initial_infections) %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(
+        ll = R0_likelihood(.data$R0, .data$initial_infections)
+      ) %>%
+      dplyr::ungroup()
+    #get the maximum and return R0 and initial_infections
+    mle <- values %>%
+      dplyr::filter(.data$ll == max(.data$ll))
+    if(nrow(mle) > 1){
+      #catch if we have equal likelihoods
+      mle <- mle[round(nrow(mle)/2),]
+    }
+    update_R0 <- mle$R0 %in% c(min(values$R0), max(values$R0))
+    update_initial_infections <-  mle$initial_infections %in%
+      c(min(values$initial_infections), max(values$initial_infections))
+    if(update_R0){
+      initial_r <- mle$R0
+    }
+    if(update_initial_infections){
+      initial_infections <- mle$initial_infections
+    }
+    if(!update_R0 & !update_initial_infections){
+      searching <- FALSE
+    } else {
+      repeats <- repeats + 1
+    }
+    if(repeats == repeat_limit){
+      searching <- FALSE
+    }
+  }
+  c(R0 = mle$R0, initial_infections = mle$initial_infections)
+}
+#' Find the particle that optimises the likelihood for Rt
+#' @noRd
+particle_optimise_Rt <- function(rt, initial_state, rt_index, n_particles, proposal_width, likelihood){
+  repeat_limit <- 5
+  repeats <- 0
+  searching <- TRUE
+  while(searching){
+    rt_to_explore <- get_Rt_to_explore(rt, proposal_width, n_particles)
+    ll <- purrr::map_dbl(rt_to_explore, ~likelihood(.x, rt_index, initial_state))
+    best <- rt_to_explore[which.max(ll)]
+
+    update_Rt <- best %in% c(min(rt_to_explore), max(rt_to_explore))
+
+    if(update_Rt){
+      rt <- best
+      repeats <- repeats + 1
+    } else{
+      searching <- FALSE
+    }
+    if(repeats == repeat_limit){
+      searching <- FALSE
+    }
+  }
+  best
+}
+#' Get the rt values to explore
+#' @noRd
+get_Rt_to_explore <- function(rt, proposal_width, n_particles){
+  rt_max <- 20
+  upper <- rt/(1-proposal_width)
+  if(upper > rt_max){
+    upper <- rt_max
+  }
+  seq(rt * (1-proposal_width), upper, length.out = n_particles)
 }
