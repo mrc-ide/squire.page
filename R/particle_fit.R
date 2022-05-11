@@ -108,59 +108,43 @@ particle_fit <- function(data, distribution, squire_model, parameters,
       #generate function that just returns model output
       model <- generate_model_function(squire_model, parameters)
       #generate function that returns the deaths from this output
-      deaths_function <- generate_deaths_function(model, squire_model, parameters)
+      deaths_function <- generate_deaths_function(model)
       #basic likelihood function
       likelihood <- function(Rt, rt_index, initial_state){
-        #format times so Rt_start_date is 0 and data
         this_data <- split_data[[rt_index]]
-        this_data$t_end <-  this_data$t_end - rt_df$rt_change_t[rt_index]
-        this_data$t_start <-  this_data$t_start - rt_df$rt_change_t[rt_index]
-        death_start_t <- rt_df$death_start_t[rt_index] - rt_df$rt_change_t[rt_index]
-        death_end_t <- rt_df$death_end_t[rt_index] - rt_df$rt_change_t[rt_index]
-
-        cumulative_deaths <- deaths_function(Rt, death_start_t, death_end_t, initial_state)
+        #get deaths for entire rt period until end of death period, this way index in this_data is the correct position in this time series
+        cumulative_deaths <- deaths_function(Rt, rt_df$rt_change_t[rt_index], rt_df$death_end_t[rt_index], initial_state)
         #calculate likelihood for each timeperiod then sum
         squire:::ll_nbinom(
           data = this_data$deaths,
-          model = cumulative_deaths[this_data$t_end - death_start_t + 1] - cumulative_deaths[this_data$t_start - death_start_t + 1],
+          model = cumulative_deaths[this_data$index_end] - cumulative_deaths[this_data$index_start],
           phi = 1,
           k = k,
           exp_noise = Inf #no noise
         ) %>%
           sum()
+        # dpois(this_data$deaths,
+        #       cumulative_deaths[this_data$t_end - death_start_t + 1] -
+        #         cumulative_deaths[this_data$t_start - death_start_t + 1],
+        #       log = TRUE) %>%
+        #   sum()
       }
       #function to get the initial state value from a model
       get_initial_state <- function(Rt, rt_index, initial_state){
-        #will probably need a model specific method
-        #format dates so that rt_change_t = 0
-        next_rt_t <- rt_df$initial_target[rt_index] - rt_df$rt_change_t[rt_index]
-        model_output <- model(Rt, 0, next_rt_t, initial_state)
+        model_output <- model(Rt, rt_df$rt_change_t[rt_index], rt_df$initial_target[rt_index], initial_state)
         update_initial_state(initial_state, model_output)
       }
       #R0 specific likelihood function
       R0_likelihood <- function(R0, initial_infections){
         #get the initial state as per country parameters
-        initial_state <- do.call(squire_model$parameter_func, parameters)
+        initial_state <- setup_parameters(squire_model, parameters)
         likelihood(Rt = R0, rt_index = 1, initial_state =
                      assign_infections(initial_state, initial_infections)
         )
       }
-      # #R0 specific likelihood function
-      # R0_likelihood <- function(R0, initial_infections){
-      #   #get the initial state as per country parameters
-      #   initial_state <- do.call(squire_model$parameter_func, parameters)
-      #   cumulative_deaths <- deaths_function(R0, rt_df$death_start_t[1], rt_df$death_end_t[1], assign_infections(initial_state, initial_infections))
-      #   #calculate likelihood for each timeperiod then sum
-      #   this_data <- split_data[[1]]
-      #   this_data$t_end <-  this_data$t_end - this_data$t_start[1] + 1
-      #   this_data$t_start <-  this_data$t_start - this_data$t_start[1] + 1
-      #   this_data %>%
-      #     mutate(deaths = deaths/(t_end - t_start),
-      #            t = t_start)
-      # }
       R0_initial_state <- function(R0, initial_infections){
         #get the initial state as per country parameters
-        initial_state <- do.call(squire_model$parameter_func, parameters)
+        initial_state <- setup_parameters(squire_model, parameters)
         get_initial_state(Rt = R0, rt_index = 1, initial_state =
                      assign_infections(initial_state, initial_infections)
         )
@@ -193,7 +177,7 @@ particle_fit <- function(data, distribution, squire_model, parameters,
       #calculate final model output
       model_output <- model(rt_trend, t_start = 0,
                             t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
-                            initial_state = assign_infections(do.call(squire_model$parameter_func, parameters), initial_infections),
+                            initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
                             tt_Rt = rt_df$rt_change_t)
 
       #diagnostics are null for now
@@ -211,10 +195,16 @@ particle_fit <- function(data, distribution, squire_model, parameters,
     data, initial_r, initial_infections, proposal_width, n_particles, k, squire_model
   )
   #return model object
+  if(class(squire_model$odin_model) == "function"){
+    odin_model <- squire_model$odin_model(user = setup_parameters(squire_model, parameters),
+                                        unused_user_action = "ignore")
+  } else {
+    odin_model <- squire_model$odin_model$new(user = setup_parameters(squire_model, parameters),
+                                        unused_user_action = "ignore")
+  }
   return_obj <- list(
     parameters = parameters,
-    model = squire_model$odin_model$new(user = do.call(squire_model$parameter_func, parameters),
-                                        unused_user_action = "ignore"), #redundancy to keep compatible with squire/nimue functions
+    model = odin_model, #redundancy to keep compatible with squire/nimue functions
     squire_model = squire_model,
     samples = purrr::map(seq_along(distribution), ~append( #add fitted Rt trends to distribution
       distribution[[.x]], list(

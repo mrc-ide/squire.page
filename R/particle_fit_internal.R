@@ -27,54 +27,56 @@ assert_distribution <- function(distribution){
 }
 #' Function factory for setting up the model output generating function for the model
 #' should work for all types, with the caveat that there must be a psedo method in
-#' squire:::beta_est that works with the model.
+#' squire:::beta_est that works with the model or a method for squire.page::beta_est.
 #' @noRd
 generate_model_function <- function(squire_model, parameters){
-  squire_parameters <- do.call(squire_model$parameter_func, parameters)
+  squire_parameters <- setup_parameters(squire_model, parameters)
   #define a function that gets the deaths for a requested period
   function(Rt, t_start, t_end, initial_state = NULL, tt_Rt = NULL){
     force(squire_parameters)
     force(squire_model)
     #setup the initial state for the odin model
-    if(!is.null(initial_state)){
-      #this might need to be model specific!
-      #set all in initial state so that t = 0 corresponds to t_start
-      pars_to_change <- names(initial_state)[stringr::str_detect(names(initial_state), "tt_")]
-      for(par in pars_to_change){
-        if(length(initial_state[[par]]) > 1){
-          #if the parameter is not constant
-          initial_state[[par]] <- initial_state[[par]] - t_start
-        }
-      }
+    if (!is.null(initial_state)) {
       squire_parameters <- initial_state
     }
     #calculate beta value for Rt
     squire_parameters$beta_set <-
-      squire:::beta_est(squire_model, squire_parameters, Rt)
+      beta_est(squire_model, squire_parameters, Rt)
     if(!is.null(tt_Rt)){
       squire_parameters$tt_beta <- tt_Rt
     }
     #create odin model with these parameters
-    odin_model <- squire_model$odin_model$new(
-      user = squire_parameters,
-      unused_user_action = "ignore"
-    )
+    #catch if nimue type
+    if(class(squire_model$odin_model) == "function"){
+      odin_model <- squire_model$odin_model(
+        user = squire_parameters,
+        unused_user_action = "ignore"
+      )
+    } else {
+      odin_model <- squire_model$odin_model$new(
+        user = squire_parameters,
+        unused_user_action = "ignore"
+      )
+    }
     #run the model over the requested timeperiod
-    model_output <- odin_model$run(c(0, seq(t_start, t_end, by = 1)))[-1,]
+    model_output <- odin_model$run(seq(t_start, t_end, by = 1))
   }
 }
 #' Function factory for setting up the death generating function for the model
 #' should for all types, with the caveat that there must be a psedo method in
-#' squire:::beta_est that works with the model.
+#' squire:::beta_est that works with the model or a method for squire.page::beta_est.
 #' @noRd
-generate_deaths_function <- function(model_func, squire_model, parameters){
-  N_age <- do.call(squire_model$parameter_func, parameters)$N_age
+generate_deaths_function <- function(model_func){
+  #determine with columns relate to deaths
+  temp_rn <- model_func(1, 0, 2, NULL)
+  death_cols <- stringr::str_detect(colnames(temp_rn), "D\\[")
+  rm(temp_rn)
   #define a function that gets the deaths for a requested period
   get_deaths <- function(Rt, t_start, t_end, initial_state = NULL){
     force(model_func)
-    force(N_age)
+    force(death_cols)
     model_output <- model_func(Rt, t_start, t_end, initial_state)
-    model_output[, paste0("D[", seq_len(N_age), "]")] %>%
+    model_output[, death_cols] %>%
       rowSums()
   }
 }
@@ -84,6 +86,7 @@ generate_deaths_function <- function(model_func, squire_model, parameters){
 assign_infections <- function(initial_state, initial_infections){
   #update E1_0, might need to be model specific!
   #spread evenly across adult population
+  #this should work fie
   initial_state$E1_0[4:14] <- initial_infections * initial_state$population[4:14]/sum(initial_state$population[4:14])
   initial_state
 }
@@ -97,11 +100,17 @@ update_initial_state <- function(initial_state, model_output){
   names(pars) <- pars
   new_values <- purrr::map(
     pars,
-    function(par){
-      par_names <- paste0(par, "[", 1:initial_state$N_age, "]")
-      as.numeric(model_output[, par_names])
+    function(par) {
+      cols <- stringr::str_detect(colnames(model_output), paste0(par, "\\["))
+      as.numeric(model_output[, cols])
     }
   )
+  if("N_vaccine" %in% names(initial_state)){
+    #convert to matrices
+    new_values <- purrr::map(
+      new_values, ~matrix(.x, nrow = initial_state$N_age, ncol = initial_state$N_vaccine)
+    )
+  }
   #update the values
   initial_state[paste0(names(new_values), "_0")] <- new_values
   initial_state
@@ -112,10 +121,10 @@ update_initial_state <- function(initial_state, model_output){
 #' For now we will set it to be the shortest possible time
 #' @noRd
 get_delay <- function(squire_model, parameters){
-  pars <- do.call(squire_model$parameter_func, parameters)
-  vals <- pars$dur_ICase + pars$dur_E + unlist(pars[c("dur_get_mv_die", "dur_get_ox_die",
-                                                      "dur_not_get_mv_die", "dur_not_get_ox_die")])
-  list(min = round(min(vals)), max = round(max(vals)))#max(vals)))
+  pars <- setup_parameters(squire_model, parameters)
+  vals <- (2/pars$gamma_ICase) + (2/pars$gamma_E) + (2/unlist(pars[c("gamma_get_mv_die", "gamma_get_ox_die",
+                                                      "gamma_not_get_mv_die", "gamma_not_get_ox_die")]))
+  list(min = floor(min(vals)), max = ceiling(max(vals)))#max(vals)))
 }
 #' Get the time series of Rt trend changes and split data up
 #' @noRd
@@ -147,9 +156,15 @@ get_time_series <- function(squire_model, parameters, data, rt_spacing){
       dplyr::filter(
         .data$t_start >= rt_df$death_start_t[x] &
           .data$t_end <= rt_df$death_end_t[x]
+      ) %>%
+      #format so relative to rt_change_t
+      dplyr::mutate(
+        index_start = .data$t_start - rt_df$rt_change_t[x] + 1,
+        index_end = .data$t_end - rt_df$rt_change_t[x] + 1
       )
   })
   #Some kind of check on the data?
+
 
   list(rt_df = rt_df, split_data = split_data)
 }

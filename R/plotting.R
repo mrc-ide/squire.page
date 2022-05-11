@@ -424,7 +424,7 @@ ar_plot <- function(res) {
   date_0 <- get_data_end_date(res)
 
 
-  S_tot <- get_total_s(res)
+  S_tot <- sum(get_parameters(res)$population)
   inf <- nimue_format(res, "infections", date_0 = date_0) %>%
     dplyr::mutate(infections = as.integer(.data$y)) %>%
     dplyr::select(replicate, .data$t, .data$date, .data$infections) %>%

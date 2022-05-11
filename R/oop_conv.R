@@ -296,28 +296,122 @@ plot.particle_fit <- function(x, q = c(0.025, 0.975), replicates = TRUE, summari
   p <- p +
     ggplot2::scale_color_discrete(name = "") +
     ggplot2::scale_fill_discrete(guide = "none") +
-    ggplot2::xlab("Deaths") +
-    ggplot2::ylab("Date") +
+    ggplot2::xlab("Date") +
+    ggplot2::ylab("Deaths") +
     ggplot2::theme_bw() +
     ggplot2::guides(col = ggplot2::guide_legend(ncol = 2))
 }
 #' S3 Generic to get total susceptible population
 #' @noRd
-get_total_s <- function(model_out){
-  UseMethod("get_total_s")
+get_parameters <- function(model_out){
+  UseMethod("get_parameters")
 }
 #' S3 Method to get total susceptible population
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_total_s.default <- function(model_out){
-  sum(model_out$pmcmc_results$inputs$model_params$population)
+get_parameters.default <- function(model_out){
+  model_out$pmcmc_results$inputs$model_params
 }
 #' S3 Method to get total susceptible population
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_total_s.particle_fit <- function(model_out){
+get_parameters.particle_fit <- function(model_out){
   if("population" %in% names(model_out$samples[[1]])){
-    stop("population modified per sample, either calculate AR manuall or request this feature be added")
+    stop("population modified per sample, either calculate AR manually or request this feature be added")
   }
-  sum(do.call(model_out$squire_model$parameter_func, model_out$parameters)$population)
+  #ensure these values are not here
+  model_out$parameters$day_return <- NULL
+  model_out$parameters$replicates <- NULL
+  setup_parameters(model_out$squire_model, model_out$parameters)
+}
+
+#' An S3 Generic to get the parameters of a given model
+#' @noRd
+setup_parameters <- function(model_obj, parameters){
+  UseMethod("setup_parameters")
+}
+#' If no particular method we default to calling the parameter function
+#' attached to the model
+#' @param model_obj A nimue/squire model object
+#' @param parameters The parameters to the pass to the parameter function
+#' @export
+setup_parameters.default <- function(model_obj, parameters){
+  do.call(model_obj$parameter_func, parameters)
+}
+#' If no particular method we default to calling the parameter function
+#' attached to the model
+#' @param model_obj A nimue/squire model object
+#' @param parameters The parameters to the pass to the parameter function
+#' @export
+setup_parameters.nimue_model <- function(model_obj, parameters){
+  #fill population if missing
+  if(!"population" %in% names(parameters)){
+    parameters$population <- squire::get_population(parameters$country)$n
+  }
+  #fill contact matrix if missing
+  if(!"contact_matrix_set" %in% names(parameters)){
+    parameters$contact_matrix_set <- 
+      squire::get_mixing_matrix(parameters$country)
+  }
+  #fill tt_contact_matrix if missing
+  if(!"tt_contact_matrix" %in% names(parameters)){
+    if(length(dim(parameters$contact_matrix_set)) == 2){
+      parameters$tt_contact_matrix <- 0
+    } else {
+      parameters$tt_contact_matrix <- dim(parameters$contact_matrix_set)[1]
+    }
+  }
+  #fill tt_contact_matrix if missing
+  if(!"tt_contact_matrix" %in% names(parameters)){
+    if(length(dim(parameters$contact_matrix_set)) == 2){
+      parameters$tt_contact_matrix <- 0
+    } else {
+      parameters$tt_contact_matrix <- dim(parameters$contact_matrix_set)[1]
+    }
+  }
+  #fill hosp_bed_capacity if missing
+  if(!"hosp_bed_capacity" %in% names(parameters)){
+    parameters$hosp_bed_capacity <- squire::get_healthcare_capacity(parameters$country)$hosp_beds * sum(parameters$population)/1000
+  }
+  #fill tt_hosp_beds if missing
+  if(!"tt_hosp_beds" %in% names(parameters)){
+    parameters$tt_hosp_beds <- seq_along(parameters$hosp_bed_capacity) - 1
+  }
+  #fill ICU beds if missing
+  if(!"ICU_bed_capacity" %in% names(parameters)){
+    parameters$ICU_bed_capacity <- squire::get_healthcare_capacity(parameters$country)$ICU_beds * sum(parameters$population)/1000
+  }
+  #fill tt_ICU_beds if missing
+  if(!"tt_ICU_beds" %in% names(parameters)){
+    parameters$tt_ICU_beds <- seq_along(parameters$ICU_bed_capacity) - 1
+  }
+  #fill dt if missing
+  if(!"dt" %in% names(parameters)){
+    parameters$dt <- 1
+  }
+  
+  do.call(model_obj$parameter_func, parameters)
+}
+#' An S3 generic for estimating Beta
+#' @noRd
+beta_est <- function(squire_model, model_params, R0) {
+  UseMethod("beta_est")
+}
+#' An S3 method for getting Beta for a model
+#' @param squire_model A model object
+#' @param model_params Parameters for the model
+#' @param R0 R0/Rt value to translate into beta
+#' @export 
+beta_est.default <- function(squire_model, model_params, R0) {
+  squire:::beta_est(squire_model, model_params, R0)
+}
+#' An S3 method for getting Beta for a model
+#' @param squire_model A model object
+#' @param model_params Parameters for the model
+#' @param R0 R0/Rt value to translate into beta
+#' @export 
+beta_est.booster_model <- function(squire_model, model_params, R0) {
+  #treat this as nimue
+  class(squire_model) <- c("nimue_model", "squire_model")
+  squire:::beta_est(squire_model, model_params, R0)
 }

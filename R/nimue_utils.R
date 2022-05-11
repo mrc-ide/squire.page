@@ -152,7 +152,7 @@ nimue_format <- function(out,
 
   # fix the infection
   if (inf_fix) {
-    pd$y[pd$compartment == "E2"] <- pd$y[pd$compartment == "E2"]*out$odin_parameters$gamma_E
+    pd$y[pd$compartment == "E2"] <- pd$y[pd$compartment == "E2"] * get_parameters(out)$gamma_E
     pd$compartment <- as.character(pd$compartment)
     pd$compartment[pd$compartment == "E2"] <- "infections"
     pd$compartment <- as.factor(pd$compartment)
