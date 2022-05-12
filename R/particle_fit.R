@@ -26,10 +26,10 @@
 #' @param n_particles How many particles to explore uniformly across that range, default = 7.
 #' @param k Control the dispersion on the negative binomial likelihood, default = 2.
 #'
-#' @return An object of type particle_fit, (model type).
+#' @return An object of type rt_optimised, (model type).
 #'
 #' @export
-particle_fit <- function(data, distribution, squire_model, parameters,
+rt_optimise <- function(data, distribution, squire_model, parameters,
                          start_date,
                          parallel = FALSE,
                          rt_spacing = 14,
@@ -237,9 +237,9 @@ particle_fit <- function(data, distribution, squire_model, parameters,
     )
   )
   if(any(stringr::str_detect(class(squire_model), "nimue"))){
-    class(return_obj) <- c("particle_fit", "nimue_simulation")
+    class(return_obj) <- c("rt_optimised", "nimue_simulation")
   } else {
-    class(return_obj) <- "particle_fit"
+    class(return_obj) <- "rt_optimised"
   }
   return_obj
 }

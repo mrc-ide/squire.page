@@ -134,7 +134,7 @@ get_Rt.vacc_durR_nimue_simulation <- function(model_out){
 }
 #'
 #'@export
-get_Rt.particle_fit <- function(model_out){
+get_Rt.rt_optimised <- function(model_out){
   date_0 <- model_out$inputs$start_date
   #get iso3c to attach
   iso3c <- squire::get_population(model_out$parameters$country)$iso3c[1]

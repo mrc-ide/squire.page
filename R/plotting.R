@@ -513,7 +513,7 @@ dp_plot <- function(res) {
   )
 
   #compatibility with weekly fits
-  if(any(c("particle_fit", "excess_nimue_simulation") %in% class(res))){
+  if(any(c("rt_optimised", "excess_nimue_simulation") %in% class(res))){
     dp <- dp +
       ggplot2::geom_segment(data = get_data(res),
                    ggplot2::aes(x = .data$date_start, xend = .data$date_end,

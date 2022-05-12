@@ -22,7 +22,7 @@ get_data_end_date.excess_nimue_simulation <- function(model_out){
 #' S3 Method to get final date in the data from a model
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_data_end_date.particle_fit <- function(model_out){
+get_data_end_date.rt_optimised <- function(model_out){
   max(model_out$inputs$data$date_end)
 }
 
@@ -50,7 +50,7 @@ get_data_end_date_inner.excess_nimue_simulation <- function(model_out){
 #' S3 Method to get start date of the final time-period in the data from a model
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_data_end_date_inner.particle_fit <- function(model_out){
+get_data_end_date_inner.rt_optimised <- function(model_out){
   max(model_out$inputs$data$date_start)
 }
 
@@ -78,7 +78,7 @@ get_data_start_date.excess_nimue_simulation <- function(model_out){
 #' S3 Method to get the start date of the data in a model
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_data_start_date.particle_fit <- function(model_out){
+get_data_start_date.rt_optimised <- function(model_out){
   min(model_out$inputs$data$date_start)
 }
 
@@ -106,7 +106,7 @@ get_dates.excess_nimue_simulation <- function(model_out){
 #' S3 Method to get all the start dates of time-periods in the data of a model
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_dates.particle_fit <- function(model_out){
+get_dates.rt_optimised <- function(model_out){
   model_out$inputs$data$date_start
 }
 
@@ -134,7 +134,7 @@ get_dates_greater.excess_nimue_simulation <- function(model_out){
 #' S3 Method to get all the end dates of time-periods in the data of a model
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_dates_greater.particle_fit <- function(model_out){
+get_dates_greater.rt_optimised <- function(model_out){
   model_out$inputs$data$date_end
 }
 
@@ -167,7 +167,7 @@ get_data.excess_nimue_simulation <- function(model_out){
 #' S3 Method to get all the data of a model
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_data.particle_fit <- function(model_out){
+get_data.rt_optimised <- function(model_out){
   model_out$inputs$data
 }
 
@@ -207,7 +207,7 @@ plot.excess_nimue_simulation <- function(x, var_select = NULL, replicates = FALS
 
 #' Essentially just does squire::plot_pmcmc_sample. Not intended for use otherwise.
 #'
-#' @param x particle_fit output object
+#' @param x rt_optimised output object
 #' @param replicates Plot replicates
 #' @param summarise Logical, add summary line
 #' @param ci logical add confidence interval ribbon
@@ -216,7 +216,7 @@ plot.excess_nimue_simulation <- function(x, var_select = NULL, replicates = FALS
 #' @param ... placeholder for compatibility does nothing.
 #'
 #' @export
-plot.particle_fit <- function(x, q = c(0.025, 0.975), replicates = TRUE, summarise = FALSE, ci = TRUE, particle_fit = FALSE, ...){
+plot.rt_optimised <- function(x, q = c(0.025, 0.975), replicates = TRUE, summarise = FALSE, ci = TRUE, particle_fit = FALSE, ...){
   # #set up our parameters
   # x$parameters$day_return <- TRUE
   # x$parameters$replicates <- length(x$samples)
@@ -315,7 +315,7 @@ get_parameters.default <- function(model_out){
 #' S3 Method to get total susceptible population
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
-get_parameters.particle_fit <- function(model_out){
+get_parameters.rt_optimised <- function(model_out){
   if("population" %in% names(model_out$samples[[1]])){
     stop("population modified per sample, either calculate AR manually or request this feature be added")
   }

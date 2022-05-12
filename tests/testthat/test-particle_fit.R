@@ -16,11 +16,11 @@ test_that("basic functionality", {
   )
   squire_model <- squire:::deterministic_model()
 
-  out <- particle_fit(data, distribution, squire_model, parameters, start_date,
+  out <- rt_optimise(data, distribution, squire_model, parameters, start_date,
                       k = 7, rt_spacing = 14, initial_r = 3,
                       proposal_width = 0.75, n_particles = 10)
 
-  expect_s3_class(out, "particle_fit")
+  expect_s3_class(out, "rt_optimised")
 
   expect_s3_class(dp_plot(out), "ggplot")
   expect_s3_class(cdp_plot(out), "ggplot")
@@ -45,11 +45,11 @@ test_that("nimue functionality", {
   )
   squire_model <- nimue::nimue_deterministic_model()
 
-  out <- particle_fit(data, distribution, squire_model, parameters, start_date,
+  out <- rt_optimise(data, distribution, squire_model, parameters, start_date,
                       k = 7, rt_spacing = 14, initial_r = 3,
                       proposal_width = 0.75, n_particles = 10)
 
-  expect_s3_class(out, "particle_fit")
+  expect_s3_class(out, "rt_optimised")
   expect_s3_class(out, "nimue_simulation")
 
   expect_s3_class(dp_plot(out), "ggplot")
@@ -76,11 +76,11 @@ test_that("nimue booster functionality", {
   )
   squire_model <- nimue_booster_model()
 
-  out <- particle_fit(data, distribution, squire_model, parameters, start_date,
+  out <- rt_optimise(data, distribution, squire_model, parameters, start_date,
                       k = 7, rt_spacing = 14, initial_r = 3,
                       proposal_width = 0.75, n_particles = 10)
 
-  expect_s3_class(out, "particle_fit")
+  expect_s3_class(out, "rt_optimised")
   expect_s3_class(out, "nimue_simulation")
 
   expect_s3_class(dp_plot(out), "ggplot")

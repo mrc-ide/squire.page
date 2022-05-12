@@ -47,7 +47,7 @@ nimue_format <- function(out,
                          case_to_infection_ratio = 0.195) {
 
   #if a particle fit we do a bit of adjusting so it plays nice with the squire functions
-  if("particle_fit" %in% class(out)){
+  if("rt_optimised" %in% class(out)){
     out$parameters$day_return <- TRUE
     out$parameters$replicates <- length(out$samples)
     #RESOVLE THE ISSUES WITH SUMMARIES
