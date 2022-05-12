@@ -10,6 +10,7 @@ particle_fit(
   squire_model,
   parameters,
   start_date,
+  parallel = FALSE,
   rt_spacing = 14,
   initial_r = 3,
   initial_infections = 100,
@@ -32,6 +33,8 @@ default) and no period can overlap these changes.}
 
 \item{start_date}{Date when the epidemic begins, parameters and distribution
 should be formatted relative to this date, where necessary.}
+
+\item{parallel}{Run each sample concurrently, uses the future::plan set by the user. Default = FALSE.}
 
 \item{rt_spacing}{Number of days between each Rt trend, default = 14 days.}
 

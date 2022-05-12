@@ -15,6 +15,7 @@
 #' @param start_date Date when the epidemic begins, parameters and distribution
 #' should be formatted relative to this date, where necessary.
 #'
+#' @param parallel Run each sample concurrently, uses the future::plan set by the user. Default = FALSE.
 #' @param rt_spacing Number of days between each Rt trend, default = 14 days.
 #' @param initial_r The value of R0 to centre on initially, default = 3.
 #' @param initial_infections The initial number of infections to centre on initially, default = 100.
@@ -27,6 +28,7 @@
 #' @export
 particle_fit <- function(data, distribution, squire_model, parameters,
                          start_date,
+                         parallel = FALSE,
                          rt_spacing = 14,
                          initial_r = 3,
                          initial_infections = 100,
@@ -88,16 +90,16 @@ particle_fit <- function(data, distribution, squire_model, parameters,
          occuring on the overlap of Rt change periods.")
   }
 
-  #assume no deaths in this start period
-  # data <- rbind(
-  #   data.frame(deaths = 0, date_start = start_date, date_end = data$date_start[1],
-  #              t_start = 0, t_end = data$t_start[1]),
-  #   data
-  # )
-
-
-  ##Run the Fitting Process
-  particle_output <- purrr::map(
+  #Run the Fitting Process
+  if(parallel){
+    #set seed = NULL to suppress warnings due to squiress (unused) random initial infections
+    map_func <- function(.x, .f, ...) {
+      furrr::future_map(.x, .f, ..., .options = furrr::furrr_options(seed = NULL))
+    }
+  } else {
+    map_func <- purrr::map
+  }
+  particle_output <- map_func(
     purrr::map(distribution, ~append(.x, parameters)),
     function(parameters, data, initial_r, initial_infections, proposal_width, n_particles, k, squire_model){
       temp <-  get_time_series(squire_model, parameters, data, rt_spacing)
@@ -123,11 +125,6 @@ particle_fit <- function(data, distribution, squire_model, parameters,
           exp_noise = Inf #no noise
         ) %>%
           sum()
-        # dpois(this_data$deaths,
-        #       cumulative_deaths[this_data$t_end - death_start_t + 1] -
-        #         cumulative_deaths[this_data$t_start - death_start_t + 1],
-        #       log = TRUE) %>%
-        #   sum()
       }
       #function to get the initial state value from a model
       get_initial_state <- function(Rt, rt_index, initial_state){

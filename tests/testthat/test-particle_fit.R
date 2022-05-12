@@ -6,7 +6,7 @@ test_that("basic functionality", {
   )
   start_date <- min(data$date_start) - 20
   distribution <- map(
-    seq_len(10), ~list(
+    seq_len(2), ~list(
       dur_R = rpois(1, 365),
       ICU_bed_capacity  = rpois(1, 7805)
     )
@@ -35,7 +35,7 @@ test_that("nimue functionality", {
   )
   start_date <- min(data$date_start) - 20
   distribution <- map(
-    seq_len(10), ~list(
+    seq_len(2), ~list(
       dur_R = rpois(1, 365),
       ICU_bed_capacity  = rpois(1, 7805)
     )
@@ -66,7 +66,7 @@ test_that("nimue booster functionality", {
   )
   start_date <- min(data$date_start) - 20
   distribution <- map(
-    seq_len(10), ~list(
+    seq_len(2), ~list(
       dur_R = rpois(1, 365),
       ICU_bed_capacity  = rpois(1, 7805)
     )
