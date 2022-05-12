@@ -57,3 +57,7 @@ function, this approach iteratively fits the Rt trend to the provided death
 data and returns a nimue_simulation object for future usage in scenario
 modelling.
 }
+\details{
+This function is progressr enabled, so progressr::handlers(global = TRUE)
+can be used to view progress through the samples.
+}

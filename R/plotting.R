@@ -259,7 +259,7 @@ get_immunity_ratios_vaccine <- function(out, max_date = NULL) {
 #'@export
 country_immunity_plot <- function(df, min_date, date_0, vjust = -1.2, R0 = FALSE, Rt = FALSE, Reff = TRUE) {
   g1 <- ggplot2::ggplot(df %>% dplyr::filter(
-    .data$date > min_date & .data$date <= as.Date(as.character(date_0+as.numeric(lubridate::wday(date_0)))))) +
+    .data$date > min_date & .data$date <= as.Date(as.character(date_0 + as.POSIXlt(date_0)$wday + 1)))) +
     ggplot2::geom_hline(yintercept = 1, linetype = "dashed") +
     ggplot2::theme_bw() +
     ggplot2::theme(axis.text = ggplot2::element_text(size=12)) +
@@ -267,7 +267,7 @@ country_immunity_plot <- function(df, min_date, date_0, vjust = -1.2, R0 = FALSE
     ggplot2::ylab("Reff") +
     ggplot2::scale_x_date(breaks = "2 weeks",
                  limits = as.Date(c(as.character(min_date),
-                                    as.character(date_0+as.numeric(lubridate::wday(date_0))))),
+                                    as.character(date_0 + as.POSIXlt(date_0)$wday + 1))),
                  date_labels = "%d %b",
                  expand = c(0,0)) +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, colour = "black"),

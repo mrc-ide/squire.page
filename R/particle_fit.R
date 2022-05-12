@@ -5,6 +5,9 @@
 #' data and returns a nimue_simulation object for future usage in scenario
 #' modelling.
 #'
+#' This function is progressr enabled, so progressr::handlers(global = TRUE)
+#' can be used to view progress through the samples.
+#' 
 #' @param data A data frame of deaths occuring over a given time frame. Given in the
 #' format: deaths(integer), date_start(date), date_end(date). Must have at least
 #' one death period in each set of Rt trend changes (i.e. a 14 day period by
@@ -99,6 +102,8 @@ particle_fit <- function(data, distribution, squire_model, parameters,
   } else {
     map_func <- purrr::map
   }
+
+  p <- progressr::progressor(steps = length(distribution), enable = TRUE)
   particle_output <- map_func(
     purrr::map(distribution, ~append(.x, parameters)),
     function(parameters, data, initial_r, initial_infections, proposal_width, n_particles, k, squire_model){
@@ -179,6 +184,9 @@ particle_fit <- function(data, distribution, squire_model, parameters,
 
       #diagnostics are null for now
       diagnostics <- NULL
+
+      #update progressr
+      p()
 
       #output values
       list(
