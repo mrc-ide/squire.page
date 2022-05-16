@@ -56,7 +56,7 @@ This package depends on both [nimue](https://github.com/mrc-ide/nimue) and
 ``` r
 #devtools::install_github("mrc-ide/squire")
 #devtools::install_github("mrc-ide/nimue")
-devtools::install_github("mrc-ide/lmicReportsExtra")
+devtools::install_github("mrc-ide/squire.page")
 ```
 
 ## To Do:
