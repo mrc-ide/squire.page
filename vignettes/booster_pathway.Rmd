@@ -34,8 +34,10 @@ Compartment definitions are as follows:
 * $uV$ Un-vaccinated population,
 * $pV_i$ Partially vaccinated/protected population (i.e. first dose of a two dose regimen),
 * $fV_i$ Fully vaccinated/protected population (i.e. both doses of a two dose regimen).
-Partial and full dose compartments both feed into waned compartments that represent reduced vaccine efficacy over time.
-Transition rates are defined as:
+
+Partial and full dose compartments both feed into waned compartments that 
+represent reduced vaccine efficacy over time. Transition rates are defined as:
+
 * $fD_t$ Daily time-series of first doses,
 * $sD_t$ Daily time-series of second doses,
 * $bD_t$ Daily time-series of booster doses,
@@ -135,8 +137,8 @@ Waning Rates:
 * $w_1$ = 0.009757324 (102.5 days)
 * $w_2$ = 0.019463164 (51.4 days)
 
-To calculate these values we utilised an approach taken previously looking at
-waning vaccine efficacy via AB titres ([Report 48](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-48-global-omicron/)). We took our assumed 
+To calculate these values we utilised an approach taken previously with waning 
+vaccine efficacy via AB titres ([Report 48](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-48-global-omicron/)). We took our assumed 
 non-waned efficacies and then created an median waning curve from these values.
 Then we fit the waning rates and waned compartment values to recreate these curves.
 The plots of these fits are shown below.

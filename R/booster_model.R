@@ -28,6 +28,7 @@ nimue_booster_model <- function(use_dde = TRUE) {
                               dur_R = vaccine_pars_booster$dur_R,
                               tt_dur_R = vaccine_pars_booster$tt_dur_R,
                               dur_V = vaccine_pars_booster$dur_V,
+                              tt_dur_V = vaccine_pars_booster$tt_dur_V,
                               vaccine_efficacy_infection = vaccine_pars_booster$vaccine_efficacy_infection,
                               tt_vaccine_efficacy_infection = vaccine_pars_booster$tt_vaccine_efficacy_infection,
                               vaccine_efficacy_disease = vaccine_pars_booster$vaccine_efficacy_disease,
@@ -95,6 +96,7 @@ nimue_booster_model <- function(use_dde = TRUE) {
                dur_R = dur_R,
                tt_dur_R = tt_dur_R,
                dur_V = dur_V,
+               tt_dur_V = tt_dur_V,
                vaccine_efficacy_infection = vaccine_efficacy_infection,
                tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
                vaccine_efficacy_disease = vaccine_efficacy_disease,
@@ -187,6 +189,7 @@ default_vaccine_pars_booster <- function() {
   list(dur_R = Inf,
        tt_dur_R = 0,
        dur_V = c(1/0.01015148, 1/0.009757324, 1/0.019463164),
+       tt_dur_V = 0,
        vaccine_efficacy_infection = matrix(
          c(0.55, 0, 0.75, 0.100744678, 0.002989531), ncol = 17, nrow = 5,
          dimnames = list(c("pV_1", "pV_2", "fV_1", "fV_2", "fV_3"))
@@ -273,6 +276,7 @@ parameters_booster <- function(
 
   # Vaccine
   dur_V,
+  tt_dur_V,
   vaccine_efficacy_infection,
   tt_vaccine_efficacy_infection,
   vaccine_efficacy_disease,
@@ -384,7 +388,6 @@ parameters_booster <- function(
   nimue:::assert_pos(dur_not_get_mv_survive)
   nimue:::assert_pos(dur_not_get_mv_die)
   nimue:::assert_pos(dur_R)
-  nimue:::assert_pos(dur_V)
   nimue:::assert_pos(time_period)
   nimue:::assert_pos(hosp_bed_capacity)
   nimue:::assert_pos(ICU_bed_capacity)
@@ -457,7 +460,6 @@ parameters_booster <- function(
   gamma_not_get_mv_die = 2 * 1/dur_not_get_mv_die
   gamma_rec = 2 * 1/dur_rec
   gamma_R <- 2 * 1/dur_R
-  gamma_V <- 1/dur_V
 
   if (is.null(beta_set)) {
     baseline_matrix <- squire:::process_contact_matrix_scaled_age(contact_matrix_set[[1]], population)
@@ -474,7 +476,15 @@ parameters_booster <- function(
   p_dist <- p_dist/mean(p_dist)
 
   # Format vaccine-specific parameters
-  gamma_vaccine <- c(0, gamma_V[1], 0, gamma_V[2:3], 0)
+  if(typeof(dur_V) == "list"){
+    gamma_vaccine <- purrr::map(dur_V, ~c(0, 1/.x[1], 0, 1/.x[2:(6 - 3)], 0)) %>%
+      unlist() %>%
+      matrix(ncol = 6, nrow = length(tt_dur_V), byrow = TRUE)
+    tt_dur_vaccine <- tt_dur_V
+  } else {
+    gamma_vaccine <- matrix(c(0, 1/dur_V[1], 0, 1/dur_V[2:(6 - 3)], 0), nrow = 1)
+    tt_dur_vaccine <- 0
+  }
 
   rel_infectiousness_vaccinated <- format_rel_inf_vacc_for_odin_booster(rel_infectiousness_vaccinated)
 
@@ -552,7 +562,8 @@ parameters_booster <- function(
                  vaccine_coverage_mat = vaccine_coverage_mat,
                  N_vaccine = 6,
                  N_prioritisation_steps = nrow(vaccine_coverage_mat),
-                 gamma_vaccine = gamma_vaccine))
+                 gamma_vaccine = gamma_vaccine,
+                 tt_dur_vaccine = tt_dur_vaccine))
 
   class(pars) <- c("booster_vaccine_parameters", "vaccine_parameters", "nimue_parameters")
 
@@ -814,6 +825,8 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
 #' @param tt_dur_R Timing of changes in duration of natural immunity.
 #' @param dur_V Mean duration of vaccine-derived immunity (days) for partial protection and full protection. Should be a
 #'   numeric vector of length 3, corresponding to the duration of time in each waned compartmenet after recieving a first dose and then for the two second dose compartments.
+#'   Alternatively can be a list of values if this changes over time.
+#' @param tt_dur_V List of change times for dur_V.
 #' @param vaccine_efficacy_infection Efficacy of vaccine against infection.
 #'   This parameter must either be a length 5 numeric (a single efficacy for
 #'   each vaccine state (first dose, waned first dose, second dose, and two waned second dose compartments))
@@ -919,6 +932,7 @@ run_booster <- function(
   dur_R = vaccine_pars_booster$dur_R,
   tt_dur_R = vaccine_pars_booster$tt_dur_R,
   dur_V = vaccine_pars_booster$dur_V,
+  tt_dur_V = vaccine_pars_booster$tt_dur_V,
   vaccine_efficacy_infection = vaccine_pars_booster$vaccine_efficacy_infection,
   tt_vaccine_efficacy_infection = vaccine_pars_booster$tt_vaccine_efficacy_infection,
   vaccine_efficacy_disease = vaccine_pars_booster$vaccine_efficacy_disease,
@@ -995,6 +1009,7 @@ run_booster <- function(
                      tt_hosp_beds = tt_hosp_beds,
                      tt_ICU_beds = tt_ICU_beds,
                      dur_V = dur_V,
+                     tt_dur_V = tt_dur_V,
                      vaccine_efficacy_infection = vaccine_efficacy_infection,
                      tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
                      vaccine_efficacy_disease = vaccine_efficacy_disease,
