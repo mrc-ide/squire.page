@@ -16,7 +16,9 @@ rt_optimise(
   initial_infections = 100,
   proposal_width = 0.5,
   n_particles = 14,
-  k = 2
+  k = 2,
+  rt_upper_bound_max = 20,
+  rt_upper_bound_min = 5
 )
 }
 \arguments{
@@ -47,6 +49,10 @@ should be formatted relative to this date, where necessary.}
 \item{n_particles}{How many particles to explore uniformly across that range, default = 7.}
 
 \item{k}{Control the dispersion on the negative binomial likelihood, default = 2.}
+
+\item{rt_upper_bound_max}{Largest value the upper bound of rt values explored can take, avoids estimate absurd Rt values, default = 20.}
+
+\item{rt_upper_bound_min}{Lowest value the upper bound of rt values explored can take, avoids Rt values getting stuck below 1, default = 5.}
 }
 \value{
 An object of type rt_optimised, (model type).
