@@ -128,13 +128,13 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
       #generate function that returns the deaths from this output
       deaths_function <- generate_deaths_function(model)
       #basic likelihood function
-      likelihood <- function(Rt, rt_index, initial_state){
+      likelihood <- function(Rt, rt_index, initial_state, Rt_prev){
         this_data <- split_data[[rt_index]]
         #get deaths for entire rt period until end of death period, this way index in this_data is the correct position in this time series
         cumulative_deaths <- deaths_function(Rt, rt_df$rt_change_t[rt_index], rt_df$death_end_t[rt_index], initial_state)
         deaths <- cumulative_deaths[this_data$index_end] - cumulative_deaths[this_data$index_start]
-        #call generic likelihood function
-        ll_negative_binomial(deaths, this_data$deaths, k)
+        #call generic likelihood function, add penalty for distance from current Rt value
+        ll_negative_binomial(deaths, this_data$deaths, k)# + dnorm(Rt, mean = Rt_prev, sd = 2, log = TRUE)
       }
       #function to get the initial state value from a model
       get_initial_state <- function(Rt, rt_index, initial_state){
@@ -146,11 +146,12 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
         update_initial_state(initial_state, model_output)
       }
       #R0 specific likelihood function
-      R0_likelihood <- function(R0, initial_infections){
+      R0_likelihood <- function(R0, initial_infections, initial_R0){
         #get the initial state as per country parameters
         initial_state <- setup_parameters(squire_model, parameters)
         likelihood(Rt = R0, rt_index = 1, initial_state =
-                     assign_infections(initial_state, initial_infections)
+                     assign_infections(initial_state, initial_infections),
+                   Rt_prev = initial_R0
         )
       }
       R0_initial_state <- function(R0, initial_infections){

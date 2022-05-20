@@ -143,7 +143,7 @@ get_time_series <- function(squire_model, parameters, data, rt_spacing){
   #remove any trends that occures on or before 0, we add R0 later anyway
   rt_change_t <- rt_change_t[rt_change_t > 0]
   #ensure no changes estimated in last max delay period, (i.e. don't estimate an Rt in the last ~20 days)
-  to_remove <- which(rt_change_t > utils::tail(data$t_end, 1) - rt_death_delay$max)
+  to_remove <- which(rt_change_t > utils::tail(data$t_end, 1) - (rt_death_delay$max))
   if(length(to_remove) > 0){
     rt_change_t <- c(0, rt_change_t[-to_remove])
   } else {
@@ -185,6 +185,7 @@ particle_optimise_R0 <- function(initial_r, initial_infections, n_particles, pro
   repeat_limit <- 5
   repeats <- 0
   searching <- TRUE
+  central_value <- initial_r
   while(searching){
     values <- data.frame(
       #get the range of Rt values
@@ -197,7 +198,7 @@ particle_optimise_R0 <- function(initial_r, initial_infections, n_particles, pro
       dplyr::rowwise() %>%
       dplyr::mutate(
         #calculate their likelihood, with catch if it fails
-        ll = tryCatch(R0_likelihood(.data$R0, .data$initial_infections),
+        ll = tryCatch(R0_likelihood(.data$R0, .data$initial_infections, central_value),
                  error = function(e){-Inf} #negative infinity so it is not picked
         )
       ) %>%
@@ -239,13 +240,14 @@ particle_optimise_Rt <- function(rt, initial_state, rt_index, n_particles, propo
   repeat_limit <- 5
   repeats <- 0
   searching <- TRUE
+  central_value <- rt
   while(searching){
     #get values to explore
     rt_to_explore <- get_Rt_to_explore(rt, proposal_width, n_particles, rt_upper_bound_max, rt_upper_bound_min)
     #calculate R0
     ll <- purrr::map_dbl(rt_to_explore, function(this_rt){
       #add a catch if this fails
-      tryCatch(likelihood(this_rt, rt_index, initial_state),
+      tryCatch(likelihood(this_rt, rt_index, initial_state, central_value),
                error = function(e){-Inf} #rerun negative infinity so it is not picked
       )
     })
@@ -285,7 +287,7 @@ get_Rt_to_explore <- function(rt, proposal_width, n_particles, rt_upper_bound_ma
 #'
 #' @noRd
 ll_negative_binomial <- function(model_deaths, data_deaths, k){
-  model_deaths <- dplyr::if_else(model_deaths < 0, 10^-10, model_deaths)
+  model_deaths <- dplyr::if_else(model_deaths < 0, 10^-10, as.numeric(model_deaths))
   #calculate likelihood for each time-period then sum
   squire:::ll_nbinom(
     data = data_deaths,

@@ -301,6 +301,29 @@ plot.rt_optimised <- function(x, q = c(0.025, 0.975), replicates = TRUE, summari
     ggplot2::theme_bw() +
     ggplot2::guides(col = ggplot2::guide_legend(ncol = 2))
 }
+#' Calls plot.rt_optimised and adds excluded fits . Not intended for use otherwise.
+#'
+#' @param x rt_optimised output object
+#' @param replicates Plot replicates
+#' @param summarise Logical, add summary line
+#' @param ci logical add confidence interval ribbon
+#' @param q Quantiles for upper and lower of interval ribbon
+#' @param particle_fit For compatibility, if TRUE deaths are cumulative, else deaths are daily
+#' @param ... placeholder for compatibility does nothing.
+#'
+#' @export
+plot.rt_optimised_trimmed <- function(x, q = c(0.025, 0.975), replicates = TRUE, summarise = FALSE, ci = TRUE, particle_fit = FALSE, ...){
+  gg <- plot.rt_optimised(x = x, q = q, replicates = replicates, summarise = summarise, ci = ci, partcile_fit = particle_fit, ...)
+  #get the excluded trajcetories
+  x$output <- x$excluded$output
+  df <- nimue_format(x, "D", date_0 = x$inputs$start_date) %>%
+    dplyr::group_by(.data$replicate)
+  if(particle_fit){
+    df <- dplyr::mutate(df, y = diff(c(0, .data$y)))
+  }
+  gg +
+    ggplot2::geom_line(df, ggplot2::aes(x = .data$date, y = .data$y), colour = "yellow", line.type = "dashed")
+}
 #' S3 Generic to get total susceptible population
 #' @noRd
 get_parameters <- function(model_out){
@@ -350,7 +373,7 @@ setup_parameters.nimue_model <- function(model_obj, parameters){
   }
   #fill contact matrix if missing
   if(!"contact_matrix_set" %in% names(parameters)){
-    parameters$contact_matrix_set <- 
+    parameters$contact_matrix_set <-
       squire::get_mixing_matrix(parameters$country)
   }
   #fill tt_contact_matrix if missing
@@ -389,7 +412,7 @@ setup_parameters.nimue_model <- function(model_obj, parameters){
   if(!"dt" %in% names(parameters)){
     parameters$dt <- 1
   }
-  
+
   do.call(model_obj$parameter_func, parameters)
 }
 #' An S3 generic for estimating Beta
@@ -401,7 +424,7 @@ beta_est <- function(squire_model, model_params, R0) {
 #' @param squire_model A model object
 #' @param model_params Parameters for the model
 #' @param R0 R0/Rt value to translate into beta
-#' @export 
+#' @export
 beta_est.default <- function(squire_model, model_params, R0) {
   squire:::beta_est(squire_model, model_params, R0)
 }
@@ -409,7 +432,7 @@ beta_est.default <- function(squire_model, model_params, R0) {
 #' @param squire_model A model object
 #' @param model_params Parameters for the model
 #' @param R0 R0/Rt value to translate into beta
-#' @export 
+#' @export
 beta_est.booster_model <- function(squire_model, model_params, R0) {
   #treat this as nimue
   class(squire_model) <- c("nimue_model", "squire_model")
