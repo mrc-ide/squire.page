@@ -1,0 +1,212 @@
+---
+title: "New Fitting Method: Rt Optimisation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{rt_optimise}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(squire.page)
+```
+
+This vignette describes the new fitting method where we optimise the $R_t$ values 
+for a set of given parameters.
+
+# Method Outline
+
+## Descriptive
+
+Inputs are assumed to be a set of distributions for the non $R_t$ parameters and
+a set of deaths that occur over set time periods, so $D_i$ deaths occur over the
+time period $[t_{f,i}, t_{s,i}]$ for each $i \in 1$ to $T_D$. We assume that the
+epidemic begins at time 0. We define our parameters to vary in the fitting 
+process as $\boldsymbol{R} = \{R_t;\ t\in 0\mathrm{\ to\ }T_R\}$. Each $R_t$ to 
+comes into effect at time $t_{R_t}$, by default this every 14 days with 
+$T_R = T_D - \max{\boldsymbol{\lambda}}$.
+
+1. Generate $N$ samples from our assumed distributions on our non $R_t$ 
+parameters.
+This will be discussed more in the section on *Parameter Uncertainty*.
+2. Determine which deaths will be used to fit each $R_t$. Using the structure of
+the model we calculate the average time from infection to death (given death is 
+the outcome). This should match the delay between the $R_t$ value changing and 
+its effect on the modelled deaths. This value depends on the duration parameters
+given to the model and on the number of hospital or ICU beds available, hence we
+determine all 4 possible durations, $\boldsymbol{\lambda}$.
+We define the relevant deaths for an $R_t$ by choosing all deaths that lie 
+within widest possible window that our $R_t$ value could directly effect, meaning
+any death that has its entire time period occur within the bounds
+$[t_{R_t} + \min(\boldsymbol{\lambda}), t_{R_{t+1}} + \max(\boldsymbol{\lambda})]$.
+    1. For $R_0$ we set the bounds to $[0, t_{R_{1}} + \max(\boldsymbol{\lambda})]$,
+    and for $R_{T_R}$ we set the bounds to ${t_{R_{T_R}} + \min(\boldsymbol{\lambda}), t_{s,T_D}}$.
+    2. For simplity we will define $\boldsymbol{i_{R_t}} = \{i;\ t_{s,i} \geq t_{R_t} + \min(\boldsymbol{\lambda})\ \&\ t_{f,i} \leq \max(\boldsymbol{\lambda})\}$, which the indexes of all deaths that occur within
+    $R_t$'s fitting period
+3. For each distinct sample from the parameter distributions:
+    1. Begin the estimation procedure by estimating $R_0$ and $I_0$, the 
+    initial number of infections. $I_0$ is uniformly spread across the unvaccinated
+    working age population.
+    2. When calculating the range of parameters to explore in our fitting we 
+    centre on the previous $R_t$ value (in $R_0$'s case 3) and calculate 
+    upper and lower bounds based on a user provided width parameter $0< \alpha < 1$.
+    This is naturally bounded below by 0 and we set hard limits so that the upper
+    bound lies between 20 and 5. With these bounds we then uniformly sample $N_p$
+    values from across this range. We can call this the set $P_{x}$ where $x$ is
+    the parameter we are intending to fit.
+    3. To find our optimal values for $R_0$ and $I_0$ we get every combination
+    of element from $P_{R_0}$ and $P_{I_0}$ and calculate their log-likelihoods
+    based upon the negative binomial distribution with a mean equal to the 
+    modelled deaths and $k$ a user defined dispersion parameter on $D_i$, the deaths
+    that fall within $R_0$ fitting window as per *step 2*. We then take the pair
+    with the largest likelihood as our values for $R_0$ and $I_0$. If we select
+    a pair on the boundary of the explored space we repeat this process with
+    a new $P_{x}$ recentred on the selected values.
+    4. Using $R_0$ and $I_0$ we calculate the state of the models compartments
+    at time $t_{R_1}$, which we will call $\boldsymbol{I_{R_1}}$.
+    5. For each $R_t \in \boldsymbol{R}/R_0$:
+        1. Calculate our range of values to consider $P_{R_{t}}$ using 
+        $R_{t-1}$ as the centre.
+        2. Use $\boldsymbol{I_{R_t}}$ to calculate the log-likelihood for 
+        each element of $P_{R_t}$ over all $D_i$ such that $i \in \boldsymbol{i_{R_t}}$.
+        3. Choose the element of $P_{R_t}$ with the maximum likelihood as $R_t$.
+        4. With $R_t$ and $\boldsymbol{I_{R_t}}$ calculate $\boldsymbol{I_{R_{t+1}}}$
+        which occurs at time $t_{R_t + 1}$.
+4. Should end up with a set $\boldsymbol{R}$ for each sample such that modelled 
+deaths are similar to the observed deaths.
+
+## Mathematical
+
+Let $\boldsymbol{p}$ be a set of non-$R_t$ model parameters.
+Then let $m_{I}(\boldsymbol{p}, \boldsymbol{I_{R_{t}}}, R_t, t)$ be a function that returns the model
+state at time $t$, given the state of the model when $R_{t+1}$ comes into effect,
+and $m_{d}(\boldsymbol{p}, \boldsymbol{I_{R_t}}, R_t, t_s, t_f)$ be a function that 
+produces the number of deaths in the model occuring over time period $[t_s, t_f]$.
+
+
+For each $\boldsymbol{p}$:
+
+1. $$
+\{R_0, I_0\} = \mathrm{argmax}_{x,y \in \boldsymbol{P_{R_0}} \times \boldsymbol{P_{I_0}}}\left(
+  \prod_{i \in \boldsymbol{i_{R_0}}}\frac{\Gamma(D_i + n_i)}{\Gamma(n_i)D_i!}(1-p_i)^{D_i}p_i^{n_i}
+\right),
+$$
+where:
+$$
+p_i = \frac{k}{k + \mu_i},\ n_i = \frac{p_i \times \mu_i}{1-p_i} ,\ \ \mu_i =  m_d(\boldsymbol{p}, y, x, t_{s,i}, t_{f,i}).
+$$
+2. $\boldsymbol{I_{R_1}} = m_I(\boldsymbol{p}, I_0, R_0, t_{R_1})$, note that we
+treat $I_0$ and $\boldsymbol{I_{R_0}}$ interchangeably here.
+3. For each element of $\{t; t>0\ \&\ R_t \in \boldsymbol{R}\}$
+    1. $$
+    R_t = \mathrm{argmax}_{x \in \boldsymbol{P_{R_t}}}\left(
+    \prod_{i \in \boldsymbol{i_{R_t}}}\frac{\Gamma(D_i + n_i)}{\Gamma(n_i)D_i!}(1-p_i)^{D_i}p_i^{n_i} \right)
+    $$
+    where:
+    $$
+    p_i = \frac{k}{k + \mu_i},\ \ n_i = \frac{p_i \times \mu_i}{1-p_i},\ \ \mu_i =  m_d(\boldsymbol{p}, \boldsymbol{I_{R_t}}, x, t_{s,i}, t_{f,i}).
+    $$
+    2. $\boldsymbol{I_{R_{t+1}}} = m_I(\boldsymbol{p}, \boldsymbol{I_{R_{t}}}, R_t, t_{R_{t+1}})$
+
+## Diagram
+
+```{r out.width="600px", fig.align = "center", echo=F}
+knitr::include_graphics("./rt_optimise_example_annotated.png")
+```
+
+In this diagram, the black lines represent the estimate excess mortality data
+and the coloured lines are the deaths produced by the chosen for each $R_t$.
+
+# Parameter Uncertainty
+
+Current thinking on the non $R_t$ parameters to vary:
+
+* Infection Fatality Ratio: To keep these simple we draw $s \sim Beta(2, 2)$ 
+and scale the age specific IFRs in [report 34](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-34-ifr/)
+between their median and upper and lower $95\%$ CIs, rescaling proportions of deaths
+occurring in ICU where necessary.
+
+* Mean Duration of Natural Immunity: $\mathrm{Gamma}(20, 4/73)$, has mean $365$
+with $(223, 541) 95\%$ quantiles.
+
+* Delta and Omicron Immune Escape Percentages: $\mathrm{Beta}(1.014, 2)$ and 
+$\mathrm{Beta}(2.54, 2)$ with medians $29.8\%$ and $56.9\%$, and $95\%$ quantiles of 
+$(1.32\%, 84.3\%)$, and $(14.9\%, 92.2\%)$.
+
+* Delta and Omicron Change in Hospitalisation: 
+$\mathrm{Lognormal}(\log(1.45), 0.15)$ and 
+$\mathrm{Lognormal}(\log(0.59), 0.08)$ with medians $1.45$ and $0.59$ with $95\%$ 
+quantiles $(1.08, 1.94)$ and $(0.5, 0.69)$.
+
+* Omicron Change in Severity: $\mathrm{Lognormal}(\log(0.34), 0.45)$ with 
+median $0.34$ and $95\%$ quantile $(0.14, 0.82)$.
+
+* Vaccine Efficacies: As the vaccine efficacy profiles in the booster version of
+*nimue* are fitted to the AB waning process from *safir* its not feasible to
+draw from a distribution for the efficacies, instead we will (for each variant and dose)
+draw from a set of 10 pre-calculated efficacy profiles. These profiles will be 
+calculated from the Beta distribution with the following parameters:
+
+```{r, echo = FALSE}
+var <- 0.001
+tribble(
+  ~Variant, ~Dose, ~Protection, ~Efficacy,
+  "Wild", "Partial", "Infection", 0.6,
+  "Wild", "Full", "Infection", 0.8,
+  "Wild", "Partial", "Disease", 0.8,
+  "Wild", "Full", "Disease", 0.98,
+  "Delta", "Partial", "Infection", 0.224,
+  "Delta", "Full", "Infection", 0.646,
+  "Delta", "Partial", "Disease", 0.75,
+  "Delta", "Full", "Disease", 0.94,
+  "Omicron", "Full", "Infection", 0.1,
+  "Omicron", "Partial", "Disease", 0.4192211,
+  "Omicron", "Full", "Disease", 0.5254237
+) %>% 
+  rowwise() %>% 
+  mutate(
+    mean = Efficacy,
+    Alpha = mean*(mean*(1-mean)/var - 1),
+    Beta = (Alpha - mean*Alpha)/mean,
+    Alpha = signif(Alpha, 3),
+    Beta = signif(Beta, 3),
+    `Mean` = round(mean*100, 1),
+    `95% Quantile` = paste0(round(qbeta(c(0.025, 0.975), Alpha, Beta) * 100, 1), collapse = ", ")
+  ) %>% 
+  select(Variant, Dose, Protection, Alpha, Beta, Mean, `95% Quantile`) %>% 
+  knitr::kable()
+```
+Note that we assume that the efficacy for protection against infection for a 
+partial dose against Omicron is 0.
+
+# Limitations
+
+With the current vaccine framework it will be difficult to include vaccine
+efficacy profiles that are unique to each type of vaccine in use. Will also be
+tricky to combine as in the vaccine impact paper.
+
+Current method for generating $\boldsymbol{P_x}$ is not optimal, if it hits a boundary it 
+partially re-covers the same area of the $R_t$ space. It also evenly distributes
+"particles" across the space meaning a higher number of particles is required for
+an accurate fit.
+
+Anecdotally, the framework seems to produce dramatic $R_t$ trends especially
+with no penalty against a large change from the previous $R_t$ value.
+
+# Work in Progress
+
+Current in the works is a function to remove poorly fitting trajectories based
+upon least squares error from the excess mortality curve. This should allow
+for impossible fits (i.e. low IFR and high VE in a high mortality country) to
+be removed.
+
+Variant adjustments should be brought in line with RTM group estimates, with 
+overhaul to the introductions (to allow for uncertainty) and potentially add
+in changes with the Alpha variant.
