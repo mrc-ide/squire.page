@@ -4,7 +4,7 @@ Version: 0.0.0.9000
 Authors@R: 
     person("Gregory", "Barnsley", , "g.barnsley@imperial.ac.uk", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7972-0737"))
-Description: Contains miscalanious functions used in the repo global-lmic-reports-orderly and other packages that utilise squire or nimue fits. These functions are kept externally to keep them consistent across mutliple repositories and multiple orderly tasks.
+Description: Contains miscellaneous functions used in the repo global-lmic-reports-orderly and other packages that utilise squire or nimue fits. These functions are kept externally to keep them consistent across multiple repositories and multiple orderly tasks.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -37,6 +37,9 @@ Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
+Remotes:
+    mrc-ide/squire,
+    mrc-ide/nimue
 Config/testthat/edition: 3
 Depends: 
     R (>= 2.10)

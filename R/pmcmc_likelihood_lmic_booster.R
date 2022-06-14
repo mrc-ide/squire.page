@@ -43,6 +43,7 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
   date_hosp_bed_capacity_change <- interventions$date_hosp_bed_capacity_change
   date_vaccine_change <- interventions$date_vaccine_change
   date_vaccine_efficacy_change <- interventions$date_vaccine_efficacy_change
+  date_dur_V_change <- interventions$date_dur_V_change
 
   # change betas
   if (is.null(date_R0_change)) {
@@ -161,6 +162,29 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
 
     if(length(tt_list$tt) == 1){
       dim(model_params$prob_hosp) <- c(1, dim(model_params$prob_hosp))
+    }
+  }
+
+  #and duration of vaccine protection
+  if (is.null(date_dur_V_change)) {
+    tt_dur_vaccine <- 0
+  } else {
+
+    # here we just pass the change as a position vector as we need to then
+    # index the array of vaccine efficacies
+    tt_list <- squire:::intervention_dates_for_odin(dates = date_dur_V_change,
+                                                    change = seq_along(interventions$dur_V)[-1],
+                                                    start_date = start_date,
+                                                    steps_per_day = round(1/model_params$dt),
+                                                    starting_change = 1)
+
+    model_params$tt_dur_vaccine <- tt_list$tt
+
+    # here we have to not index the array by the position vectors that are returned by intervention_dates_for_odin
+    model_params$gamma_vaccine <- model_params$gamma_vaccine[tt_list$change,]
+
+    if(length(tt_list$tt) == 1){
+      dim(model_params$gamma_vaccine) <- c(1, dim(model_params$gamma_vaccine))
     }
   }
 
