@@ -3,7 +3,7 @@ pkgdown: 2.0.4
 pkgdown_sha: ~
 articles:
   booster_pathway: booster_pathway.html
-last_built: 2022-06-14T11:03Z
+last_built: 2022-06-14T11:04Z
 urls:
   reference: https://mrc-ide.github.io/squire.page/reference
   article: https://mrc-ide.github.io/squire.page/articles
