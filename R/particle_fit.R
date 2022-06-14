@@ -50,7 +50,7 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
   data <- dplyr::arrange(data, .data$date_start) %>%
     dplyr::filter(.data$date_start > start_date) #must have occured after start date
   assert_particle_data_df(data)
-  if(!("squire_model" %in% class(squire_model))){
+  if(!inherits(squire_model, "squire_model")){
     stop("squire_model must be an object inheriting from class squire_model")
   }
   assert_distribution(distribution)
@@ -194,12 +194,20 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
       )$Rt_trend
 
       #calculate final model output for the whole time period covered by the data
-      model_output <- model(rt_trend, t_start = 0,
+      model_output <- tryCatch(model(rt_trend, t_start = 0,
                             t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
                             initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
                             tt_Rt = rt_df$rt_change_t,
                             #run with higher tolerance, the odin model should never fail in the fitting though it can here
-                            atol = 10^-8, rtol = 10^-8)
+                            atol = 10^-8, rtol = 10^-8), error = function(e){NULL})
+      if(is.null(model_output)){
+        tryCatch(model(rt_trend, t_start = 0,
+                       t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
+                       initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
+                       tt_Rt = rt_df$rt_change_t,
+                       #run with higher tolerance, the odin model should never fail in the fitting though it can here
+                       atol = 10^-10, rtol = 10^-10), error = function(e){NULL})
+      }
 
       #diagnostics are null for now
       diagnostics <- NULL
@@ -221,9 +229,19 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
     },
     data, initial_r, initial_infections, proposal_width, n_particles, k, squire_model
   )
+  #remove null model objects where the solver has failed
+  failed <- purrr::map_lgl(particle_output, ~is.null(.x$model_output))
+  if(sum(failed) > 0){
+    message(paste0(sum(failed), " draws failed to solve, removing from output, see $diagnostics$failed for the removed distribution entries"))
+    particle_output <- particle_output[-which(failed)]
+    failed_distributions <- distribution[which(failed)]
+    distribution <- distribution[-which(failed)]
+  } else {
+    failed_distributions <- list()
+  }
   #return model object
   #get the model itself with basic parameters with a catch for different formats this takes
-  if(class(squire_model$odin_model) == "function"){
+  if(inherits(squire_model$odin_model, "function")){
     odin_model <- squire_model$odin_model(user = setup_parameters(squire_model, parameters),
                                         unused_user_action = "ignore")
   } else {
@@ -258,6 +276,9 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
       start_date = start_date,
       data = data,
       k = k
+    ),
+    diagnostics = list(
+      failed = failed_distributions
     )
   )
   #add a tag if vaccine model

@@ -1,6 +1,6 @@
 #'
 #'@export
-extend_vaccine_inputs <- function(vacc_inputs, time_period, out, date_0) {
+extend_vaccine_inputs <- function(vacc_inputs, time_period, out, end_date) {
 
   if("max_vaccine" %in% names(vacc_inputs)){
     # weekly mean vaccine distributions
@@ -8,7 +8,10 @@ extend_vaccine_inputs <- function(vacc_inputs, time_period, out, date_0) {
 
     # assume at least 20% vaccinated by end of the year for meeting covax deadlines
     if(max_vaccine == 0) {
-      max_vaccine <- round((sum(out$parameters$population)*0.2)/as.integer((as.Date("2021-12-31")-date_0)))
+      end_of_year <- end_date
+      lubridate::`month<-`(end_of_year, 12)
+      lubridate::`day<-`(end_of_year, 31)
+      max_vaccine <- round(sum(get_parameters(out)$pop)*0.2/as.integer(end_of_year-end_date))
     }
     tt_vaccine <- 0
 

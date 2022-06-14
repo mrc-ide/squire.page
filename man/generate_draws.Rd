@@ -2,19 +2,15 @@
 % Please edit documentation in R/simulate.R
 \name{generate_draws}
 \alias{generate_draws}
-\title{Generate Draws from pmcmc run}
+\title{Generate Draws from a model fit.}
 \usage{
-generate_draws(out, pars.list = NULL, draws = 10)
+generate_draws(out, ...)
 }
 \arguments{
-\item{out}{Output of \code{squire::pmcmc}}
+\item{out}{Output from a fitted MCMC or Rt Optimise}
 
-\item{pars.list}{Output of generate_parameters(), default = NULL calls
-generate_parameters.}
-
-\item{draws}{Number of draws from mcmc chain. Default = 10, if NULL then uses
-replicate_parameters as the parameters}
+\item{...}{method specific arguments.}
 }
 \description{
-Uses furrr, so can be called in parallel.
+Appends the simulated values to \code{$output}.
 }

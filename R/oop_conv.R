@@ -413,7 +413,14 @@ setup_parameters.nimue_model <- function(model_obj, parameters){
     parameters$dt <- 1
   }
 
-  do.call(model_obj$parameter_func, parameters)
+  #if initial infections is not null we add them at the end
+  if(!is.null(parameters$initial_infections)){
+    initial_inf <- parameters$initial_infections
+    parameters$initial_infections <- NULL
+    assign_infections(do.call(model_obj$parameter_func, parameters), initial_inf)
+  } else {
+    do.call(model_obj$parameter_func, parameters)
+  }
 }
 #' An S3 generic for estimating Beta
 #' @noRd

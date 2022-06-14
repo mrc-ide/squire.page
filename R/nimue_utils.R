@@ -50,7 +50,6 @@ nimue_format <- function(out,
   if("rt_optimised" %in% class(out)){
     out$parameters$day_return <- TRUE
     out$parameters$replicates <- length(out$samples)
-    #RESOVLE THE ISSUES WITH SUMMARIES
   }
 
   #a check for if a squire object then we use that instead
@@ -152,6 +151,7 @@ nimue_format <- function(out,
 
   # fix the infection
   if (inf_fix) {
+    #ISSUE: GAMMA E CAN CHANGE OVER TIME!!!
     pd$y[pd$compartment == "E2"] <- pd$y[pd$compartment == "E2"] * get_parameters(out)$gamma_E
     pd$compartment <- as.character(pd$compartment)
     pd$compartment[pd$compartment == "E2"] <- "infections"
@@ -166,15 +166,37 @@ nimue_format <- function(out,
     })) %>%
       dplyr::rename(y = .data$value) %>% dplyr::ungroup()
 
-    prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_hosp_inc$age_group)]
-    pd_hosp_inc$y <- out$odin_parameters$gamma_ICase * pd_hosp_inc$y * (1 - prob_severe_age)
-    pd_hosp_inc$compartment <- "hospital_incidence"
+    if(!"rt_optimised" %in% class(out)){
+      prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_hosp_inc$age_group)]
+      pd_hosp_inc$y <- out$odin_parameters$gamma_ICase * pd_hosp_inc$y * (1 - prob_severe_age) *
+        #add adjustment for prob severe multiplier
+        block_interpolate(pd_hosp_inc$t, out$odin_parameters$prob_severe_multiplier, out$odin_parameters$tt_prob_severe_multiplier)
+      pd_hosp_inc$compartment <- "hospital_incidence"
+    } else {
+      #more complex, need to account for potential changes in parameters
+      pd_hosp_inc <- purrr::map_dfr(unique(pd_hosp_inc$replicate), function(rep){
+        df <- pd_hosp_inc %>%
+          dplyr::filter(replicate == rep)
+        #get the parameters
+        sample <- append(out$parameters, out$samples[[rep]])
+        sample$initial_infections <- NULL
+        sample$day_return <- NULL
+        sample$replicates <- NULL
+        pars <- setup_parameters(out$squire_model, sample)
+        prob_severe_age <- pars$prob_severe[as.numeric(df$age_group)] *
+        #add adjustment for prob severe multiplier
+          block_interpolate(df$t, pars$prob_severe_multiplier, pars$tt_prob_severe_multiplier)
+        df$y <- pars$gamma_ICase * df$y * (1 - prob_severe_age)
+        df$compartment <- "hospital_incidence"
+        df
+      })
+    }
     if(reduce_age) {
       pd_hosp_inc <- dplyr::group_by(pd_hosp_inc, .data$replicate, .data$compartment, .data$t) %>%
-        dplyr::summarise(y = sum(.data$y))
+        dplyr::summarise(y = sum(.data$y), .groups = "drop")
     } else {
       pd_hosp_inc <- dplyr::group_by(pd_hosp_inc, .data$replicate, .data$compartment, .data$age_group,.data$t) %>%
-        dplyr::summarise(y = sum(.data$y))
+        dplyr::summarise(y = sum(.data$y), .groups = "drop")
     }
     pd <- rbind(pd, pd_hosp_inc)
   }
@@ -187,15 +209,37 @@ nimue_format <- function(out,
     })) %>%
       dplyr::rename(y = .data$value) %>% dplyr::ungroup()
 
-    prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_ICU_inc$age_group)]
-    pd_ICU_inc$y <- out$odin_parameters$gamma_ICase * pd_ICU_inc$y * (prob_severe_age)
-    pd_ICU_inc$compartment <- "ICU_incidence"
+    if(!"rt_optimised" %in% class(out)){
+      prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_ICU_inc$age_group)] *
+        #add adjustment for prob severe multiplier
+        block_interpolate(pd_hosp_inc$t, out$odin_parameters$prob_severe_multiplier, out$odin_parameters$tt_prob_severe_multiplier)
+      pd_ICU_inc$y <- out$odin_parameters$gamma_ICase * pd_ICU_inc$y * (prob_severe_age)
+      pd_ICU_inc$compartment <- "ICU_incidence"
+    } else {
+      #more complex, need to account for potential changes in parameters
+      pd_ICU_inc <- purrr::map_dfr(unique(pd_ICU_inc$replicate), function(rep){
+        df <- pd_ICU_inc %>%
+          dplyr::filter(replicate == rep)
+        #get the parameters
+        sample <- append(out$parameters, out$samples[[rep]])
+        sample$initial_infections <- NULL
+        sample$day_return <- NULL
+        sample$replicates <- NULL
+        pars <- setup_parameters(out$squire_model, sample)
+        prob_severe_age <- pars$prob_severe[as.numeric(df$age_group)] *
+          #add adjustment for prob severe multiplier
+          block_interpolate(df$t, pars$prob_severe_multiplier, pars$tt_prob_severe_multiplier)
+        df$y <- pars$gamma_ICase * df$y * (prob_severe_age)
+        df$compartment <- "ICU_incidence"
+        df
+      })
+    }
     if(reduce_age) {
       pd_ICU_inc <- dplyr::group_by(pd_ICU_inc, .data$replicate, .data$compartment, .data$t) %>%
-        dplyr::summarise(y = sum(.data$y))
+        dplyr::summarise(y = sum(.data$y), .groups = "drop")
     } else {
       pd_ICU_inc <- dplyr::group_by(pd_ICU_inc, .data$replicate, .data$compartment, .data$age_group, .data$t) %>%
-        dplyr::summarise(y = sum(.data$y))
+        dplyr::summarise(y = sum(.data$y), .groups = "drop")
     }
     pd <- rbind(pd, pd_ICU_inc)
   }

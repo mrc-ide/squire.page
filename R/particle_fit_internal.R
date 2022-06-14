@@ -49,7 +49,7 @@ generate_model_function <- function(squire_model, parameters){
     }
     #create odin model with these parameters
     #with catch if nimue type
-    if(class(squire_model$odin_model) == "function"){
+    if(inherits(squire_model$odin_model, "function")){
       odin_model <- squire_model$odin_model(
         user = squire_parameters,
         unused_user_action = "ignore"
@@ -287,7 +287,9 @@ get_Rt_to_explore <- function(rt, proposal_width, n_particles, rt_upper_bound_ma
 #'
 #' @noRd
 ll_negative_binomial <- function(model_deaths, data_deaths, k){
-  model_deaths <- dplyr::if_else(model_deaths < 0, 10^-10, as.numeric(model_deaths))
+  #nb cannot handle negative means nor 0 means so we set a positive floor for the modelled deaths
+  floor_value <- 10^-10
+  model_deaths <- dplyr::if_else(model_deaths < floor_value, floor_value, as.numeric(model_deaths))
   #calculate likelihood for each time-period then sum
   squire:::ll_nbinom(
     data = data_deaths,

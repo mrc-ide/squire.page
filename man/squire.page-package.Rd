@@ -6,7 +6,7 @@
 \alias{squire.page-package}
 \title{squire.page: Functions used in global-lmic-reports-orderly and other repos}
 \description{
-Contains miscalanious functions used in the repo global-lmic-reports-orderly and other packages that utilise squire or nimue fits. These functions are kept externally to keep them consistent across mutliple repositories and multiple orderly tasks.
+Contains miscellaneous functions used in the repo global-lmic-reports-orderly and other packages that utilise squire or nimue fits. These functions are kept externally to keep them consistent across multiple repositories and multiple orderly tasks.
 }
 \seealso{
 Useful links:
