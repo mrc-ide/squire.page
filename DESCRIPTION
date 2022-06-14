@@ -35,6 +35,9 @@ Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
+Remotes:
+    mrc-ide/squire,
+    mrc-ide/nimue
 Config/testthat/edition: 3
 Depends: 
     R (>= 2.10)
