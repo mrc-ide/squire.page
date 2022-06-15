@@ -182,108 +182,35 @@ get_time_series <- function(squire_model, parameters, data, rt_spacing){
 
   list(rt_df = rt_df, split_data = split_data)
 }
-#' Find the particle that maximises the likelihood for R0 and initial conditions
-#' @noRd
-particle_optimise_R0 <- function(initial_r, initial_infections, n_particles, proposal_width, R0_likelihood, rt_upper_bound_max = 20, rt_upper_bound_min = 5){
-  #this is identical to particle_optimise_Rt except it also explores initial infections
-  repeat_limit <- 5
-  repeats <- 0
-  searching <- TRUE
-  central_value <- initial_r
-  while(searching){
-    values <- data.frame(
-      #get the range of Rt values
-      R0 = get_Rt_to_explore(initial_r, proposal_width, n_particles, rt_upper_bound_max, rt_upper_bound_min),
-      #get the range of initial infections to explore
-      initial_infections = seq(initial_infections * (1-proposal_width), initial_infections/(1-proposal_width), length.out = n_particles)
-    ) %>%
-      #get all possible compations
-      tidyr::expand(.data$R0, .data$initial_infections) %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(
-        #calculate their likelihood, with catch if it fails
-        ll = tryCatch(R0_likelihood(.data$R0, .data$initial_infections, central_value),
-                 error = function(e){-Inf} #negative infinity so it is not picked
-        )
-      ) %>%
-      dplyr::ungroup()
-    #get the maximum and return R0 and initial_infections
-    mle <- values %>%
-      dplyr::filter(.data$ll == max(.data$ll))
-    if(nrow(mle) > 1){
-      #catch if we have equal likelihoods (shouldn't happen, unless data is 0)
-      mle <- mle[round(nrow(mle)/2),]
-    }
-    #check if we need to repeat this (if R0 or initial_infections are on boundaries)
-    update_R0 <- mle$R0 %in% c(min(values$R0), max(values$R0))
-    update_initial_infections <-  mle$initial_infections %in%
-      c(min(values$initial_infections), max(values$initial_infections))
-    if(update_R0){
-      initial_r <- mle$R0
-    }
-    if(update_initial_infections){
-      initial_infections <- mle$initial_infections
-    }
-    if(!update_R0 & !update_initial_infections){
-      searching <- FALSE
-    } else {
-      repeats <- repeats + 1
-    }
-    if(repeats == repeat_limit){
-      searching <- FALSE
-    }
-  }
-  c(R0 = mle$R0, initial_infections = mle$initial_infections)
-}
 #' Find the particle that optimises the likelihood for Rt
 #' @noRd
-particle_optimise_Rt <- function(rt, initial_state, rt_index, n_particles, proposal_width, likelihood, rt_upper_bound_max = 20, rt_upper_bound_min = 5){
-  #we allow this search to repeat a maximum of 5 times, if the maximum likelihood
-  #is on the boundary of the searched values, then we repeat with it recentered on
-  #that value
-  repeat_limit <- 5
-  repeats <- 0
-  searching <- TRUE
-  central_value <- rt
-  while(searching){
-    #get values to explore
-    rt_to_explore <- get_Rt_to_explore(rt, proposal_width, n_particles, rt_upper_bound_max, rt_upper_bound_min)
-    #calculate R0
-    ll <- purrr::map_dbl(rt_to_explore, function(this_rt){
-      #add a catch if this fails
-      tryCatch(likelihood(this_rt, rt_index, initial_state, central_value),
-               error = function(e){-Inf} #rerun negative infinity so it is not picked
-      )
-    })
-    #pick the highest
-    best <- rt_to_explore[which.max(ll)]
-    #check if on a boundary
-    update_Rt <- best %in% c(min(rt_to_explore), max(rt_to_explore))
-
-    if(update_Rt){
-      rt <- best
-      repeats <- repeats + 1
-    } else{
-      searching <- FALSE
-    }
-    if(repeats == repeat_limit){
-      searching <- FALSE
-    }
-  }
-  best
+optimise_Rt <- function(initial_state, rt_index, likelihood, rt_interval){
+  stats::optimize(
+    function(x){tryCatch(likelihood(x, rt_index, initial_state),
+                    error = function(e){-Inf} #rerun negative infinity so it is not picked
+             )},
+    upper = rt_interval[2], lower = rt_interval[1], maximum = TRUE
+    )$maximum
 }
-#' Get the rt values to explore
+#' Find the particle that maximises the likelihood for R0 and initial conditions
 #' @noRd
-get_Rt_to_explore <- function(rt, proposal_width, n_particles, rt_upper_bound_max = 20, rt_upper_bound_min = 5){
-  #set bounds on maximums to avoid ridiculous values or being stuck below 1
-  upper <- rt/(1-proposal_width)
-  if(upper > rt_upper_bound_max){
-    upper <- rt_upper_bound_max
-  } else if(upper < rt_upper_bound_min){
-    upper <- rt_upper_bound_min
-  }
-  #generate values
-  seq(rt * (1-proposal_width), upper, length.out = n_particles)
+particle_optimise_R0 <- function(initial_infections_interval, n_particles, likelihood, rt_interval, initial_state){
+  #we optimise R0 as with Rt values but pick initial infections as a particle
+  #we can avoid multidimensional optimisation
+
+  #get the range of initial infections to explore
+  initial_infections <- seq(initial_infections_interval[1], initial_infections_interval[2], length.out = n_particles)
+  lls <- purrr::map(
+    initial_infections,
+    ~stats::optimize(
+      function(x){tryCatch(likelihood(x , 1, assign_infections(initial_state, .x)),
+                           error = function(e){-Inf} #rerun negative infinity so it is not picked
+      )},
+      upper = rt_interval[2], lower = rt_interval[1], maximum = TRUE
+    )
+  )
+  mle_index <- which.max(purrr::map_dbl(lls, ~.x$objective))
+  c(R0 = lls[[mle_index]]$maximum, initial_infections = initial_infections[mle_index])
 }
 #' Function to calculate ll with the negative binomial
 #'
@@ -292,7 +219,7 @@ get_Rt_to_explore <- function(rt, proposal_width, n_particles, rt_upper_bound_ma
 #' @noRd
 ll_negative_binomial <- function(model_deaths, data_deaths, k){
   #nb cannot handle negative means nor 0 means so we set a positive floor for the modelled deaths
-  floor_value <- 10^-10
+  floor_value <- 10^-6
   model_deaths <- dplyr::if_else(model_deaths < floor_value, floor_value, as.numeric(model_deaths))
   #calculate likelihood for each time-period then sum
   squire:::ll_nbinom(

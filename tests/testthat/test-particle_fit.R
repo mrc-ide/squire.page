@@ -10,15 +10,14 @@ test_that("basic functionality", {
       dur_R = rpois(1, 365),
       ICU_bed_capacity  = rpois(1, 7805)
     )
-  ) 
+  )
   parameters <- list(
     country = "Turkey"
   )
   squire_model <- squire:::deterministic_model()
 
   out <- rt_optimise(data, distribution, squire_model, parameters, start_date,
-                      k = 7, rt_spacing = 14, initial_r = 3,
-                      proposal_width = 0.75, n_particles = 10)
+                      k = 7, n_particles = 10)
 
   expect_s3_class(out, "rt_optimised")
 
@@ -39,15 +38,14 @@ test_that("nimue functionality", {
       dur_R = rpois(1, 365),
       ICU_bed_capacity  = rpois(1, 7805)
     )
-  ) 
+  )
   parameters <- list(
     country = "Turkey"
   )
   squire_model <- nimue::nimue_deterministic_model()
 
   out <- rt_optimise(data, distribution, squire_model, parameters, start_date,
-                      k = 7, rt_spacing = 14, initial_r = 3,
-                      proposal_width = 0.75, n_particles = 10)
+                      k = 7, n_particles = 10)
 
   expect_s3_class(out, "rt_optimised")
   expect_s3_class(out, "nimue_simulation")
@@ -70,15 +68,14 @@ test_that("nimue booster functionality", {
       dur_R = rpois(1, 365),
       ICU_bed_capacity  = rpois(1, 7805)
     )
-  ) 
+  )
   parameters <- list(
     country = "Turkey"
   )
   squire_model <- nimue_booster_model()
 
   out <- rt_optimise(data, distribution, squire_model, parameters, start_date,
-                      k = 7, rt_spacing = 14, initial_r = 3,
-                      proposal_width = 0.75, n_particles = 10)
+                      k = 7, n_particles = 10)
 
   expect_s3_class(out, "rt_optimised")
   expect_s3_class(out, "nimue_simulation")

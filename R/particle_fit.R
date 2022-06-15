@@ -1,9 +1,13 @@
-#' Fit nimue to a given set of death data via the particle exploration approach.
+#' Fit nimue to a given set of death data via the particle and optimisation exploration approach.
 #'
 #' For a given number of samples from given parameter uncertainty or distribution
 #' function, this approach iteratively fits the Rt trend to the provided death
 #' data and returns a nimue_simulation object for future usage in scenario
 #' modelling.
+#'
+#' NOTE: For death curves with periods of 0's rt_interval's lower bound must be greater than 0
+#' else it will likely fail to overcome a low infective population and Rt will
+#' tend to some unrealistically large number.
 #'
 #' This function is progressr enabled, so progressr::handlers(global = TRUE)
 #' can be used to view progress through the samples.
@@ -20,13 +24,10 @@
 #'
 #' @param parallel Run each sample concurrently, uses the future::plan set by the user. Default = FALSE.
 #' @param rt_spacing Number of days between each Rt trend, default = 14 days.
-#' @param initial_r The value of R0 to centre on initially, default = 3.
-#' @param initial_infections The initial number of infections to centre on initially, default = 100.
-#' @param proposal_width What proportion of the previous Rt trend to explore, default = 50%.
-#' @param n_particles How many particles to explore uniformly across that range, default = 7.
 #' @param k Control the dispersion on the negative binomial likelihood, default = 2.
-#' @param rt_upper_bound_max Largest value the upper bound of rt values explored can take, avoids estimate absurd Rt values, default = 20.
-#' @param rt_upper_bound_min Lowest value the upper bound of rt values explored can take, avoids Rt values getting stuck below 1, default = 5.
+#' @param n_particles How many particles to explore uniformly the interval of initial infections, default = 7.
+#' @param initial_infections_interval The range of initial number of infections to explore, default = c(5, 500).
+#' @param rt_interval The range of values that Rt can take, default = c(0.5, 20).
 #'
 #' @return An object of type rt_optimised, (model type).
 #'
@@ -35,13 +36,11 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
                          start_date,
                          parallel = FALSE,
                          rt_spacing = 14,
-                         initial_r = 3,
-                         initial_infections = 100,
-                         proposal_width = 0.5,
-                         n_particles = 14,
                          k = 2,
-                         rt_upper_bound_max = 20,
-                         rt_upper_bound_min = 5) {
+                         n_particles = 14,
+                         initial_infections_interval = c(5, 500),
+                         rt_interval = c(0.5, 20)
+                        ) {
   ##Initial Checks and Housekeeping
 
   #checks
@@ -62,8 +61,6 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
   squire:::assert_date(start_date)
   squire:::assert_int(rt_spacing)
   squire:::assert_int(n_particles)
-  squire:::assert_numeric(proposal_width)
-  squire:::assert_numeric(initial_r)
 
   #calculate convience parameters
   data_start_date <- min(data$date_start)
@@ -115,7 +112,7 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
   particle_output <- map_func(
     #add distribution samples and parameters together
     purrr::map(distribution, ~append(.x, parameters)),
-    function(parameters, data, initial_r, initial_infections, proposal_width, n_particles, k, squire_model){
+    function(parameters, data, initial_infections_interval, n_particles, k, squire_model, rt_interval){
       #Determine the deaths used to fit each Rt
       temp <-  get_time_series(squire_model, parameters, data, rt_spacing)
       rt_df <- temp$rt_df
@@ -128,13 +125,13 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
       #generate function that returns the deaths from this output
       deaths_function <- generate_deaths_function(model)
       #basic likelihood function
-      likelihood <- function(Rt, rt_index, initial_state, Rt_prev){
+      likelihood <- function(Rt, rt_index, initial_state){
         this_data <- split_data[[rt_index]]
         #get deaths for entire rt period until end of death period, this way index in this_data is the correct position in this time series
         cumulative_deaths <- deaths_function(Rt, rt_df$rt_change_t[rt_index], rt_df$death_end_t[rt_index], initial_state)
         deaths <- cumulative_deaths[this_data$index_end] - cumulative_deaths[this_data$index_start]
         #call generic likelihood function, add penalty for distance from current Rt value
-        ll_negative_binomial(deaths, this_data$deaths, k)# + dnorm(Rt, mean = Rt_prev, sd = 2, log = TRUE)
+        ll_negative_binomial(deaths, this_data$deaths, k)
       }
       #function to get the initial state value from a model
       get_initial_state <- function(Rt, rt_index, initial_state){
@@ -145,15 +142,6 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
         #convert this output into initial state values
         update_initial_state(initial_state, model_output)
       }
-      #R0 specific likelihood function
-      R0_likelihood <- function(R0, initial_infections, initial_R0){
-        #get the initial state as per country parameters
-        initial_state <- setup_parameters(squire_model, parameters)
-        likelihood(Rt = R0, rt_index = 1, initial_state =
-                     assign_infections(initial_state, initial_infections),
-                   Rt_prev = initial_R0
-        )
-      }
       R0_initial_state <- function(R0, initial_infections){
         #get the initial state as per country parameters
         initial_state <- setup_parameters(squire_model, parameters)
@@ -162,7 +150,7 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
         )
       }
       #calculate R0 + initial number of infections
-      res <- particle_optimise_R0(initial_r, initial_infections, n_particles, proposal_width, R0_likelihood, rt_upper_bound_max, rt_upper_bound_min)
+      res <- particle_optimise_R0(initial_infections_interval, n_particles, likelihood, rt_interval, initial_state = setup_parameters(squire_model, parameters))
       Rt_trend <- res[1]
       initial_infections <- res[2]
       names(Rt_trend) <- "R0"
@@ -177,9 +165,8 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
           #using state_trend$initial state, i.e. the state for the last Rt trend
           #we search over the range Rt values based on the previous value
           #(state_trend$rt_trend) and pick the highest likelihood
-          res <- particle_optimise_Rt(rt = utils::tail(state_trend$Rt_trend, 1),
-                               state_trend$initial_state, rt_index, n_particles,
-                               proposal_width, likelihood, rt_upper_bound_max, rt_upper_bound_min)
+          res <- optimise_Rt(state_trend$initial_state, rt_index,
+                              likelihood, rt_interval)
           #append our choice to the Rt_trend
           Rt_trend <- c(state_trend$Rt_trend, res)
           names(Rt_trend)[rt_index] <- paste0("Rt_", rt_index - 1)
@@ -227,7 +214,7 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
         diagnostics = diagnostics
       )
     },
-    data, initial_r, initial_infections, proposal_width, n_particles, k, squire_model
+    data, initial_infections_interval, n_particles, k, squire_model, rt_interval
   )
   #remove null model objects where the solver has failed
   failed <- purrr::map_lgl(particle_output, ~is.null(.x$model_output))
@@ -242,7 +229,7 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
   #return model object
   #we must calculate some default user parameters with given initial infections
   #else these would be random
-  default_user <- assign_infections(setup_parameters(squire_model, parameters), initial_infections)
+  default_user <- assign_infections(setup_parameters(squire_model, parameters), mean(initial_infections_interval))
   #get the model itself with basic parameters with a catch for different formats this takes
   if(inherits(squire_model$odin_model, "function")){
     odin_model <- squire_model$odin_model(user = default_user,
@@ -278,7 +265,11 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
       #start_date and diagnostics
       start_date = start_date,
       data = data,
-      k = k
+      rt_spacing = rt_spacing,
+      k = k,
+      n_particles = n_particles,
+      initial_infections_interval = initial_infections_interval,
+      rt_interval = rt_interval
     ),
     diagnostics = list(
       failed = failed_distributions

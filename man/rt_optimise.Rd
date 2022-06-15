@@ -2,7 +2,7 @@
 % Please edit documentation in R/particle_fit.R
 \name{rt_optimise}
 \alias{rt_optimise}
-\title{Fit nimue to a given set of death data via the particle exploration approach.}
+\title{Fit nimue to a given set of death data via the particle and optimisation exploration approach.}
 \usage{
 rt_optimise(
   data,
@@ -12,13 +12,10 @@ rt_optimise(
   start_date,
   parallel = FALSE,
   rt_spacing = 14,
-  initial_r = 3,
-  initial_infections = 100,
-  proposal_width = 0.5,
-  n_particles = 14,
   k = 2,
-  rt_upper_bound_max = 20,
-  rt_upper_bound_min = 5
+  n_particles = 14,
+  initial_infections_interval = c(5, 500),
+  rt_interval = c(0.5, 20)
 )
 }
 \arguments{
@@ -40,19 +37,13 @@ should be formatted relative to this date, where necessary.}
 
 \item{rt_spacing}{Number of days between each Rt trend, default = 14 days.}
 
-\item{initial_r}{The value of R0 to centre on initially, default = 3.}
-
-\item{initial_infections}{The initial number of infections to centre on initially, default = 100.}
-
-\item{proposal_width}{What proportion of the previous Rt trend to explore, default = 50\%.}
-
-\item{n_particles}{How many particles to explore uniformly across that range, default = 7.}
-
 \item{k}{Control the dispersion on the negative binomial likelihood, default = 2.}
 
-\item{rt_upper_bound_max}{Largest value the upper bound of rt values explored can take, avoids estimate absurd Rt values, default = 20.}
+\item{n_particles}{How many particles to explore uniformly the interval of initial infections, default = 7.}
 
-\item{rt_upper_bound_min}{Lowest value the upper bound of rt values explored can take, avoids Rt values getting stuck below 1, default = 5.}
+\item{initial_infections_interval}{The range of initial number of infections to explore, default = c(5, 500).}
+
+\item{rt_interval}{The range of values that Rt can take, default = c(0.5, 20).}
 }
 \value{
 An object of type rt_optimised, (model type).
@@ -64,6 +55,10 @@ data and returns a nimue_simulation object for future usage in scenario
 modelling.
 }
 \details{
+NOTE: For death curves with periods of 0's rt_interval's lower bound must be greater than 0
+else it will likely fail to overcome a low infective population and Rt will
+tend to some unrealistically large number.
+
 This function is progressr enabled, so progressr::handlers(global = TRUE)
 can be used to view progress through the samples.
 }
