@@ -89,9 +89,13 @@ generate_deaths_function <- function(model_func){
 #' Spread initial infections out over a model
 #' @noRd
 assign_infections <- function(initial_state, initial_infections){
+  #set S1 back to the full population
+  initial_state$S_0 <- initial_state$S_0 + initial_state$E1_0
   #Adds infections uniformly across adult population in the E1 compartment
   #this should work regardless of type due to how R handles [] calls to matrices
   initial_state$E1_0[4:14] <- initial_infections * initial_state$population[4:14]/sum(initial_state$population[4:14])
+  #remove these from s1
+  initial_state$S_0 <- initial_state$S_0 - initial_state$E1_0
   initial_state
 }
 

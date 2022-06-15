@@ -240,12 +240,15 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
     failed_distributions <- list()
   }
   #return model object
+  #we must calculate some default user parameters with given initial infections
+  #else these would be random
+  default_user <- assign_infections(setup_parameters(squire_model, parameters), initial_infections)
   #get the model itself with basic parameters with a catch for different formats this takes
   if(inherits(squire_model$odin_model, "function")){
-    odin_model <- squire_model$odin_model(user = setup_parameters(squire_model, parameters),
+    odin_model <- squire_model$odin_model(user = default_user,
                                         unused_user_action = "ignore")
   } else {
-    odin_model <- squire_model$odin_model$new(user = setup_parameters(squire_model, parameters),
+    odin_model <- squire_model$odin_model$new(user = default_user,
                                         unused_user_action = "ignore")
   }
   return_obj <- list(
