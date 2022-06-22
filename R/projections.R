@@ -211,7 +211,7 @@ projections.rt_optimised <- function(
   })
   #now if asked generate outputs for each sample
   if(to_be_run){
-    generate_draws(r_output, final_t + time_period)
+    generate_draws(r_output, final_t + time_period, project_forwards = !is.null(r_output$output))
   } else {
     r_output
   }

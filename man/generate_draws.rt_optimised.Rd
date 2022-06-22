@@ -4,12 +4,15 @@
 \alias{generate_draws.rt_optimised}
 \title{Generate Draws from pmcmc run}
 \usage{
-\method{generate_draws}{rt_optimised}(out, t_end = NULL, ...)
+\method{generate_draws}{rt_optimised}(out, t_end = NULL, project_forwards = FALSE, ...)
 }
 \arguments{
 \item{out}{Output of \code{squire::rt_optimised}}
 
 \item{t_end}{Time to simulate up to}
+
+\item{project_forwards}{Should we use the previous outputs as our start point
+and treat this as projection, default = FALSE}
 
 \item{...}{method specific arguments, unused}
 }

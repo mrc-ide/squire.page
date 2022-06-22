@@ -250,17 +250,11 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
       )
     )),
     output = #merge simulation outputs into one
-      purrr::reduce(particle_output, function(final_array, output){
-        if(is.null(final_array)){
-          n_arrays <- 1
-        } else {
-          n_arrays <- dim(final_array)[3] + 1
-        }
-        array(c(final_array, output$model_output), dim = c(dim(output$model_output), n_arrays),
-              dimnames = list(
-                as.character(start_date + seq_len(nrow(output$model_output)) - 1),
-                colnames(output$model_output), NULL))
-      }, .init = NULL),
+      abind::abind(purrr::map(particle_output, ~.x$model_output), along = 3, new.names = list(
+        as.character(start_date + seq_len(nrow(particle_output[[1]]$model_output)) - 1),
+        colnames(particle_output[[1]]$model_output),
+        NULL
+      )),
     inputs = list(
       #start_date and diagnostics
       start_date = start_date,

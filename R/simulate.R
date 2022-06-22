@@ -231,33 +231,75 @@ generate_draws.default <- function(out, pars.list, draws, ...) {
 #'
 #' @param out Output of `squire::rt_optimised`
 #' @param t_end Time to simulate up to
+#' @param project_forwards Should we use the previous outputs as our start point
+#' and treat this as projection, default = FALSE
 #' @param ... method specific arguments, unused
 #' @export
-generate_draws.rt_optimised <- function(out, t_end = NULL, ...){
+generate_draws.rt_optimised <- function(out, t_end = NULL, project_forwards = FALSE, ...){
   #for each sample
   if(is.null(t_end)){
     t_end <- max(out$inputs$data$t_end)
   }
-  sims <-purrr::map(out$samples, function(sample){
-    #generate model function
-    parameters <- append(out$parameters, sample)
-    model <- generate_model_function(out$squire_model, parameters)
-    #run model
-    model(Rt = sample$R0, tt_Rt = sample$tt_R0, t_start =  0,t_end = t_end,
-          atol = 10^-10, rtol = 10^-10) #low tolerance to ensure it works
-  })
+
+  #format initial conditions
+  if(project_forwards){
+    #get final values
+    outputs <- purrr::map(seq_len(dim(out$output)[3]), ~out$output[, , .x])
+    #calculate start for new simulation
+    t_start <- as.numeric(max(lubridate::as_date(dimnames(out$output)[[1]])) - out$inputs$start_date)
+    out$output <- NULL
+  } else {
+    #remove outputs to save on memory with parallel
+    outputs <- purrr::map(seq_len(dim(out$output)[3]), ~list())
+    out$output <- NULL
+    t_start <- 0
+  }
+
+  if (Sys.getenv("SQUIRE_PARALLEL_DEBUG") == "TRUE") {
+    map_func <- purrr::pmap
+  } else {
+    map_func <- function(.l, .f, ...) {
+      furrr::future_pmap(.l, .f, ..., .options = furrr::furrr_options(seed = NULL))
+    }
+  }
+
+  pmap_list <- list(
+      sample = out$samples,
+      output = outputs
+  )
+  rm(outputs)
+
+  sims <- map_func(pmap_list, function(sample, output, parameters, squire_model, t_start, t_end, project_fowards){
+      #generate model function
+      parameters <- append(parameters, sample)
+      model <- generate_model_function(squire_model, parameters)
+      if(project_forwards){
+        #add initial condition
+        initial_state <- setup_parameters(squire_model, parameters) %>%
+          update_initial_state(output %>% utils::tail(1))
+      } else {
+        initial_state <- NULL
+      }
+      #run model
+      sim <- model(Rt = sample$R0, tt_Rt = sample$tt_R0, t_start = t_start, t_end = t_end,
+                   atol = 10^-10, rtol = 10^-10, initial_state = initial_state) #low tolerance to ensure it works
+      if(project_forwards){
+        #append to old output
+        rbind(output[-dim(output)[1],], sim)
+      } else {
+        sim
+      }
+    }, parameters = out$parameters, squire_model = out$squire_model,
+    t_start = t_start, t_end = t_end, project_fowards = project_forwards
+  )
+  rm(pmap_list)
+
   out$output <-
     #merge simulation outputs into one
-    purrr::reduce(sims, function(final_array, output){
-      if(is.null(final_array)){
-        n_arrays <- 1
-      } else {
-        n_arrays <- dim(final_array)[3] + 1
-      }
-      array(c(final_array, output), dim = c(dim(output), n_arrays),
-            dimnames = list(
-              as.character(out$inputs$start_date + seq_len(nrow(output)) - 1),
-              colnames(output), NULL))
-    }, .init = NULL)
+    abind::abind(sims, along = 3, new.names = list(
+      as.character(out$inputs$start_date + seq_len(nrow(sims[[1]])) - 1),
+      colnames(sims[[1]]),
+      NULL
+    ))
   out
 }

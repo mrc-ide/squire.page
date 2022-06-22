@@ -614,7 +614,6 @@ dp_plot <- function(res) {
                        y = .data$deaths/as.numeric(.data$date_end - .data$date_start),
                        yend = .data$deaths/as.numeric(.data$date_end - .data$date_start)),
                    size = 1)
-    dp$layers[[5]] <- NULL
   } else {
     dp <- dp +
       ggplot2::geom_point(data = get_data(res),
