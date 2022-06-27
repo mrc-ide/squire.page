@@ -46,7 +46,7 @@ You can install lmicReportsExtra like so: This package depends on both
 ``` r
 #devtools::install_github("mrc-ide/squire")
 #devtools::install_github("mrc-ide/nimue")
-devtools::install_github("mrc-ide/lmicReportsExtra")
+devtools::install_github("mrc-ide/squire.page")
 ```
 
 ## To Do:

@@ -132,3 +132,41 @@ get_Rt.vacc_durR_nimue_simulation <- function(model_out){
     )
   )
 }
+#'
+#'@export
+get_Rt.rt_optimised <- function(model_out){
+  date_0 <- model_out$inputs$start_date
+  #get iso3c to attach
+  iso3c <- squire::get_population(model_out$parameters$country)$iso3c[1]
+  return(
+    do.call(
+      rbind,
+      lapply(seq_along(model_out$samples), function(y) {
+
+        #get the Rt values from R0 and the Rt_change values
+        Rt <- model_out$samples[[y]]$R0
+        #get the dates in t and the corresponding Rt indexes
+        tt <- list(
+          change = seq_along(Rt),
+          dates = date_0 + model_out$samples[[y]]$tt_R0
+        )
+        #reduce Rt to the values needed
+
+        df <- data.frame(
+          Rt = Rt,
+          date = date_0 + model_out$samples[[y]]$tt_R0
+        ) %>%
+          tidyr::complete(date = seq(date_0, max(.data$date), by = "days")) %>%
+          dplyr::mutate(
+            t = as.numeric(.data$date - min(.data$date))
+          ) %>%
+          tidyr::fill(.data$Rt) %>%
+          dplyr::mutate(
+            iso3c = iso3c,
+            rep = y
+          )
+        return(df)
+      })
+    )
+  )
+}
