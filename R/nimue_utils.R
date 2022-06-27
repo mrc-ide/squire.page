@@ -108,15 +108,23 @@ nimue_format <- function(out,
 
   # to match with squire definition
   if("infections" %in% summs) {
-    comps <- c(comps, "E2")
+    keep_E2 <- "E2" %in% comps
+    if(!keep_E2){
+      comps <- c(comps, "E2")
+    }
     summs <- summs[-which(summs == "infections")]
     inf_fix <- TRUE
   } else {
     inf_fix <- FALSE
   }
 
+  keep_ICase2 <- NULL #Catch for if we need to keep the compartment in tact
   # to match with squire uses
   if("hospital_incidence" %in% summs) {
+    keep_ICase2 <- "ICase2" %in% comps
+    if(!keep_ICase2){
+      comps <- c(comps, "ICase2")
+    }
     summs <- summs[-which(summs == "hospital_incidence")]
     hosp_inc_fix <- TRUE
   } else {
@@ -125,6 +133,12 @@ nimue_format <- function(out,
 
   # to match with squire uses
   if("ICU_incidence" %in% summs) {
+    if(is.null(keep_ICase2)){
+      keep_ICase2 <- "ICase2" %in% comps
+      if(!keep_ICase2){
+        comps <- c(comps, "ICase2")
+      }
+    }
     summs <- summs[-which(summs == "ICU_incidence")]
     ICU_inc_fix <- TRUE
   } else {
@@ -133,11 +147,24 @@ nimue_format <- function(out,
 
   # grab model outputs required
   if((length(comps) + length(summs)) != 0) {
-
-    pd <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
-      format_squirepage(out, compartments = comps, summaries = summs, replicate = i, reduce_age = reduce_age)
-    })) %>%
+    pd <- purrr::map_dfr(seq_len(dim(out$output)[3]), function(i) {
+      format_squirepage(out, compartments = comps, summaries = summs, replicate = i, reduce_age = reduce_age & !any(c(ICU_inc_fix, hosp_inc_fix)))
+    }) %>%
       dplyr::rename(y = .data$value)
+
+    if(any(c(hosp_inc_fix, ICU_inc_fix))){
+      #extract data for the fix
+      pd_hosp_ICU_fix <- pd %>%
+        dplyr::filter(.data$compartment == "ICase2")
+      if(!keep_ICase2){
+        pd <- pd %>%
+          dplyr::filter(.data$compartment != "ICase2")
+      }
+      if(reduce_age){
+        pd <- dplyr::group_by(pd, .data$replicate, .data$compartment, .data$t) %>%
+          dplyr::summarise(y = sum(.data$y), .groups = "drop")
+      }
+    }
 
     if(reduce_age){
       pd <- pd[,c("replicate", "compartment", "t", "y")]
@@ -149,99 +176,169 @@ nimue_format <- function(out,
     pd <- data.frame()
   }
 
+  #if we are doing any of these adjustments and its an Rt_optimise we need to
+  #adjust for any changing parameters over time
+  if(any(c(ICU_inc_fix, hosp_inc_fix, inf_fix)) & inherits(out, "rt_optimised")){
+    get_severe <- any(c(ICU_inc_fix, hosp_inc_fix))
+    rt_optimise_parameters <- purrr::map(seq_along(unique(pd$replicate)), function(rep){
+      sample <- append(out$parameters, out$samples[[rep]])
+      sample$initial_infections <- NULL
+      sample$day_return <- NULL
+      sample$replicates <- NULL
+      pars <- setup_parameters(out$squire_model, sample)
+      t <- pd %>% dplyr::filter(replicate == rep) %>% dplyr::pull(t) %>% unique()
+      if(get_severe){
+        prob_severe_age = t(t(matrix(pars$prob_severe, nrow = length(pars$prob_severe), ncol = length(t))) *
+                              block_interpolate(t, pars$prob_severe_multiplier, pars$tt_prob_severe_multiplier))
+        colnames(prob_severe_age) <- seq_len(ncol(prob_severe_age)) - 1
+        prob_severe_age <- tibble::as_tibble(prob_severe_age, .name_repair = "minimal") %>%
+          dplyr::mutate(age_group_num = seq_len(nrow(prob_severe_age))) %>%
+          tidyr::pivot_longer(
+            !.data$age_group_num,
+            names_to = "t", values_to = "prob_severe"
+          ) %>%
+          dplyr::mutate(t = as.numeric(.data$t))
+      } else {
+        prob_severe_age <- NULL
+      }
+      list(
+        gamma_E = pars$gamma_E,
+        gamma_ICase = pars$gamma_ICase,
+        prob_severe_age = prob_severe_age
+      )
+    })
+    #split into components
+    if(inf_fix){
+      gamma_E_rt_optimise <- purrr::map_dfr(
+        rt_optimise_parameters,
+        ~c(gamma_E = .x$gamma_E),
+        .id = "replicate") %>%
+        dplyr::mutate(replicate = as.numeric(.data$replicate))
+    }
+    if(get_severe){
+      prob_severe_rt_optimise <- purrr::map_dfr(rt_optimise_parameters, ~.x$prob_severe_age, .id = "replicate") %>%
+        dplyr::mutate(replicate = as.numeric(.data$replicate))
+
+      gamma_ICase_rt_optimise <- purrr::map_dfr(
+        rt_optimise_parameters,
+        ~c(gamma_ICase = .x$gamma_ICase),
+        .id = "replicate") %>%
+        dplyr::mutate(replicate = as.numeric(.data$replicate))
+    }
+    rm(get_severe, rt_optimise_parameters)
+  }
+
   # fix the infection
   if (inf_fix) {
-    #ISSUE: GAMMA E CAN CHANGE OVER TIME!!!
-    pd$y[pd$compartment == "E2"] <- pd$y[pd$compartment == "E2"] * get_parameters(out)$gamma_E
-    pd$compartment <- as.character(pd$compartment)
-    pd$compartment[pd$compartment == "E2"] <- "infections"
-    pd$compartment <- as.factor(pd$compartment)
+    if(inherits(out, "rt_optimised")){
+      new_vals <- pd %>%
+        dplyr::filter(.data$compartment == "E2") %>%
+        dplyr::left_join(
+          gamma_E_rt_optimise,
+          by = "replicate"
+        ) %>%
+        dplyr::mutate(
+          y = .data$y *.data$gamma_E
+        ) %>%
+        dplyr::pull(.data$y)
+    } else {
+      new_vals <- pd$y[pd$compartment == "E2"] * out$odin_parameters$gamma_E
+    }
+    if(keep_E2){
+      pd <- pd %>% rbind(
+        pd %>%
+          dplyr::filter(
+            .data$compartment == "E2"
+          ) %>%
+          dplyr::mutate(
+            y = new_vals,
+            comparment = "infections"
+          )
+      )
+    } else {
+      pd$y[pd$compartment == "E2"] <- new_vals
+      pd$compartment <- as.character(pd$compartment)
+      pd$compartment[pd$compartment == "E2"] <- "infections"
+      pd$compartment <- as.factor(pd$compartment)
+    }
+    rm(new_vals, gamma_E_rt_optimise)
   }
 
   # add in hosp_inc
   if (hosp_inc_fix) {
-
-    pd_hosp_inc <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
-      format_squirepage(out, compartments = "ICase2", summaries = character(0), replicate = i, reduce_age = FALSE)
-    })) %>%
-      dplyr::rename(y = .data$value) %>% dplyr::ungroup()
-
-    if(!"rt_optimised" %in% class(out)){
-      prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_hosp_inc$age_group)]
-      pd_hosp_inc$y <- out$odin_parameters$gamma_ICase * pd_hosp_inc$y * (1 - prob_severe_age) *
-        #add adjustment for prob severe multiplier
-        block_interpolate(pd_hosp_inc$t, out$odin_parameters$prob_severe_multiplier, out$odin_parameters$tt_prob_severe_multiplier)
-      pd_hosp_inc$compartment <- "hospital_incidence"
+    pd_hosp_ICU_fix
+    if(inherits(out, "rt_optimised")){
+      df <- pd_hosp_ICU_fix %>%
+        dplyr::left_join(
+          gamma_ICase_rt_optimise, by = "replicate"
+        ) %>%
+        dplyr::mutate(age_group_num = as.numeric(.data$age_group)) %>%
+        dplyr::left_join(
+          prob_severe_rt_optimise, by = c("replicate", "age_group_num", "t")
+        ) %>%
+        dplyr::mutate(
+          y = .data$gamma_ICase * .data$y * (1 - .data$prob_severe),
+          compartment = "hospital_incidence"
+        )
+      if(!ICU_inc_fix){
+        rm(gamma_ICase_rt_optimise, prob_severe_rt_optimise)
+      }
     } else {
-      #more complex, need to account for potential changes in parameters
-      pd_hosp_inc <- purrr::map_dfr(unique(pd_hosp_inc$replicate), function(rep){
-        df <- pd_hosp_inc %>%
-          dplyr::filter(replicate == rep)
-        #get the parameters
-        sample <- append(out$parameters, out$samples[[rep]])
-        sample$initial_infections <- NULL
-        sample$day_return <- NULL
-        sample$replicates <- NULL
-        pars <- setup_parameters(out$squire_model, sample)
-        prob_severe_age <- pars$prob_severe[as.numeric(df$age_group)] *
-        #add adjustment for prob severe multiplier
-          block_interpolate(df$t, pars$prob_severe_multiplier, pars$tt_prob_severe_multiplier)
-        df$y <- pars$gamma_ICase * df$y * (1 - prob_severe_age)
-        df$compartment <- "hospital_incidence"
-        df
-      })
+      prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_hosp_ICU_fix$age_group)]
+      df <- pd_hosp_ICU_fix
+      df$y <- out$odin_parameters$gamma_ICase * df$y * (1 - (prob_severe_age *
+        #add adjustment for prob severe multiplier (for Rt optimise this is already in prob_severe)
+        block_interpolate(df$t, out$odin_parameters$prob_severe_multiplier, out$odin_parameters$tt_prob_severe_multiplier)
+      ))
+      df$compartment <- "hospital_incidence"
+    }
+    if(!ICU_inc_fix){
+      rm(pd_hosp_ICU_fix)
     }
     if(reduce_age) {
-      pd_hosp_inc <- dplyr::group_by(pd_hosp_inc, .data$replicate, .data$compartment, .data$t) %>%
+      df <- dplyr::group_by(df, .data$replicate, .data$compartment, .data$t) %>%
         dplyr::summarise(y = sum(.data$y), .groups = "drop")
     } else {
-      pd_hosp_inc <- dplyr::group_by(pd_hosp_inc, .data$replicate, .data$compartment, .data$age_group,.data$t) %>%
+      df <- dplyr::group_by(df, .data$replicate, .data$compartment, .data$age_group,.data$t) %>%
         dplyr::summarise(y = sum(.data$y), .groups = "drop")
     }
-    pd <- rbind(pd, pd_hosp_inc)
+    pd <- rbind(pd, df)
   }
 
   # add in ICU_inc
   if (ICU_inc_fix) {
-
-    pd_ICU_inc <- do.call(rbind, lapply(seq_len(dim(out$output)[3]), function(i) {
-      format_squirepage(out, compartments = "ICase2", summaries = character(0), replicate = i, reduce_age = FALSE)
-    })) %>%
-      dplyr::rename(y = .data$value) %>% dplyr::ungroup()
-
-    if(!"rt_optimised" %in% class(out)){
-      prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_ICU_inc$age_group)] *
-        #add adjustment for prob severe multiplier
-        block_interpolate(pd_hosp_inc$t, out$odin_parameters$prob_severe_multiplier, out$odin_parameters$tt_prob_severe_multiplier)
-      pd_ICU_inc$y <- out$odin_parameters$gamma_ICase * pd_ICU_inc$y * (prob_severe_age)
-      pd_ICU_inc$compartment <- "ICU_incidence"
+    pd_hosp_ICU_fix
+    if(inherits(out, "rt_optimised")){
+      df <- pd_hosp_ICU_fix %>%
+        dplyr::left_join(
+          gamma_ICase_rt_optimise, by = "replicate"
+        ) %>%
+        dplyr::mutate(age_group_num = as.numeric(.data$age_group)) %>%
+        dplyr::left_join(
+          prob_severe_rt_optimise, by = c("replicate", "age_group_num", "t")
+        ) %>%
+        dplyr::mutate(
+          y = .data$gamma_ICase * .data$y * .data$prob_severe,
+          compartment = "ICU_incidence"
+        )
+      rm(gamma_ICase_rt_optimise, prob_severe_rt_optimise)
     } else {
-      #more complex, need to account for potential changes in parameters
-      pd_ICU_inc <- purrr::map_dfr(unique(pd_ICU_inc$replicate), function(rep){
-        df <- pd_ICU_inc %>%
-          dplyr::filter(replicate == rep)
-        #get the parameters
-        sample <- append(out$parameters, out$samples[[rep]])
-        sample$initial_infections <- NULL
-        sample$day_return <- NULL
-        sample$replicates <- NULL
-        pars <- setup_parameters(out$squire_model, sample)
-        prob_severe_age <- pars$prob_severe[as.numeric(df$age_group)] *
-          #add adjustment for prob severe multiplier
-          block_interpolate(df$t, pars$prob_severe_multiplier, pars$tt_prob_severe_multiplier)
-        df$y <- pars$gamma_ICase * df$y * (prob_severe_age)
-        df$compartment <- "ICU_incidence"
-        df
-      })
+      prob_severe_age <- out$odin_parameters$prob_severe[as.numeric(pd_hosp_ICU_fix$age_group)]
+      df <- pd_hosp_ICU_fix
+      df$y <- out$odin_parameters$gamma_ICase * df$y * prob_severe_age *
+        #add adjustment for prob severe multiplier (for Rt optimise this is already in prob_severe)
+        block_interpolate(df$t, out$odin_parameters$prob_severe_multiplier, out$odin_parameters$tt_prob_severe_multiplier)
+      df$compartment <- "ICU_incidence"
     }
+    rm(pd_hosp_ICU_fix)
     if(reduce_age) {
-      pd_ICU_inc <- dplyr::group_by(pd_ICU_inc, .data$replicate, .data$compartment, .data$t) %>%
+      df <- dplyr::group_by(df, .data$replicate, .data$compartment, .data$t) %>%
         dplyr::summarise(y = sum(.data$y), .groups = "drop")
     } else {
-      pd_ICU_inc <- dplyr::group_by(pd_ICU_inc, .data$replicate, .data$compartment, .data$age_group, .data$t) %>%
+      df <- dplyr::group_by(df, .data$replicate, .data$compartment, .data$age_group,.data$t) %>%
         dplyr::summarise(y = sum(.data$y), .groups = "drop")
     }
-    pd <- rbind(pd, pd_ICU_inc)
+    pd <- rbind(pd, df)
   }
 
   # add in long covid too

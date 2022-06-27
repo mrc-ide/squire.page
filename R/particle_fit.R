@@ -94,128 +94,138 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
          occuring on the overlap of Rt change periods.")
   }
 
-  #Run the Fitting Process
-  if(parallel){
-    #set seed = NULL to suppress warnings due to squires (unused) random initial infections
-    map_func <- function(.x, .f, ...) {
-      furrr::future_map(.x, .f, ..., .options = furrr::furrr_options(seed = NULL))
+  map_func <- function(parameters, data, initial_infections_interval, n_particles, k, squire_model, rt_interval, p){
+    #Determine the deaths used to fit each Rt
+    temp <-  get_time_series(squire_model, parameters, data, rt_spacing)
+    rt_df <- temp$rt_df
+    split_data <- temp$split_data
+    rm(temp)
+
+    ##series of model specific functions are generated
+    #generate function that just returns model output
+    model <- generate_model_function(squire_model, parameters)
+    #generate function that returns the deaths from this output
+    deaths_function <- generate_deaths_function(model)
+    #basic likelihood function
+    likelihood <- function(Rt, rt_index, initial_state){
+      this_data <- split_data[[rt_index]]
+      #get deaths for entire rt period until end of death period, this way index in this_data is the correct position in this time series
+      cumulative_deaths <- deaths_function(Rt, rt_df$rt_change_t[rt_index], rt_df$death_end_t[rt_index], initial_state)
+      deaths <- cumulative_deaths[this_data$index_end] - cumulative_deaths[this_data$index_start]
+      #call generic likelihood function, add penalty for distance from current Rt value
+      ll_negative_binomial(deaths, this_data$deaths, k)
     }
-  } else {
-    #otherwise use purrr for easier debugging
-    map_func <- purrr::map
+    #function to get the initial state value from a model
+    get_initial_state <- function(Rt, rt_index, initial_state){
+      #generate odin output from current Rt trend time to when the next Rt trend begins
+      model_output <- model(Rt, rt_df$rt_change_t[rt_index], rt_df$initial_target[rt_index], initial_state) %>%
+        #only keep the final value
+        utils::tail(1)
+      #convert this output into initial state values
+      update_initial_state(initial_state, model_output)
+    }
+    R0_initial_state <- function(R0, initial_infections){
+      #get the initial state as per country parameters
+      initial_state <- setup_parameters(squire_model, parameters)
+      get_initial_state(Rt = R0, rt_index = 1, initial_state =
+                          assign_infections(initial_state, initial_infections)
+      )
+    }
+    #calculate R0 + initial number of infections
+    res <- particle_optimise_R0(initial_infections_interval, n_particles, likelihood, rt_interval, initial_state = setup_parameters(squire_model, parameters))
+    Rt_trend <- res[1]
+    initial_infections <- res[2]
+    names(Rt_trend) <- "R0"
+    #calculate the model state when the next rt trend starts
+    initial_state <- R0_initial_state(res[1], res[2])
+
+    #calculate each Rt trend onwards
+    rt_trend <- purrr::reduce(
+      #skip the first index as that is R0
+      seq_along(rt_df$rt_change_t)[-1],
+      function(state_trend, rt_index){
+        #using state_trend$initial state, i.e. the state for the last Rt trend
+        #we search over the range Rt values based on the previous value
+        #(state_trend$rt_trend) and pick the highest likelihood
+        res <- optimise_Rt(state_trend$initial_state, rt_index,
+                           likelihood, rt_interval)
+        #append our choice to the Rt_trend
+        Rt_trend <- c(state_trend$Rt_trend, res)
+        names(Rt_trend)[rt_index] <- paste0("Rt_", rt_index - 1)
+        list(
+          #get the new initial state
+          initial_state = get_initial_state(res, rt_index, state_trend$initial_state),
+          Rt_trend = Rt_trend
+        )
+        #and repeat process
+      },
+      .init = list(initial_state = initial_state, Rt_trend = Rt_trend)
+    )$Rt_trend
+
+    #calculate final model output for the whole time period covered by the data
+    model_output <- tryCatch(model(rt_trend, t_start = 0,
+                                   t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
+                                   initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
+                                   tt_Rt = rt_df$rt_change_t,
+                                   #run with higher tolerance, the odin model should never fail in the fitting though it can here
+                                   atol = 10^-8, rtol = 10^-8), error = function(e){NULL})
+    if(is.null(model_output)){
+      tryCatch(model(rt_trend, t_start = 0,
+                     t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
+                     initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
+                     tt_Rt = rt_df$rt_change_t,
+                     #run with higher tolerance, the odin model should never fail in the fitting though it can here
+                     atol = 10^-10, rtol = 10^-10), error = function(e){NULL})
+    }
+
+    #diagnostics are null for now
+    diagnostics <- NULL
+
+    #update progressr so it knows that this sample is finished
+    p()
+
+    #output values
+    list(
+      #our fitted Rt trend
+      rt_trend = rt_trend,
+      #the times relative to the start date that Rt changes
+      rt_change_t = rt_df$rt_change_t,
+      #our fitted initial number of infections
+      initial_infections = initial_infections,
+      model_output = model_output,
+      diagnostics = diagnostics
+    )
   }
 
   #setup progressr for user controlled feedback
   p <- progressr::progressor(steps = length(distribution), enable = TRUE)
 
-  #run the optimisation loop
-  particle_output <- map_func(
-    #add distribution samples and parameters together
-    purrr::map(distribution, ~append(.x, parameters)),
-    function(parameters, data, initial_infections_interval, n_particles, k, squire_model, rt_interval){
-      #Determine the deaths used to fit each Rt
-      temp <-  get_time_series(squire_model, parameters, data, rt_spacing)
-      rt_df <- temp$rt_df
-      split_data <- temp$split_data
-      rm(temp)
+  #Run the Fitting Process
+  if(parallel & Sys.getenv("SQUIRE_PARALLEL_DEBUG") != "TRUE"){
+    #set seed = NULL to suppress warnings due to squires (unused) random initial infections
+    particle_output <- furrr::future_map(
+      .x = purrr::map(distribution, ~append(.x, parameters)),
+      .f = map_func,
+      data = data,
+      initial_infections_interval = initial_infections_interval,
+      n_particles = n_particles, k = k,
+      squire_model = squire_model, rt_interval = rt_interval,
+      p = p,
+      .options = furrr::furrr_options(seed = NULL)
+    )
+  } else {
+    #otherwise use purrr for easier debugging
+    particle_output <- purrr::map(
+      .x = purrr::map(distribution, ~append(.x, parameters)),
+      .f = map_func,
+      data = data,
+      initial_infections_interval = initial_infections_interval,
+      n_particles = n_particles, k = k,
+      squire_model = squire_model, rt_interval = rt_interval,
+      p = p
+    )
+  }
 
-      ##series of model specific functions are generated
-      #generate function that just returns model output
-      model <- generate_model_function(squire_model, parameters)
-      #generate function that returns the deaths from this output
-      deaths_function <- generate_deaths_function(model)
-      #basic likelihood function
-      likelihood <- function(Rt, rt_index, initial_state){
-        this_data <- split_data[[rt_index]]
-        #get deaths for entire rt period until end of death period, this way index in this_data is the correct position in this time series
-        cumulative_deaths <- deaths_function(Rt, rt_df$rt_change_t[rt_index], rt_df$death_end_t[rt_index], initial_state)
-        deaths <- cumulative_deaths[this_data$index_end] - cumulative_deaths[this_data$index_start]
-        #call generic likelihood function, add penalty for distance from current Rt value
-        ll_negative_binomial(deaths, this_data$deaths, k)
-      }
-      #function to get the initial state value from a model
-      get_initial_state <- function(Rt, rt_index, initial_state){
-        #generate odin output from current Rt trend time to when the next Rt trend begins
-        model_output <- model(Rt, rt_df$rt_change_t[rt_index], rt_df$initial_target[rt_index], initial_state) %>%
-          #only keep the final value
-          utils::tail(1)
-        #convert this output into initial state values
-        update_initial_state(initial_state, model_output)
-      }
-      R0_initial_state <- function(R0, initial_infections){
-        #get the initial state as per country parameters
-        initial_state <- setup_parameters(squire_model, parameters)
-        get_initial_state(Rt = R0, rt_index = 1, initial_state =
-                     assign_infections(initial_state, initial_infections)
-        )
-      }
-      #calculate R0 + initial number of infections
-      res <- particle_optimise_R0(initial_infections_interval, n_particles, likelihood, rt_interval, initial_state = setup_parameters(squire_model, parameters))
-      Rt_trend <- res[1]
-      initial_infections <- res[2]
-      names(Rt_trend) <- "R0"
-      #calculate the model state when the next rt trend starts
-      initial_state <- R0_initial_state(res[1], res[2])
-
-      #calculate each Rt trend onwards
-      rt_trend <- purrr::reduce(
-        #skip the first index as that is R0
-        seq_along(rt_df$rt_change_t)[-1],
-        function(state_trend, rt_index){
-          #using state_trend$initial state, i.e. the state for the last Rt trend
-          #we search over the range Rt values based on the previous value
-          #(state_trend$rt_trend) and pick the highest likelihood
-          res <- optimise_Rt(state_trend$initial_state, rt_index,
-                              likelihood, rt_interval)
-          #append our choice to the Rt_trend
-          Rt_trend <- c(state_trend$Rt_trend, res)
-          names(Rt_trend)[rt_index] <- paste0("Rt_", rt_index - 1)
-          list(
-            #get the new initial state
-            initial_state = get_initial_state(res, rt_index, state_trend$initial_state),
-            Rt_trend = Rt_trend
-          )
-          #and repeat process
-        },
-        .init = list(initial_state = initial_state, Rt_trend = Rt_trend)
-      )$Rt_trend
-
-      #calculate final model output for the whole time period covered by the data
-      model_output <- tryCatch(model(rt_trend, t_start = 0,
-                            t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
-                            initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
-                            tt_Rt = rt_df$rt_change_t,
-                            #run with higher tolerance, the odin model should never fail in the fitting though it can here
-                            atol = 10^-8, rtol = 10^-8), error = function(e){NULL})
-      if(is.null(model_output)){
-        tryCatch(model(rt_trend, t_start = 0,
-                       t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
-                       initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
-                       tt_Rt = rt_df$rt_change_t,
-                       #run with higher tolerance, the odin model should never fail in the fitting though it can here
-                       atol = 10^-10, rtol = 10^-10), error = function(e){NULL})
-      }
-
-      #diagnostics are null for now
-      diagnostics <- NULL
-
-      #update progressr so it knows that this sample is finished
-      p()
-
-      #output values
-      list(
-        #our fitted Rt trend
-        rt_trend = rt_trend,
-        #the times relative to the start date that Rt changes
-        rt_change_t = rt_df$rt_change_t,
-        #our fitted initial number of infections
-        initial_infections = initial_infections,
-        model_output = model_output,
-        diagnostics = diagnostics
-      )
-    },
-    data, initial_infections_interval, n_particles, k, squire_model, rt_interval
-  )
   #remove null model objects where the solver has failed
   failed <- purrr::map_lgl(particle_output, ~is.null(.x$model_output))
   if(sum(failed) > 0){

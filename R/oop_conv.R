@@ -328,8 +328,8 @@ plot.rt_optimised_trimmed <- function(x, q = c(0.025, 0.975), replicates = TRUE,
                          ggplot2::aes(x = .data$date,
                                       y = .data$y,
                                       group = interaction(.data$compartment, .data$replicate)),
-                         alpha = max(0.2, 1 / length(unique(df$replicate)), inherit.aes = FALSE,
-                                     colour = "yellow")
+                         alpha = max(0.2, 1 / length(unique(df$replicate))), inherit.aes = FALSE,
+                                     colour = "yellow"
       )
   }
   if(summarise){

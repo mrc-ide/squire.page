@@ -255,43 +255,52 @@ generate_draws.rt_optimised <- function(out, t_end = NULL, project_forwards = FA
     t_start <- 0
   }
 
-  if (Sys.getenv("SQUIRE_PARALLEL_DEBUG") == "TRUE") {
-    map_func <- purrr::pmap
-  } else {
-    map_func <- function(.l, .f, ...) {
-      furrr::future_pmap(.l, .f, ..., .options = furrr::furrr_options(seed = NULL))
-    }
-  }
-
   pmap_list <- list(
       sample = out$samples,
       output = outputs
   )
   rm(outputs)
 
-  sims <- map_func(pmap_list, function(sample, output, parameters, squire_model, t_start, t_end, project_fowards){
-      #generate model function
-      parameters <- append(parameters, sample)
-      model <- generate_model_function(squire_model, parameters)
-      if(project_forwards){
-        #add initial condition
-        initial_state <- setup_parameters(squire_model, parameters) %>%
-          update_initial_state(output %>% utils::tail(1))
-      } else {
-        initial_state <- NULL
-      }
-      #run model
+  map_func <- function(sample, output, parameters, squire_model, t_start, t_end, project_fowards){
+    #generate model function
+    parameters <- append(parameters, sample)
+    model <- generate_model_function(squire_model, parameters)
+    if(project_forwards){
+      #add initial condition
+      initial_state <- setup_parameters(squire_model, parameters) %>%
+        update_initial_state(output %>% utils::tail(1))
+    } else {
+      initial_state <- NULL
+    }
+    #run model
+    sim <- tryCatch(model(Rt = sample$R0, tt_Rt = sample$tt_R0, t_start = t_start, t_end = t_end,
+                          atol = 10^-8, rtol = 10^-8, initial_state = initial_state), #low tolerance to ensure it works
+                    error = function(e){NULL})
+    if(is.null(sim)){
       sim <- model(Rt = sample$R0, tt_Rt = sample$tt_R0, t_start = t_start, t_end = t_end,
-                   atol = 10^-10, rtol = 10^-10, initial_state = initial_state) #low tolerance to ensure it works
-      if(project_forwards){
-        #append to old output
-        rbind(output[-dim(output)[1],], sim)
-      } else {
-        sim
-      }
-    }, parameters = out$parameters, squire_model = out$squire_model,
-    t_start = t_start, t_end = t_end, project_fowards = project_forwards
-  )
+                   atol = 10^-9, rtol = 10^-9, initial_state = initial_state)
+    }
+
+    if(project_forwards){
+      #append to old output
+      rbind(output[-dim(output)[1],], sim)
+    } else {
+      sim
+    }
+  }
+
+  if (Sys.getenv("SQUIRE_PARALLEL_DEBUG") == "TRUE") {
+    sims <- purrr::pmap(
+      .l = pmap_list, .f = map_func, parameters = out$parameters, squire_model = out$squire_model,
+      t_start = t_start, t_end = t_end, project_fowards = project_forwards
+    )
+  } else {
+    sims <- furrr::future_pmap(
+      .l = pmap_list, .f = map_func, parameters = out$parameters, squire_model = out$squire_model,
+      t_start = t_start, t_end = t_end, project_fowards = project_forwards,
+      .options = furrr::furrr_options(seed = NULL)
+    )
+  }
   rm(pmap_list)
 
   out$output <-

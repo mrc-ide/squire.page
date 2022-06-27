@@ -42,6 +42,8 @@ trim_rt_optimise <- function(out, p_error){
   if(length(bad_fits_index) > 0){
     out$excluded$samples <- out$samples[bad_fits_index]
     out$excluded$output <- out$output[, , bad_fits_index]
+    #ensure its a 3d array
+    dim(out$excluded$output) <- c(dim(out$excluded$output)[1:2], length(bad_fits_index))
     out$samples <- out$samples[good_fits_index]
     out$output <- out$output[, , good_fits_index]
     class(out) <- c("rt_optimised_trimmed", class(out))
