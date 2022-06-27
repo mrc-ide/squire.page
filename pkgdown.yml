@@ -1,9 +1,10 @@
 pandoc: 2.7.3
-pkgdown: 2.0.4
+pkgdown: 2.0.5
 pkgdown_sha: ~
 articles:
   booster_pathway: booster_pathway.html
-last_built: 2022-06-14T11:04Z
+  rt_optimise: rt_optimise.html
+last_built: 2022-06-27T08:31Z
 urls:
   reference: https://mrc-ide.github.io/squire.page/reference
   article: https://mrc-ide.github.io/squire.page/articles

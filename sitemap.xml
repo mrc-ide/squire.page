@@ -16,6 +16,9 @@
     <loc>https://mrc-ide.github.io/squire.page/articles/index.html</loc>
   </url>
   <url>
+    <loc>https://mrc-ide.github.io/squire.page/articles/rt_optimise.html</loc>
+  </url>
+  <url>
     <loc>https://mrc-ide.github.io/squire.page/authors.html</loc>
   </url>
   <url>
@@ -25,10 +28,25 @@
     <loc>https://mrc-ide.github.io/squire.page/reference/afg_fit.html</loc>
   </url>
   <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/beta_est.booster_model.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/beta_est.default.html</loc>
+  </url>
+  <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/bhu_fit.html</loc>
   </url>
   <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/dp_plot.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/generate_draws.default.html</loc>
+  </url>
+  <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/generate_draws.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/generate_draws.rt_optimised.html</loc>
   </url>
   <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/generate_parameters.html</loc>
@@ -40,6 +58,60 @@
     <loc>https://mrc-ide.github.io/squire.page/reference/get_covax_iso3c.html</loc>
   </url>
   <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data.excess_nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data.nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data.rt_optimised.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_end_date.excess_nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_end_date.nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_end_date.rt_optimised.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_end_date_inner.excess_nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_end_date_inner.nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_end_date_inner.rt_optimised.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_start_date.excess_nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_start_date.nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_data_start_date.rt_optimised.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_dates.excess_nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_dates.nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_dates.rt_optimised.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_dates_greater.excess_nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_dates_greater.nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_dates_greater.rt_optimised.html</loc>
+  </url>
+  <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/get_fits.html</loc>
   </url>
   <url>
@@ -49,7 +121,22 @@
     <loc>https://mrc-ide.github.io/squire.page/reference/get_global_fund_iso3c.html</loc>
   </url>
   <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_immunity_ratios.default.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_immunity_ratios.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_immunity_ratios.rt_optimised.html</loc>
+  </url>
+  <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/get_income_group.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_parameters.default.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/get_parameters.rt_optimised.html</loc>
   </url>
   <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/index.html</loc>
@@ -67,12 +154,36 @@
     <loc>https://mrc-ide.github.io/squire.page/reference/pipe.html</loc>
   </url>
   <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/plot.excess_nimue_simulation.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/plot.rt_optimised.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/plot.rt_optimised_trimmed.html</loc>
+  </url>
+  <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/prepare_input_json_df.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/projections.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/rt_optimise.html</loc>
   </url>
   <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/scan_fit.html</loc>
   </url>
   <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/setup_parameters.default.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/setup_parameters.nimue_model.html</loc>
+  </url>
+  <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/squire.page-package.html</loc>
+  </url>
+  <url>
+    <loc>https://mrc-ide.github.io/squire.page/reference/trim_rt_optimise.html</loc>
   </url>
 </urlset>
