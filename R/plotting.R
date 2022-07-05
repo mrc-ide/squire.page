@@ -85,7 +85,6 @@ get_immunity_ratios <- function(out, max_date = NULL, vaccine = FALSE){
 #' @inheritParams get_immunity_ratios
 #' @export
 get_immunity_ratios.default <- function(out, max_date = NULL, vaccine = FALSE) {
-
   if(is.null(out$pmcmc_results)){
     mixing_matrix <- squire:::process_contact_matrix_scaled_age(
       out$odin_parameters$contact_matrix_set[[1]],

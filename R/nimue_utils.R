@@ -69,7 +69,8 @@ nimue_format <- function(out,
                 "ICU_demand", "ICU_occupancy",
                 "vaccines", "unvaccinated", "vaccinated", "priorvaccinated",
                 "vaccinated_first_dose", "vaccinated_second_dose",
-                "vaccinated_first_waned", "vaccinated_second_waned",
+                "vaccinated_second_waned", "vaccinated_booster_dose",
+                "vaccinated_booster_waned",
                 "first_doses_given", "second_doses_given", "booster_doses_given",
                 "hospital_incidence", "ICU_incidence",
                 "infections", "deaths")
@@ -83,10 +84,14 @@ nimue_format <- function(out,
         " vaccinated and priorvaccinated cannot be output for this model type"))
     }
   } else {
-    if(any(c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_first_waned", "vaccinated_second_waned",
+    if(any(c("vaccinated_first_dose", "vaccinated_second_dose",
+             "vaccinated_second_waned", "vaccinated_booster_dose",
+             "vaccinated_booster_waned",
              "first_doses_given", "second_doses_given", "booster_doses_given") %in% var_select)){
       warning(paste0(
-        paste0(intersect(var_select, c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_first_waned", "vaccinated_second_waned",
+        paste0(intersect(var_select, c("vaccinated_first_dose", "vaccinated_second_dose",
+                                       "vaccinated_second_waned", "vaccinated_booster_dose",
+                                       "vaccinated_booster_waned",
                                        "first_doses_given", "second_doses_given", "booster_doses_given")), collapse = ", "),
         " cannot be output for this model type")
       )
@@ -241,6 +246,7 @@ nimue_format <- function(out,
           y = .data$y *.data$gamma_E
         ) %>%
         dplyr::pull(.data$y)
+      rm(gamma_E_rt_optimise)
     } else {
       new_vals <- pd$y[pd$compartment == "E2"] * out$odin_parameters$gamma_E
     }
@@ -261,7 +267,7 @@ nimue_format <- function(out,
       pd$compartment[pd$compartment == "E2"] <- "infections"
       pd$compartment <- as.factor(pd$compartment)
     }
-    rm(new_vals, gamma_E_rt_optimise)
+    rm(new_vals)
   }
 
   # add in hosp_inc

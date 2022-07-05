@@ -5,8 +5,7 @@ pmcmc_drjacoby <- function(data,
                           n_mcmc,
                           n_burnin,
                           date_vaccine_change,
-                          first_doses,
-                          second_doses,
+                          primary_doses,
                           booster_doses,
                           n_chains = 1,
                           log_likelihood = NULL,
@@ -51,8 +50,7 @@ pmcmc_drjacoby <- function(data,
                           ICU_bed_capacity = NULL,
                           baseline_ICU_bed_capacity = NULL,
                           date_ICU_bed_capacity_change = NULL,
-                          baseline_first_doses = 0,
-                          baseline_second_doses = 0,
+                          baseline_primary_doses = 0,
                           baseline_booster_doses = 0,
                           baseline_vaccine_efficacy_infection = vaccine_pars_booster$vaccine_efficacy_infection,
                           vaccine_efficacy_infection = NULL,
@@ -60,6 +58,9 @@ pmcmc_drjacoby <- function(data,
                           vaccine_efficacy_disease = NULL,
                           date_vaccine_efficacy_change = NULL,
                           Rt_args = NULL,
+                          second_dose_delay = 60,
+                          protection_delay_rate = 1/7,
+                          protection_delay_shape = 2,
                           ...
 ) {
 
@@ -178,8 +179,7 @@ pmcmc_drjacoby <- function(data,
   squire:::assert_same_length(contact_matrix_set, date_contact_matrix_set_change)
   squire:::assert_same_length(ICU_bed_capacity, date_ICU_bed_capacity_change)
   squire:::assert_same_length(hosp_bed_capacity, date_hosp_bed_capacity_change)
-  squire:::assert_same_length(first_doses, date_vaccine_change)
-  squire:::assert_same_length(second_doses, date_vaccine_change)
+  squire:::assert_same_length(primary_doses, date_vaccine_change)
   squire:::assert_same_length(booster_doses, date_vaccine_change)
   squire:::assert_same_length(vaccine_efficacy_infection, date_vaccine_efficacy_change)
   squire:::assert_same_length(vaccine_efficacy_disease, date_vaccine_efficacy_change)
@@ -237,35 +237,28 @@ pmcmc_drjacoby <- function(data,
   if(!is.null(date_vaccine_change)) {
 
     squire:::assert_date(date_vaccine_change)
-    squire:::assert_vector(first_doses)
-    squire:::assert_numeric(first_doses)
-    squire:::assert_numeric(baseline_first_doses)
+    squire:::assert_vector(primary_doses)
+    squire:::assert_numeric(primary_doses)
+    squire:::assert_numeric(baseline_primary_doses)
 
-    if(is.null(baseline_first_doses)) {
-      stop("baseline_first_doses can't be NULL if date_vaccine_change is provided")
+    if(is.null(baseline_primary_doses)) {
+      stop("baseline_primary_doses can't be NULL if date_vaccine_change is provided")
     }
     if(as.Date(utils::tail(date_vaccine_change,1)) > as.Date(utils::tail(data$date, 1))) {
       stop("Last date in date_vaccine_change is greater than the last date in data")
     }
 
-    tt_first_doses <- c(0, seq_len(length(date_vaccine_change)))
-    first_doses <- c(baseline_first_doses, first_doses)
-    tt_second_doses <- tt_first_doses
-    second_doses <- c(baseline_second_doses, second_doses)
-    tt_booster_doses <- tt_first_doses
+    tt_primary_doses <- c(0, seq_len(length(date_vaccine_change)))
+    primary_doses <- c(baseline_primary_doses, primary_doses)
+    tt_booster_doses <- tt_primary_doses
     booster_doses <- c(baseline_booster_doses, booster_doses)
 
   } else {
     tt_vaccine <- 0
-    if(!is.null(baseline_first_doses)) {
-      first_doses <- baseline_first_doses
+    if(!is.null(baseline_primary_doses)) {
+      primary_doses <- baseline_primary_doses
     } else {
-      first_doses <- 0
-    }
-    if(!is.null(baseline_second_doses)) {
-      second_doses <- baseline_second_doses
-    } else {
-      second_doses <- 0
+      primary_doses <- 0
     }
     if(!is.null(baseline_booster_doses)) {
       booster_doses <- baseline_booster_doses
@@ -376,16 +369,17 @@ pmcmc_drjacoby <- function(data,
     tt_hosp_beds = tt_hosp_beds,
     ICU_bed_capacity = ICU_bed_capacity,
     tt_ICU_beds = tt_ICU_beds,
-    first_doses = first_doses,
-    tt_first_doses = tt_first_doses,
-    second_doses = second_doses,
-    tt_second_doses = tt_second_doses,
+    primary_doses = primary_doses,
+    tt_primary_doses = tt_primary_doses,
     booster_doses = booster_doses,
     tt_booster_doses = tt_booster_doses,
     vaccine_efficacy_infection = vaccine_efficacy_infection,
     tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
     vaccine_efficacy_disease = vaccine_efficacy_disease,
     tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
+    protection_delay_rate = NULL,
+    protection_delay_shape = NULL,
+    protection_delay_time = NULL,
     ...)
 
   # collect interventions for odin model likelihood
@@ -399,13 +393,15 @@ pmcmc_drjacoby <- function(data,
     date_hosp_bed_capacity_change = date_hosp_bed_capacity_change,
     hosp_bed_capacity = hosp_bed_capacity,
     date_vaccine_change = date_vaccine_change,
-    first_doses = first_doses,
-    second_doses = second_doses,
+    primary_doses = primary_doses,
     booster_doses = booster_doses,
     date_vaccine_efficacy_change = date_vaccine_efficacy_change,
     vaccine_efficacy_disease = vaccine_efficacy_disease,
     date_vaccine_efficacy_change = date_vaccine_efficacy_change,
-    vaccine_efficacy_infection = vaccine_efficacy_infection
+    vaccine_efficacy_infection = vaccine_efficacy_infection,
+    protection_delay_rate = protection_delay_rate,
+    protection_delay_shape = protection_delay_shape,
+    second_dose_delay = second_dose_delay
   )
 
   #----------------..
@@ -515,10 +511,8 @@ pmcmc_drjacoby <- function(data,
                              tt_hosp_beds = tt_hosp_beds,
                              ICU_bed_capacity = ICU_bed_capacity,
                              tt_ICU_beds = tt_ICU_beds,
-                             first_doses = first_doses,
-                             tt_first_doses = tt_first_doses,
-                             second_doses = second_doses,
-                             tt_second_doses = tt_second_doses,
+                             primary_doses = primary_doses,
+                             tt_primary_doses = tt_primary_doses,
                              booster_doses = booster_doses,
                              tt_booster_doses = tt_booster_doses,
                              vaccine_efficacy_infection = vaccine_efficacy_infection,
