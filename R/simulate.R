@@ -250,7 +250,7 @@ generate_draws.rt_optimised <- function(out, t_end = NULL, project_forwards = FA
     out$output <- NULL
   } else {
     #remove outputs to save on memory with parallel
-    outputs <- purrr::map(seq_len(dim(out$output)[3]), ~list())
+    outputs <- purrr::map(seq_along(out$samples), ~list())
     out$output <- NULL
     t_start <- 0
   }

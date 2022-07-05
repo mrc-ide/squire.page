@@ -352,7 +352,11 @@ get_parameters <- function(model_out){
 #' @param model_out A nimue/squire mcmc or particle fit output
 #' @export
 get_parameters.default <- function(model_out){
-  model_out$pmcmc_results$inputs$model_params
+  if(is.null(model_out$pmcmc_results)){
+    model_out$odin_parameters
+  } else {
+    model_out$pmcmc_results$inputs$model_params
+  }
 }
 #' S3 Method to get total susceptible population
 #' @param model_out A nimue/squire mcmc or particle fit output
