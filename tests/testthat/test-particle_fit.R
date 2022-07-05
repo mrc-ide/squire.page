@@ -70,7 +70,8 @@ test_that("nimue booster functionality", {
     )
   )
   parameters <- list(
-    country = "Turkey"
+    country = "Turkey",
+    protection_delay_time = 50
   )
   squire_model <- nimue_booster_model()
 

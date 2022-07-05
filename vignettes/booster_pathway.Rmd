@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -34,19 +34,21 @@ Compartment definitions are as follows:
 * $uV$ Un-vaccinated population,
 * $pV_i$ Partially vaccinated/protected population (i.e. first dose of a two dose regimen),
 * $fV_i$ Fully vaccinated/protected population (i.e. both doses of a two dose regimen).
+* $bV_i$ Boosted population (at least one booster dose).
 
-Partial and full dose compartments both feed into waned compartments that 
+Full dose and boosted compartments both feed into waned compartments that 
 represent reduced vaccine efficacy over time. Transition rates are defined as:
 
 * $fD_t$ Daily time-series of first doses,
-* $sD_t$ Daily time-series of second doses,
-* $bD_t$ Daily time-series of booster doses,
-* $w_p$ Rate of waning of first dose protection,
-* $w_i$ Rate of waning of second/boosted dose protection.
+* $sD_t$ An inferred delay between doses (~60 days),
+* $bD_{1,t}$ Daily time-series of initial booster doses,
+* $bD_{2,t}$ Daily time-series of follow-up booster doses, can be limited to certain age groups,
+* $w_p$ Rate of waning of initial dose protection,
+* $w_i$ Rate of waning of boosted dose protection.
 
 # Usage
 
-The user is expected to provide a time-series of first, second, and booster doses.
+The user is expected to provide a time-series of initial, and booster doses.
 This model is primarily for usage in the *global_lmic_reports*, and so it not
 intended for normal usage. The objects necessary for MCMC fitting can be access
 as so:
@@ -68,24 +70,30 @@ The model can be run as in *squire* or *nimue* with the non-exported function
 ```{r fig.width=7,fig.height=5}
 squire.page:::run_booster(
   country = "United Kingdom",
-  first_doses = c(100, 1000, 500),
-  tt_first_doses = c(0, 10, 50),
-  second_doses = c(0, 1000),
-  tt_second_doses = c(0, 30),
-  booster_doses = c(0, 1000),
-  tt_booster_doses = c(0, 200)
+  primary_doses = c(100, 1000, 500, 0),
+  tt_primary_doses = c(0, 10, 50, 150),
+  second_dose_delay = 60,
+  booster_doses = c(0, 500, 750),
+  tt_booster_doses = c(0, 200, 400),
+  time_period  = 365*2,
+  vaccine_booster_follow_up_coverage = c(rep(0, 17 - 5), rep(1, 5))
 ) %>% 
-  squire.page::nimue_format(var_select = c("vaccinated_first_dose", "vaccinated_first_waned", "vaccinated_second_dose", "vaccinated_second_waned")) %>% 
+  squire.page::nimue_format(var_select = c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_second_waned",
+                                           "vaccinated_booster_dose", "vaccinated_booster_waned")) %>% 
   tibble() %>% 
   pivot_wider(names_from = compartment, values_from = y) %>% 
   transmute(
     t = t,
-    `Waned (Full Dose)` = vaccinated_second_waned,
-    `Fully Protected` = vaccinated_second_dose - vaccinated_second_waned,
-    `Waned (Partial Dose)` = vaccinated_first_waned,
-    `Partially Protected` = vaccinated_first_dose - vaccinated_first_waned
+    `Partial` = vaccinated_first_dose,
+    `Primary` = vaccinated_second_dose,
+    `Waned (Primary)` = vaccinated_second_waned,
+    `Boosted` = vaccinated_booster_dose,
+    `Waned (Boosted)` = vaccinated_booster_waned
   ) %>%
-  pivot_longer(c(`Waned (Full Dose)`, `Waned (Partial Dose)`, `Fully Protected`, `Partially Protected`),
+  pivot_longer(c(`Partial`, `Primary`,
+    `Waned (Primary)`,
+    `Boosted`,
+    `Waned (Boosted)`),
                names_to = "Vaccine Protection", values_to = "Population") %>% 
   ggplot(aes(x = t, y = `Population`, colour = `Vaccine Protection`)) + 
   geom_line()
@@ -93,7 +101,8 @@ squire.page:::run_booster(
 
 As the delay in development of vaccination protection is removed, the time-series
 for first/second doses provided to the model if internally adjusted via an Erlang
-distribution with shape 2 and rate 1/14 to simulate this effect.
+distribution with shape 2 and rate 1/7 to simulate this effect. These parameters
+are customizable in the model.
 
 To simulate a primary single dose vaccine (i.e. Janssen) set both first and second
 dose efficacies to the same desired level and set the time-series of the second doses
@@ -123,19 +132,22 @@ Vaccine Efficacies:
 tribble(
   ~`Compartment`, ~`Protection Against Disease`, ~`Protection Against Infection`,
   "~pV_1~", 0.75, 0.55,
-  "~pV_2~", 0.01628344, 0.00000000,
   "~fV_1~", 0.90, 0.75,
-  "~fV_2~", 0.90, 0.100744678,
-  "~fV_3~", 0.034275872, 0.002989531
+  "~fV_2~", 0.049041065, 0,
+  "~bV_1~", 0.95, 0.80,
+  "~bV_2~", 0.14865027, 0.12850480,
+  "~bV_3~", 0.02109197, 0
 ) %>% 
   knitr::kable()
 ```
 
 Waning Rates:
 
-* $w_p$ = 0.01015148 (98.5 days)
-* $w_1$ = 0.009757324 (102.5 days)
-* $w_2$ = 0.019463164 (51.4 days)
+* $w_p$ = 0.007466205 (134 days)
+* $w_1$ = 0.00807429 (123.8 days)
+* $w_2$ = 0.03331390 (30 days)
+
+Delay in second dose protection is assumed to be 60 days.
 
 To calculate these values we utilised an approach taken previously with waning 
 vaccine efficacy via AB titres ([Report 48](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-48-global-omicron/)). We took our assumed 

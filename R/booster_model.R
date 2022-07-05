@@ -33,13 +33,16 @@ nimue_booster_model <- function(use_dde = TRUE) {
                               tt_vaccine_efficacy_infection = vaccine_pars_booster$tt_vaccine_efficacy_infection,
                               vaccine_efficacy_disease = vaccine_pars_booster$vaccine_efficacy_disease,
                               tt_vaccine_efficacy_disease = vaccine_pars_booster$tt_vaccine_efficacy_disease,
-                              first_doses = vaccine_pars_booster$first_doses,
-                              tt_first_doses = vaccine_pars_booster$tt_first_doses,
-                              second_doses = vaccine_pars_booster$second_doses,
-                              tt_second_doses = vaccine_pars_booster$tt_second_doses,
+                              primary_doses = vaccine_pars_booster$primary_doses,
+                              tt_primary_doses = vaccine_pars_booster$tt_primary_doses,
+                              second_dose_delay = vaccine_pars_booster$second_dose_delay,
                               booster_doses = vaccine_pars_booster$booster_doses,
                               tt_booster_doses = vaccine_pars_booster$tt_booster_doses,
                               vaccine_coverage_mat = vaccine_pars_booster$vaccine_coverage_mat,
+                              vaccine_booster_follow_up_coverage = vaccine_pars_booster$vaccine_booster_follow_up_coverage,
+                              protection_delay_rate = vaccine_pars_booster$protection_delay_rate,
+                              protection_delay_shape = vaccine_pars_booster$protection_delay_shape,
+                              protection_delay_time = NULL,
 
                               # durations
                               dur_E  = durs_booster$dur_E,
@@ -101,13 +104,16 @@ nimue_booster_model <- function(use_dde = TRUE) {
                tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
                vaccine_efficacy_disease = vaccine_efficacy_disease,
                tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
-               first_doses = vaccine_pars_booster$first_doses,
-               tt_first_doses = vaccine_pars_booster$tt_first_doses,
-               second_doses = vaccine_pars_booster$second_doses,
-               tt_second_doses = vaccine_pars_booster$tt_second_doses,
-               booster_doses = vaccine_pars_booster$booster_doses,
-               tt_booster_doses = vaccine_pars_booster$tt_booster_doses,
+               primary_doses = primary_doses,
+               tt_primary_doses = tt_primary_doses,
+               second_dose_delay = second_dose_delay,
+               booster_doses = booster_doses,
+               tt_booster_doses = tt_booster_doses,
                vaccine_coverage_mat = vaccine_coverage_mat,
+               vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
+               protection_delay_rate = protection_delay_rate,
+               protection_delay_shape = protection_delay_shape,
+               protection_delay_time = protection_delay_time,
                seeding_cases = seeding_cases,
                ...)
 
@@ -170,8 +176,8 @@ default_probs_booster <- function() {
   c(squire::default_probs(),
     list(rel_infectiousness = rep(1, 17),
          rel_infectiousness_vaccinated = matrix(
-           c(0.5, 1, 0.5, 0.5, 1), ncol = 17, nrow = 5,
-           dimnames = list(c("pV_1", "pV_2", "fV_1", "fV_2", "fV_3"))
+           c(0.5, 0.5, 1, 0.5, 0.5, 1), ncol = 17, nrow = 6,
+           dimnames = list(c("pV_1", "fV_1", "fV_2", "bV_1", "bV_2", "bV_3"))
         ),
          prob_hosp_multiplier = 1,
          tt_prob_hosp_multiplier = 0,
@@ -186,27 +192,33 @@ durs_booster <- nimue:::default_durations()
 #' Return the default vaccine parameters for modelling
 #' @noRd
 default_vaccine_pars_booster <- function() {
+  #scale VE for breakthrough
+  d <- c(0.75, 0.9, 0.049041065, 0.95, 0.14865027, 0.02109197)
+  i <- c(0.55, 0.75, 0, 0.8, 0.1285048, 0)
+  d <- (d - i)/(1 - i)
   list(dur_R = Inf,
        tt_dur_R = 0,
-       dur_V = c(1/0.01015148, 1/0.009757324, 1/0.019463164),
+       dur_V = c(1/0.007466205, 1/0.00807429, 1/0.03331390),
        tt_dur_V = 0,
        vaccine_efficacy_infection = matrix(
-         c(0.55, 0, 0.75, 0.100744678, 0.002989531), ncol = 17, nrow = 5,
-         dimnames = list(c("pV_1", "pV_2", "fV_1", "fV_2", "fV_3"))
+         i, ncol = 17, nrow = 6,
+         dimnames = list(c("pV_1", "fV_1", "fV_2", "bV_1", "bV_2", "bV_3"))
         ),
        tt_vaccine_efficacy_infection = 0,
        vaccine_efficacy_disease = matrix(
-         c(0.75, 0.01628344, 0.90, 0.90, 0.034275872), ncol = 17, nrow = 5,
-         dimnames = list(c("pV_1", "pV_2", "fV_1", "fV_2", "fV_3"))
+         d, ncol = 17, nrow = 6,
+         dimnames = list(c("pV_1", "fV_1", "fV_2", "bV_1", "bV_2", "bV_3"))
        ),
        tt_vaccine_efficacy_disease = 0,
-       first_doses = 1000,
-       tt_first_doses = 0,
-       second_doses = 500,
-       tt_second_doses = 0,
+       primary_doses = 1000,
+       tt_primary_doses = 0,
+       second_dose_delay = 60,
        booster_doses = 100,
        tt_booster_doses = 0,
-       vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1))
+       vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+       vaccine_booster_follow_up_coverage = NULL,
+       protection_delay_rate = 1/7,
+       protection_delay_shape = 2)
 }
 
 vaccine_pars_booster <- default_vaccine_pars_booster()
@@ -281,13 +293,16 @@ parameters_booster <- function(
   tt_vaccine_efficacy_infection,
   vaccine_efficacy_disease,
   tt_vaccine_efficacy_disease,
-  first_doses,
-  tt_first_doses,
-  second_doses,
-  tt_second_doses,
+  primary_doses,
+  tt_primary_doses,
   booster_doses,
   tt_booster_doses,
+  second_dose_delay,
   vaccine_coverage_mat,
+  vaccine_booster_follow_up_coverage,
+  protection_delay_rate,
+  protection_delay_shape,
+  protection_delay_time,
 
   # Health system capacity
   hosp_bed_capacity,
@@ -345,7 +360,9 @@ parameters_booster <- function(
   # ----------------------------------------------------------------------------
 
   # Initialise initial conditions
-  mod_init <- nimue:::init(population, seeding_cases, seeding_age_order, init)
+  mod_init <- nimue:::init(population, seeding_cases, seeding_age_order, init) %>%
+  #add extra columns
+  purrr::map(~cbind(.x, rep(0, nrow(.x))))
   ##remove extra columns
   #mod_init <- purrr::map(mod_init, ~.x[,6])
 
@@ -364,8 +381,7 @@ parameters_booster <- function(
   stopifnot(length(contact_matrix_set) == length(tt_contact_matrix))
   stopifnot(length(hosp_bed_capacity) == length(tt_hosp_beds))
   stopifnot(length(ICU_bed_capacity) == length(tt_ICU_beds))
-  stopifnot(length(first_doses) == length(tt_first_doses))
-  stopifnot(length(second_doses) == length(tt_second_doses))
+  stopifnot(length(primary_doses) == length(tt_primary_doses))
   stopifnot(length(booster_doses) == length(tt_booster_doses))
   stopifnot(length(prob_hosp_multiplier) == length(tt_prob_hosp_multiplier))
   stopifnot(length(prob_severe_multiplier) == length(tt_prob_severe_multiplier))
@@ -391,9 +407,9 @@ parameters_booster <- function(
   nimue:::assert_pos(time_period)
   nimue:::assert_pos(hosp_bed_capacity)
   nimue:::assert_pos(ICU_bed_capacity)
-  nimue:::assert_pos(first_doses)
-  nimue:::assert_pos(second_doses)
+  nimue:::assert_pos(primary_doses)
   nimue:::assert_pos(booster_doses)
+  nimue:::assert_pos(second_dose_delay)
   nimue:::assert_pos(prob_hosp_multiplier)
   nimue:::assert_pos(prob_severe_multiplier)
 
@@ -442,6 +458,14 @@ parameters_booster <- function(
   nimue:::assert_greq(rel_infectiousness, 0)
   nimue:::assert_greq(p_dist, 0)
 
+  if(is.null(vaccine_booster_follow_up_coverage)){
+    vaccine_booster_follow_up_coverage <- rep(1, 17)
+  } else {
+    if(any(!vaccine_booster_follow_up_coverage %in% c(0, 1))){
+      stop("vaccine_booster_follow_up_coverage must be NULL for a vector of 0s and 1s with length = N_age")
+    }
+  }
+
 
   # Convert and Generate Parameters As Required
   # ----------------------------------------------------------------------------
@@ -477,12 +501,12 @@ parameters_booster <- function(
 
   # Format vaccine-specific parameters
   if(typeof(dur_V) == "list"){
-    gamma_vaccine <- purrr::map(dur_V, ~c(0, 1/.x[1], 0, 1/.x[2:(6 - 3)], 0)) %>%
+    gamma_vaccine <- purrr::map(dur_V, ~c(0, 0, 1/.x[1], 0, 1/.x[-1], 0)) %>%
       unlist() %>%
-      matrix(ncol = 6, nrow = length(tt_dur_V), byrow = TRUE)
+      matrix(ncol = 7, nrow = length(tt_dur_V), byrow = TRUE)
     tt_dur_vaccine <- tt_dur_V
   } else {
-    gamma_vaccine <- matrix(c(0, 1/dur_V[1], 0, 1/dur_V[2:(6 - 3)], 0), nrow = 1)
+    gamma_vaccine <- matrix(c(0, 0, 1/dur_V[1], 0, 1/dur_V[-1], 0), nrow = 1)
     tt_dur_vaccine <- 0
   }
 
@@ -505,6 +529,17 @@ parameters_booster <- function(
     tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
     prob_hosp = prob_hosp
   )
+
+  ##Delay dosing
+  delayed <- apply_dose_delay_booster(seq_len(protection_delay_time) - 1, primary_doses, tt_primary_doses,
+                                      booster_doses, tt_booster_doses,
+                                      second_dose_delay, protection_delay_rate,
+                                      protection_delay_shape)
+  primary_doses <- delayed$primary_doses
+  tt_primary_doses <- delayed$tt_primary_doses
+  booster_doses <- delayed$booster_doses
+  tt_booster_doses <- delayed$tt_booster_doses
+  second_dose_delay <-delayed$second_dose_delay
 
   # Collate Parameters Into List
   pars <- c(mod_init,
@@ -550,17 +585,17 @@ parameters_booster <- function(
                  beta_set = beta_set,
                  population = population,
                  contact_matrix_set = contact_matrix_set,
-                 first_doses = first_doses,
-                 tt_first_doses = tt_first_doses,
-                 second_doses = second_doses,
-                 tt_second_doses = tt_second_doses,
+                 primary_doses = primary_doses,
+                 tt_primary_doses = tt_primary_doses,
                  booster_doses = booster_doses,
                  tt_booster_doses = tt_booster_doses,
+                 second_dose_delay = second_dose_delay,
                  vaccine_efficacy_infection = vaccine_efficacy_infection_odin_array,
                  tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
                  tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
                  vaccine_coverage_mat = vaccine_coverage_mat,
-                 N_vaccine = 6,
+                 vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
+                 N_vaccine = 7,
                  N_prioritisation_steps = nrow(vaccine_coverage_mat),
                  gamma_vaccine = gamma_vaccine,
                  tt_dur_vaccine = tt_dur_vaccine))
@@ -571,19 +606,58 @@ parameters_booster <- function(
 }
 
 #' @noRd
+apply_dose_delay_booster <- function(t, primary_doses, tt_primary_doses,
+                                     booster_doses, tt_booster_doses,
+                                     second_dose_delay, protection_delay_rate,
+                                     protection_delay_shape){
+  if(!is.null(protection_delay_rate) & !is.null(protection_delay_shape)){
+    #interpolate
+    if(any(primary_doses > 0)){
+      primary_doses_int <- block_interpolate(t, primary_doses, tt_primary_doses)
+      primary_doses <- diff(c(0,
+                              purrr::map_dbl(seq_along(primary_doses_int), function(t){
+                                sum(stats::pgamma(seq(t - 1, 0), shape = protection_delay_shape, rate = protection_delay_rate) *
+                                      primary_doses_int[seq_len(t)])
+                              })
+      ))
+      tt_primary_doses <- t
+    }
+    if(any(booster_doses > 0)){
+      booster_doses_int <- block_interpolate(t, booster_doses, tt_booster_doses)
+      booster_doses <- diff(c(0,
+                              purrr::map_dbl(seq_along(booster_doses_int), function(t){
+                                sum(stats::pgamma(seq(t - 1, 0), shape = protection_delay_shape, rate = protection_delay_rate) *
+                                      booster_doses_int[seq_len(t)])
+                              })
+      ))
+      tt_booster_doses <- t
+    }
+    #add mean to second dose delay
+    second_dose_delay <- second_dose_delay + protection_delay_shape/protection_delay_rate
+  }
+  return(
+    list(
+      primary_doses = primary_doses, tt_primary_doses = tt_primary_doses,
+      booster_doses = booster_doses, tt_booster_doses = tt_booster_doses,
+      second_dose_delay = second_dose_delay
+    )
+  )
+}
+
+#' @noRd
 format_rel_inf_vacc_for_odin_booster <- function(rel_inf_vacc) {
 
   #if only have one assume this holds for all ages/compartments
   if(length(rel_inf_vacc) == 1){
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 5)
-  } else if (is.numeric(rel_inf_vacc) & length(rel_inf_vacc) == 5){
+    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 6)
+  } else if (is.numeric(rel_inf_vacc) & length(rel_inf_vacc) == 6){
     #expand across age groups
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 5)
+    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 6)
   } else if (is.numeric(rel_inf_vacc) & length(rel_inf_vacc) == 17){
     #expand across vaccine comparments
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 5, byrow = TRUE)
-  } else if (!(nrow(rel_inf_vacc) == 5 & ncol(rel_inf_vacc) == 17)){
-    stop("rel_infectiousness_vaccinated must be a single value, a vector of length 5 or 17, or a matrix with 5 rows and 17 columns")
+    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 6, byrow = TRUE)
+  } else if (!(nrow(rel_inf_vacc) == 6 & ncol(rel_inf_vacc) == 17)){
+    stop("rel_infectiousness_vaccinated must be a single value, a vector of length 6 or 17, or a matrix with 6 rows and 17 columns")
   }
 
 
@@ -614,16 +688,16 @@ format_ve_i_for_odin_booster <- function(vaccine_efficacy_infection,
 
     #if numeric vector
     if(any(class(ve_i) == "numeric")) {
-      if(length(ve_i) == 5) {
+      if(length(ve_i) == 6) {
         #make into matrix
-        ve_i <- matrix(ve_i, ncol = 17, nrow = 5)
+        ve_i <- matrix(ve_i, ncol = 17, nrow = 6)
       } else {
-        stop("If element of vaccine_efficacy_infection is a vector, it must have 5 values corresponding to a first dose, a waned compartment, second dose, and the two waning levels")
+        stop("If element of vaccine_efficacy_infection is a vector, it must have 6 values corresponding to a first dose, second dose, a waned compartment, booster dose, and the two waning levels")
       }
     }
 
-    if(ncol(ve_i) != 17 | nrow(ve_i) != 5){
-      stop("Parameter vaccine_efficacy_infection must be vector of length 5 or a matrix with ncol = 17, nrow = 5")
+    if(ncol(ve_i) != 17 | nrow(ve_i) != 6){
+      stop("Parameter vaccine_efficacy_infection must be vector of length 6 or a matrix with ncol = 17, nrow = 6")
     }
 
     return(ve_i)
@@ -675,16 +749,16 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
 
     #if numeric vector
     if(any(class(ve_d) == "numeric")) {
-      if(length(ve_d) == 5) {
+      if(length(ve_d) == 6) {
         #make into matrix
-        ve_d <- matrix(ve_d, ncol = 17, nrow = 5)
+        ve_d <- matrix(ve_d, ncol = 17, nrow = 6)
       } else {
-        stop("If element of vaccine_efficacy_disease is a vector, it must have 5 values corresponding to a first dose, a waned compartment, second dose, and the two waning levels")
+        stop("If element of vaccine_efficacy_disease is a vector, it must have 6 values corresponding to a first dose, a waned compartment, second dose, and the two waning levels")
       }
     }
 
-    if(ncol(ve_d) != 17 | nrow(ve_d) != 5){
-      stop("Parameter vaccine_efficacy_disease must be vector of length 5 or a matrix with ncol = 17, nrow = 5")
+    if(ncol(ve_d) != 17 | nrow(ve_d) != 6){
+      stop("Parameter vaccine_efficacy_disease must be vector of length 6 or a matrix with ncol = 17, nrow = 6")
     }
 
     return(ve_d)
@@ -828,16 +902,16 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
 #'   Alternatively can be a list of values if this changes over time.
 #' @param tt_dur_V List of change times for dur_V.
 #' @param vaccine_efficacy_infection Efficacy of vaccine against infection.
-#'   This parameter must either be a length 5 numeric (a single efficacy for
-#'   each vaccine state (first dose, waned first dose, second dose, and two waned second dose compartments))
-#'   or numeric vector with 17 columns and 5 rows
+#'   This parameter must either be a length 6 numeric (a single efficacy for
+#'   each vaccine state (first dose, second dose, waned second dose, booster dose, and two waned second dose compartments))
+#'   or numeric vector with 17 columns and 6 rows
 #'   (an efficacy for each age group and vaccine state).
 #'   An efficacy of 1 will reduce FOI by 100 percent, an efficacy of 0.2 will
 #'   reduce FOI by 20 percent etc.
 #'   To specify changes in vaccine efficacy over time, vaccine efficacies must
 #'   be provided as a list, with each list element being the efficacy at each
 #'   time point specified by \code{tt_vaccine_efficacy_infection}. These
-#'   efficacies must also be length 5 numeric or 5x17 numeric matrix.
+#'   efficacies must also be length 6 numeric or 6x17 numeric matrix.
 #' @param tt_vaccine_efficacy_infection Timing of changes in vaccine efficacy
 #'   against infection. Default = 0, which assumes fixed efficacy over time.
 #'   Must be the same length as the length of \code{vaccine_efficacy_infection}
@@ -845,26 +919,31 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
 #'   changing vaccines being  given and dosing strategy changes.
 #' @param vaccine_efficacy_disease Efficacy of partial vaccination against severe
 #'   (requiring hospitilisation) disease (by age). This parameter must either be
-#'   length 5 numeric (a single efficacy for each vaccine state (first dose, waned first dose, second dose, and two waned second dose compartments)) or numeric vector with 17 columns and 5 rows
+#'   length 6 numeric (a single efficacy for each vaccine state (first dose, second dose, waned second dose, booster dose, and two waned second dose compartments)) or numeric vector with 17 columns and 6 rows
 #'   (an efficacy for each age group and vaccine state). An efficacy of 1 will
 #'   reduce the probability of hospitalisation by 100 percent, an efficacy of
 #'   0.2 will reduce the probability of hospitalisation by 20 percent etc.
 #'   To specify changes in vaccine efficacy over time, vaccine efficacies must
 #'   be provided as a list, with each list element being the efficacy at each
 #'   time point specified by \code{tt_vaccine_efficacy_disease}. These
-#'   efficacies must also be length 5 numeric or 5x17 numeric matrix.
+#'   efficacies must also be length 6 numeric or 5x17 numeric matrix.
 #' @param tt_vaccine_efficacy_disease Timing of changes in vaccine efficacy
 #'   against disease. Default = 0, which assumes fixed efficacy over time.
 #'   Must be the same length as the length of \code{vaccine_efficacy_disease}
 #'   when provided as a list. Time changing efficacies can occur in response to
 #'   changing vaccines being  given and dosing strategy changes.
-#' @param first_doses The maximum number of individuals who can be vaccinated with their first dose per day.
-#' @param tt_first_doses Time change points for vaccine capacity (\code{first_doses}).
-#' @param second_doses The maximum number of individuals who can be vaccinated with their second dose per day.
-#' @param tt_second_doses Time change points for vaccine capacity (\code{second_doses}).
+#' @param primary_doses The maximum number of individuals who can be vaccinated with their first dose per day.
+#' @param tt_primary_doses Time change points for vaccine capacity (\code{first_doses}).
+#' @param second_dose_delay Delay between first dose and second dose in the initial series, this model assume all who get first doses get a second dose, default = 60 (days).
 #' @param booster_doses The maximum number of individuals who can be vaccinated with their booster dose per day.
 #' @param tt_booster_doses Time change points for vaccine capacity (\code{booster_doses}).
 #' @param vaccine_coverage_mat Vaccine coverage targets by age (columns) and priority (row)
+#' @param vaccine_booster_follow_up_coverage Age group eligibility for follow-up boosters (i.e. 2nd, 3rd, ... booster doses),
+#' default = NULL means all are eligible. Format: 0 indicates not eligible, 1 indicates eligible.
+#' @param protection_delay_rate Rate for the delay in development of vaccine protection, applied via gamma/erlang distribution,
+#' default = 1/14. If NULL no delay is applied.
+#' @param protection_delay_shape Shape for the delay in development of vaccine protection, applied via gamma/erlang distribution,
+#' default = 1/14. If NULL no delay is applied.
 #' @param use_dde Use the dde solver (default is \code{TRUE})
 #' @param ... Additional arguments for solver
 #'
@@ -937,13 +1016,15 @@ run_booster <- function(
   tt_vaccine_efficacy_infection = vaccine_pars_booster$tt_vaccine_efficacy_infection,
   vaccine_efficacy_disease = vaccine_pars_booster$vaccine_efficacy_disease,
   tt_vaccine_efficacy_disease = vaccine_pars_booster$tt_vaccine_efficacy_disease,
-  first_doses = vaccine_pars_booster$first_doses,
-  tt_first_doses = vaccine_pars_booster$tt_first_doses,
-  second_doses = vaccine_pars_booster$second_doses,
-  tt_second_doses = vaccine_pars_booster$tt_second_doses,
+  primary_doses = vaccine_pars_booster$primary_doses,
+  tt_primary_doses = vaccine_pars_booster$tt_primary_doses,
   booster_doses = vaccine_pars_booster$booster_doses,
   tt_booster_doses = vaccine_pars_booster$tt_booster_doses,
+  second_dose_delay = vaccine_pars_booster$second_dose_delay,
   vaccine_coverage_mat = vaccine_pars_booster$vaccine_coverage_mat,
+  vaccine_booster_follow_up_coverage = vaccine_pars_booster$vaccine_booster_follow_up_coverage,
+  protection_delay_rate = vaccine_pars_booster$protection_delay_rate,
+  protection_delay_shape = vaccine_pars_booster$protection_delay_shape,
 
   # health system capacity
   hosp_bed_capacity = NULL,
@@ -1014,13 +1095,16 @@ run_booster <- function(
                      tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
                      vaccine_efficacy_disease = vaccine_efficacy_disease,
                      tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
-                     first_doses = first_doses,
-                     tt_first_doses = tt_first_doses,
-                     second_doses = second_doses,
-                     tt_second_doses = tt_second_doses,
+                     primary_doses = primary_doses,
+                     tt_primary_doses = tt_primary_doses,
+                     second_dose_delay = second_dose_delay,
                      booster_doses = booster_doses,
                      tt_booster_doses = tt_booster_doses,
+                     protection_delay_rate = protection_delay_rate,
+                     protection_delay_shape = protection_delay_shape,
+                     protection_delay_time = time_period,
                      vaccine_coverage_mat = vaccine_coverage_mat,
+                     vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
                      init = init)
 
   # Set model type

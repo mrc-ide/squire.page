@@ -87,10 +87,8 @@ get_immunity_ratios <- function(out, max_date = NULL, vaccine = FALSE){
 get_immunity_ratios.default <- function(out, max_date = NULL, vaccine = FALSE) {
 
   if("rt_optimised" %in% class(out)){
-    data <- out$inputs$data
     model_params <- setup_parameters(out$squire_model, out$parameters)
   } else {
-    data <- out$pmcmc_results$inputs$data
     model_params <- out$pmcmc_results$inputs$model_params
   }
 

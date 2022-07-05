@@ -64,18 +64,13 @@ extend_vaccine_inputs <- function(vacc_inputs, time_period, out, end_date) {
     )
   } else if ("booster_doses" %in% names(vacc_inputs)){
     # weekly mean vaccine distributions
-    first_doses <- mean(utils::tail(vacc_inputs$first_doses,7))
-    second_doses <- mean(utils::tail(vacc_inputs$second_doses,7))
+    primary_doses <- mean(utils::tail(vacc_inputs$primary_doses,7))
     booster_doses <- mean(utils::tail(vacc_inputs$booster_doses,7))
-
-    #leave efficacies as they are
 
     # combine into model_user_args for projections
     mua <- list(
-      "first_doses" = first_doses,
-      "tt_first_doses" = 0,
-      "second_doses" = second_doses,
-      "tt_second_doses" = 0,
+      "primary_doses" = primary_doses,
+      "tt_primary_doses" = 0,
       "booster_doses" = booster_doses,
       "tt_booster_doses" = 0
     )

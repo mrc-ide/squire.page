@@ -107,16 +107,27 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
     tt_vaccine <- 0
   } else {
     tt_list <- squire:::intervention_dates_for_odin(dates = date_vaccine_change,
-                                                    change = seq_along(interventions$first_doses)[-1],
+                                                    change = seq_along(interventions$primary_doses)[-1],
                                                     start_date = start_date,
                                                     steps_per_day = round(1/model_params$dt),
                                                     starting_change = 1)
-    model_params$tt_first_doses <- tt_list$tt
-    model_params$first_doses <- interventions$first_doses[tt_list$change]
-    model_params$tt_second_doses <- tt_list$tt
-    model_params$second_doses <- interventions$second_doses[tt_list$change]
+    model_params$tt_primary_doses <- tt_list$tt
+    model_params$primary_doses <- interventions$primary_doses[tt_list$change]
     model_params$tt_booster_doses <- tt_list$tt
     model_params$booster_doses <- interventions$booster_doses[tt_list$change]
+
+    ##Delay dosing
+    delayed <- apply_dose_delay_booster(seq(0, as.numeric(max(data$date) - start_date)),
+                                        model_params$primary_doses, model_params$tt_primary_doses,
+                                        model_params$booster_doses, model_params$tt_booster_doses,
+                                        interventions$second_dose_delay, interventions$protection_delay_rate,
+                                        interventions$protection_delay_shape)
+    model_params$primary_doses <- delayed$primary_doses
+    model_params$tt_primary_doses <- delayed$tt_primary_doses
+    model_params$booster_doses <- delayed$booster_doses
+    model_params$tt_booster_doses <- delayed$tt_booster_doses
+    model_params$second_dose_delay <-delayed$second_dose_delay
+
   }
 
   # and vaccine efficacy infection

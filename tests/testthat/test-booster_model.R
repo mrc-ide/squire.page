@@ -20,9 +20,9 @@ test_that("Format", {
   expect_equal(as.character(unique(deaths$compartment)), "deaths")
   expect_true(is.numeric(deaths$y))
   #booster specific
-  booster_data <- nimue_format(model_out, c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_first_waned", "vaccinated_second_waned"))
-  expect_equal(sort(as.character(unique(booster_data$compartment))), c("vaccinated_first_dose", "vaccinated_first_waned", "vaccinated_second_dose",
-                                                                       "vaccinated_second_waned"))
+  booster_data <- nimue_format(model_out, c("vaccinated_first_dose", "vaccinated_second_dose", "vaccinated_booster_dose", "vaccinated_second_waned", "vaccinated_booster_waned"))
+  expect_equal(sort(as.character(unique(booster_data$compartment))), c("vaccinated_booster_dose", "vaccinated_booster_waned", "vaccinated_first_dose",
+                                                                       "vaccinated_second_dose", "vaccinated_second_waned"))
   expect_true(is.numeric(booster_data$y))
   #warning if not available
   expect_warning(
@@ -36,38 +36,28 @@ test_that("Model Functionality", {
   }
   base <-
     squire.page:::run_booster(country = "United Kingdom",
-                              first_doses = 4000,
-                              second_doses = 3000,
+                              primary_doses = 4000,
                               booster_doses = 2000,
                               dur_R = 365, time_period = 3*365)
   #compare to no boosters
   no_booster <-
     squire.page:::run_booster(country = "United Kingdom",
-                              first_doses = 4000,
-                              second_doses = 3000,
+                              primary_doses = 4000,
                               booster_doses = 0,
                               dur_R = 365, time_period = 3*365)
   expect_gt(get_total(no_booster, "deaths"), get_total(base, "deaths"))
   expect_gt(get_total(no_booster, "vaccinated_second_waned"), get_total(base, "vaccinated_second_waned"))
-  #no second doses
-  no_second <-
-    squire.page:::run_booster(country = "United Kingdom",
-                              first_doses = 4000,
-                              second_doses = 0,
-                              booster_doses = 2000,
-                              dur_R = 365, time_period = 3*365)
-  expect_gt(get_total(no_second, "deaths"), get_total(no_booster, "deaths"))
-  expect_equal(get_total(no_second, "vaccinated_second_waned"), 0)
-  expect_gt(get_total(no_second, "vaccinated_first_waned"), get_total(no_booster, "vaccinated_first_waned"))
   #no first doses
   no_first <-
     squire.page:::run_booster(country = "United Kingdom",
-                              first_doses = 0,
-                              second_doses = 3000,
+                              primary_doses = 0,
                               booster_doses = 2000,
                               dur_R = 365, time_period = 3*365)
   expect_gt(get_total(no_first, "deaths"), get_total(no_booster, "deaths"))
-  expect_equal(get_total(no_first, "vaccinated_first_waned"), 0)
+  expect_equal(get_total(no_first, "vaccinated_booster_dose"), 0)
+  expect_equal(get_total(no_first, "vaccinated_booster_waned"), 0)
+  expect_equal(get_total(no_first, "vaccinated_second_dose"), 0)
+  expect_equal(get_total(no_first, "vaccinated_second_waned"), 0)
   expect_equal(get_total(no_first, "vaccinated_first_dose"), 0)
   #no population growth
   expect_equal(nimue_format(base, c("S", "E",
@@ -87,46 +77,46 @@ test_that("Model Functionality", {
                 `<`(1) %>%
                 all())
   #with these numbers expect doses to be increasing all the time
-  expect_true(all(nimue_format(base, "vaccinated_first_dose") %>% pull(y) %>% diff() > 0))
-  expect_true(all(nimue_format(base, "vaccinated_second_dose") %>% pull(y) %>% diff() > 0))
-  expect_true(all(nimue_format(base, "vaccinated_second_waned") %>% pull(y) %>% diff() > 0))
+  expect_true(all(nimue_format(base, "vaccinated_first_dose") %>% pull(y) %>% diff() >= 0))
+  expect_true(all(nimue_format(base, "vaccinated_second_dose") %>% pull(y) %>% diff() >= 0))
+  #allow error of a maximum of one dose
+  expect_true(all(nimue_format(base, "vaccinated_booster_dose") %>% pull(y) %>% diff() %>% `+`(1) >= 0))
   #doses make sense
   expect_true(all(nimue_format(base, "first_doses_given") %>% pull(y) <= 4001))
-  expect_true(all(nimue_format(base, "second_doses_given") %>% pull(y) <= 3001))
+  expect_true(all(nimue_format(base, "second_doses_given") %>% pull(y) <= 4001))
   expect_true(all(nimue_format(base, "booster_doses_given") %>% pull(y) <= 2001))
-  #check vaccination rollout in zero infection epidemic
-  zero_inf <-
-    squire.page:::run_booster(country = "United Kingdom",
-                              first_doses = 4000,
-                              second_doses = 3000,
-                              booster_doses = 2000,
-                              dur_R = 365, time_period = 3*365,
-                              beta = 0)
-  expect_true(all(nimue_format(zero_inf, "vaccinated_first_dose") %>% pull(y) %>% diff() %>% `-`(1000) %>% abs() %>% tail(3*365 - 10) < 1))
-  expect_true(all(nimue_format(zero_inf, "vaccinated_second_dose") %>% pull(y) %>% diff() %>% `-`(3000) %>% abs() %>% tail(3*365 - 20) < 1))
-  expect_true(all(nimue_format(zero_inf, "booster_doses_given") %>% pull(y) %>% `-`(2000) %>% abs() %>% tail(3*365 - 100) < 1))
+  # #check vaccination rollout in zero infection epidemic
+  # zero_inf <-
+  #   squire.page:::run_booster(country = "United Kingdom",
+  #                             primary_doses = 4000,
+  #                             booster_doses = 2000,
+  #                             dur_R = 365, time_period = 3*365,
+  #                             beta = 0)
 })
 
 test_that("LMIC Booster Likelihood Function", {
   set.seed(100)
   #just see if it works
+  data <- data.frame(
+    date = seq(as.Date("2020-03-01"), as.Date("2020-03-01") + 99, by = 1),
+    deaths = rpois(100, 50),
+    cases = rpois(100, 100)
+  )
   pmcmc_output <- suppressMessages(pmcmc_drjacoby(
-    data = data.frame(
-      date = seq(as.Date("2020-03-01"), as.Date("2020-03-01") + 99, by = 1),
-      deaths = rpois(100, 50),
-      cases = rpois(100, 100)
-    ),
+    data = data,
     replicates = 10,
     n_mcmc = 100,
     n_burnin = 50,
     log_likelihood = squire:::convert_log_likelihood_func_for_drjacoby(calc_loglikelihood_booster),
     country = "United Kingdom",
-    first_doses = 4000,
-    second_doses = 3000,
+    primary_doses = 4000,
     booster_doses = 2000,
     date_vaccine_change = "2020-05-01",
     R0_change = 1,
-    date_R0_change = "2020-03-01"
+    date_R0_change = "2020-03-01",
+    second_dose_delay = 60,
+    protection_delay_rate = NULL,
+    protection_delay_shape = NULL
   ))
 
   expect_s3_class(pmcmc_output, "lmic_booster_nimue_simulation")
