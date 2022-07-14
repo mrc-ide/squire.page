@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   booster_pathway: booster_pathway.html
   rt_optimise: rt_optimise.html
-last_built: 2022-06-27T08:31Z
+last_built: 2022-07-14T14:48Z
 urls:
   reference: https://mrc-ide.github.io/squire.page/reference
   article: https://mrc-ide.github.io/squire.page/articles

@@ -83,25 +83,29 @@
 <span class="math inline">\(pV_i\)</span> Partially vaccinated/protected population (i.e. first dose of a two dose regimen),</li>
 <li>
 <span class="math inline">\(fV_i\)</span> Fully vaccinated/protected population (i.e. both doses of a two dose regimen).</li>
+<li>
+<span class="math inline">\(bV_i\)</span> Boosted population (at least one booster dose).</li>
 </ul>
-<p>Partial and full dose compartments both feed into waned compartments that represent reduced vaccine efficacy over time. Transition rates are defined as:</p>
+<p>Full dose and boosted compartments both feed into waned compartments that represent reduced vaccine efficacy over time. Transition rates are defined as:</p>
 <ul>
 <li>
 <span class="math inline">\(fD_t\)</span> Daily time-series of first doses,</li>
 <li>
-<span class="math inline">\(sD_t\)</span> Daily time-series of second doses,</li>
+<span class="math inline">\(sD_t\)</span> An inferred delay between doses (~60 days),</li>
 <li>
-<span class="math inline">\(bD_t\)</span> Daily time-series of booster doses,</li>
+<span class="math inline">\(bD_{1,t}\)</span> Daily time-series of initial booster doses,</li>
 <li>
-<span class="math inline">\(w_p\)</span> Rate of waning of first dose protection,</li>
+<span class="math inline">\(bD_{2,t}\)</span> Daily time-series of follow-up booster doses, can be limited to certain age groups,</li>
 <li>
-<span class="math inline">\(w_i\)</span> Rate of waning of second/boosted dose protection.</li>
+<span class="math inline">\(w_p\)</span> Rate of waning of initial dose protection,</li>
+<li>
+<span class="math inline">\(w_i\)</span> Rate of waning of boosted dose protection.</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>The user is expected to provide a time-series of first, second, and booster doses. This model is primarily for usage in the <em>global_lmic_reports</em>, and so it not intended for normal usage. The objects necessary for MCMC fitting can be access as so:</p>
+<p>The user is expected to provide a time-series of initial, and booster doses. This model is primarily for usage in the <em>global_lmic_reports</em>, and so it not intended for normal usage. The objects necessary for MCMC fitting can be access as so:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="co">#model object</span></span>
 <span id="cb1-2"><a href="#cb1-2"></a>squire.page<span class="op">::</span><span class="kw">nimue_booster_model</span>()</span>
 <span id="cb1-3"><a href="#cb1-3"></a><span class="co">#likelihood function</span></span>
@@ -112,31 +116,37 @@
 <span id="cb1-8"><a href="#cb1-8"></a>                            ... <span class="co">#specific arguments here)</span></span></code></pre></div>
 <p>The model can be run as in <em>squire</em> or <em>nimue</em> with the non-exported function <code>squire.page:::run_booster</code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">squire.page</span><span class="fu">:::</span><span class="fu">run_booster</span><span class="op">(</span>
-  country <span class="op">=</span> <span class="st">"United Kingdom"</span>,
-  first_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">1000</span>, <span class="fl">500</span><span class="op">)</span>,
-  tt_first_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">50</span><span class="op">)</span>,
-  second_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1000</span><span class="op">)</span>,
-  tt_second_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">30</span><span class="op">)</span>,
-  booster_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1000</span><span class="op">)</span>,
-  tt_booster_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">200</span><span class="op">)</span>
-<span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> 
-  <span class="fu">squire.page</span><span class="fu">::</span><span class="fu"><a href="../reference/nimue_format.html">nimue_format</a></span><span class="op">(</span>var_select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"vaccinated_first_dose"</span>, <span class="st">"vaccinated_first_waned"</span>, <span class="st">"vaccinated_second_dose"</span>, <span class="st">"vaccinated_second_waned"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> 
-  <span class="fu">tibble</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> 
-  <span class="fu">pivot_wider</span><span class="op">(</span>names_from <span class="op">=</span> <span class="va">compartment</span>, values_from <span class="op">=</span> <span class="va">y</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> 
-  <span class="fu">transmute</span><span class="op">(</span>
-    t <span class="op">=</span> <span class="va">t</span>,
-    `Waned (Full Dose)` <span class="op">=</span> <span class="va">vaccinated_second_waned</span>,
-    `Fully Protected` <span class="op">=</span> <span class="va">vaccinated_second_dose</span> <span class="op">-</span> <span class="va">vaccinated_second_waned</span>,
-    `Waned (Partial Dose)` <span class="op">=</span> <span class="va">vaccinated_first_waned</span>,
-    `Partially Protected` <span class="op">=</span> <span class="va">vaccinated_first_dose</span> <span class="op">-</span> <span class="va">vaccinated_first_waned</span>
-  <span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span>
-  <span class="fu">pivot_longer</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">`Waned (Full Dose)`</span>, <span class="va">`Waned (Partial Dose)`</span>, <span class="va">`Fully Protected`</span>, <span class="va">`Partially Protected`</span><span class="op">)</span>,
-               names_to <span class="op">=</span> <span class="st">"Vaccine Protection"</span>, values_to <span class="op">=</span> <span class="st">"Population"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> 
-  <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">t</span>, y <span class="op">=</span> <span class="va">`Population`</span>, colour <span class="op">=</span> <span class="va">`Vaccine Protection`</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> 
-  <span class="fu">geom_line</span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<p><img src="booster_pathway_files/figure-html/unnamed-chunk-4-1.png" width="672"></p>
-<p>As the delay in development of vaccination protection is removed, the time-series for first/second doses provided to the model if internally adjusted via an Erlang distribution with shape 2 and rate 1/14 to simulate this effect.</p>
+<code class="sourceCode R"><span><span class="fu">squire.page</span><span class="fu">:::</span><span class="fu">run_booster</span><span class="op">(</span></span>
+<span>  country <span class="op">=</span> <span class="st">"United Kingdom"</span>,</span>
+<span>  primary_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">1000</span>, <span class="fl">500</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  tt_primary_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">50</span>, <span class="fl">150</span><span class="op">)</span>,</span>
+<span>  second_dose_delay <span class="op">=</span> <span class="fl">60</span>,</span>
+<span>  booster_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">500</span>, <span class="fl">750</span><span class="op">)</span>,</span>
+<span>  tt_booster_doses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">200</span>, <span class="fl">400</span><span class="op">)</span>,</span>
+<span>  time_period  <span class="op">=</span> <span class="fl">365</span><span class="op">*</span><span class="fl">2</span>,</span>
+<span>  vaccine_booster_follow_up_coverage <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">17</span> <span class="op">-</span> <span class="fl">5</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">squire.page</span><span class="fu">::</span><span class="fu"><a href="../reference/nimue_format.html">nimue_format</a></span><span class="op">(</span>var_select <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"vaccinated_first_dose"</span>, <span class="st">"vaccinated_second_dose"</span>, <span class="st">"vaccinated_second_waned"</span>,</span>
+<span>                                           <span class="st">"vaccinated_booster_dose"</span>, <span class="st">"vaccinated_booster_waned"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">tibble</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">pivot_wider</span><span class="op">(</span>names_from <span class="op">=</span> <span class="va">compartment</span>, values_from <span class="op">=</span> <span class="va">y</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">transmute</span><span class="op">(</span></span>
+<span>    t <span class="op">=</span> <span class="va">t</span>,</span>
+<span>    `Partial` <span class="op">=</span> <span class="va">vaccinated_first_dose</span>,</span>
+<span>    `Primary` <span class="op">=</span> <span class="va">vaccinated_second_dose</span>,</span>
+<span>    `Waned (Primary)` <span class="op">=</span> <span class="va">vaccinated_second_waned</span>,</span>
+<span>    `Boosted` <span class="op">=</span> <span class="va">vaccinated_booster_dose</span>,</span>
+<span>    `Waned (Boosted)` <span class="op">=</span> <span class="va">vaccinated_booster_waned</span></span>
+<span>  <span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">pivot_longer</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">`Partial`</span>, <span class="va">`Primary`</span>,</span>
+<span>    <span class="va">`Waned (Primary)`</span>,</span>
+<span>    <span class="va">`Boosted`</span>,</span>
+<span>    <span class="va">`Waned (Boosted)`</span><span class="op">)</span>,</span>
+<span>               names_to <span class="op">=</span> <span class="st">"Vaccine Protection"</span>, values_to <span class="op">=</span> <span class="st">"Population"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">t</span>, y <span class="op">=</span> <span class="va">`Population`</span>, colour <span class="op">=</span> <span class="va">`Vaccine Protection`</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
+<span>  <span class="fu">geom_line</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="booster_pathway_files/figure-html/unnamed-chunk-3-1.png" width="672"></p>
+<p>As the delay in development of vaccination protection is removed, the time-series for first/second doses provided to the model if internally adjusted via an Erlang distribution with shape 2 and rate 1/7 to simulate this effect. These parameters are customizable in the model.</p>
 <p>To simulate a primary single dose vaccine (i.e. Janssen) set both first and second dose efficacies to the same desired level and set the time-series of the second doses to the time-series of first doses delayed by a day.</p>
 </div>
 <div class="section level2">
@@ -152,12 +162,13 @@
 <p>Waning Rates:</p>
 <ul>
 <li>
-<span class="math inline">\(w_p\)</span> = 0.01015148 (98.5 days)</li>
+<span class="math inline">\(w_p\)</span> = 0.007466205 (134 days)</li>
 <li>
-<span class="math inline">\(w_1\)</span> = 0.009757324 (102.5 days)</li>
+<span class="math inline">\(w_1\)</span> = 0.00807429 (123.8 days)</li>
 <li>
-<span class="math inline">\(w_2\)</span> = 0.019463164 (51.4 days)</li>
+<span class="math inline">\(w_2\)</span> = 0.03331390 (30 days)</li>
 </ul>
+<p>Delay in second dose protection is assumed to be 60 days.</p>
 <p>To calculate these values we utilised an approach taken previously with waning vaccine efficacy via AB titres (<a href="https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-48-global-omicron/" class="external-link">Report 48</a>). We took our assumed non-waned efficacies and then created an median waning curve from these values. Then we fit the waning rates and waned compartment values to recreate these curves. The plots of these fits are shown below.</p>
 <p><img src="fitted_value_plot.png" width="600px" style="display: block; margin: auto;"></p>
 </div>
