@@ -18,9 +18,9 @@ library(ggplot2)
 library(squire.page)
 ```
 
-This vingette describes the rewritten *nimue* booster pathway. This update 
+This vignette describes the rewritten *nimue* booster pathway. This update 
 allows the inclusion of booster doses to vaccination campaigns in the *nimue* 
-model and allows explicit inclusion of first and second doses. No changes are 
+model and allows explicit inclusion of first and second dose efficacies. No changes are 
 made to the infection and hospitalisation pathway.
 
 # Model Structure
@@ -46,9 +46,12 @@ represent reduced vaccine efficacy over time. Transition rates are defined as:
 * $w_p$ Rate of waning of initial dose protection,
 * $w_i$ Rate of waning of boosted dose protection.
 
+Eligibility for follow-up boosters can be restricted to certain age groups with
+the parameter `vaccine_booster_follow_up_coverage`.
+
 # Usage
 
-The user is expected to provide a time-series of initial, and booster doses.
+The user is expected to provide a time-series of primary doses, and booster doses.
 This model is primarily for usage in the *global_lmic_reports*, and so it not
 intended for normal usage. The objects necessary for MCMC fitting can be access
 as so:
@@ -61,13 +64,18 @@ squire.page::calc_loglikelihood_booster()
 #pmcmc object
 squire.page::pmcmc_drjacoby(log_likelihood = squire.page::calc_loglikelihood_booster,
                             nimue_booster_model = squire.page::nimue_booster_model,
-                            ... #specific arguments here)
+                            ... #specific arguments here
+                            )
+#alternatively
+rt_optimise(squire_model = squire.page::nimue_booster_model(),
+            ... #Parameter arguments here
+            )
 ```
 
 The model can be run as in *squire* or *nimue* with the non-exported function 
 `squire.page:::run_booster`.
 
-```{r fig.width=7,fig.height=5}
+```{r fig.width=7,fig.height=5, fig.align = "center"}
 squire.page:::run_booster(
   country = "United Kingdom",
   primary_doses = c(100, 1000, 500, 0),
@@ -84,10 +92,10 @@ squire.page:::run_booster(
   pivot_wider(names_from = compartment, values_from = y) %>% 
   transmute(
     t = t,
-    `Partial` = vaccinated_first_dose,
-    `Primary` = vaccinated_second_dose,
+    `Partial` = vaccinated_first_dose - vaccinated_second_dose,
+    `Primary` = vaccinated_second_dose - vaccinated_booster_dose - vaccinated_second_waned,
     `Waned (Primary)` = vaccinated_second_waned,
-    `Boosted` = vaccinated_booster_dose,
+    `Boosted` = vaccinated_booster_dose - vaccinated_booster_waned,
     `Waned (Boosted)` = vaccinated_booster_waned
   ) %>%
   pivot_longer(c(`Partial`, `Primary`,
@@ -99,23 +107,13 @@ squire.page:::run_booster(
   geom_line()
 ```
 
-As the delay in development of vaccination protection is removed, the time-series
+As the delay in development of vaccination protection from nimue is removed, the time-series
 for first/second doses provided to the model if internally adjusted via an Erlang
 distribution with shape 2 and rate 1/7 to simulate this effect. These parameters
 are customizable in the model.
 
 To simulate a primary single dose vaccine (i.e. Janssen) set both first and second
-dose efficacies to the same desired level and set the time-series of the second doses
-to the time-series of first doses delayed by a day.
-
-# Limitations
-
-Note that this framework assumes that a booster dose restores vaccine protection
-to the same level, this is a simplification and cannot capture any increase in 
-protection. Hence this framework is not suited to modelling a booster dose of
-a different vaccine to primary series. This also means that the framework cannot
-capture any increase in protection longevity from a booster dose nor the
-interaction between boosters and variants.
+dose efficacies to the same desired level and set the second dose delay to 1.
 
 # Parameterisation
 
@@ -157,4 +155,291 @@ The plots of these fits are shown below.
 
 ```{r out.width="600px", fig.align = "center", echo=F}
 knitr::include_graphics("./fitted_value_plot.png")
+```
+
+# Comparison to nimue
+
+Comparing the two models in the absence of vaccinations should give identical 
+results, outside of minor variations due to the random ages of the initial infections.
+
+```{r, echo = FALSE, warning=FALSE, fig.width=7,fig.height=3, fig.align = "center"}
+t <- 700
+dur_R <- 365
+booster_df <- squire.page:::run_booster(
+  country = "United Kingdom",
+  primary_doses = 0,
+  tt_primary_doses = 0,
+  second_dose_delay = 1,
+  booster_doses = 0,
+  tt_booster_doses = 0,
+  time_period  = t,
+  vaccine_booster_follow_up_coverage = rep(0, 17),
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+nimue_df <- nimue::run(
+  country = "United Kingdom",
+  max_vaccine = 0,
+  tt_vaccine = 0,
+  time_period  = t,
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+
+rbind(
+  booster_df %>% 
+    mutate(
+      Model = "Booster"
+    ), nimue_df %>% 
+    mutate(Model = "Nimue")
+) %>%
+  mutate(compartment = stringr::str_to_title(compartment)) %>% 
+  ggplot() + 
+  geom_line(aes(x = t, y = y, colour = Model), size = 1, alpha = 0.5) +
+  facet_wrap(vars(compartment), scales = "free", strip.position = "left") + 
+  labs(y = "", title = "No Vaccinations")
+```
+
+Comparing the two models with only primary doses (with a flat efficacy for first/second)
+and no waning should also be identical
+
+```{r, echo = FALSE, warning=FALSE, fig.width=7,fig.height=3, fig.align = "center"}
+t_old <- t
+t <- 200
+booster_df <- squire.page:::run_booster(
+  country = "United Kingdom",
+  primary_doses = 100000,
+  tt_primary_doses = 0,
+  second_dose_delay = 1,
+  booster_doses = 0,
+  tt_booster_doses = 0,
+  time_period  = t,
+  vaccine_booster_follow_up_coverage = rep(0, 17),
+  vaccine_efficacy_infection = rep(0.5, 6),
+  vaccine_efficacy_disease = rep(0.5, 6),
+  vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+  rel_infectiousness_vaccinated =  matrix(
+           rep(0.5, 6), ncol = 17, nrow = 6,
+        ),
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+nimue_df <- nimue::run(
+  country = "United Kingdom",
+  max_vaccine = 100000,
+  tt_vaccine = 0,
+  time_period  = t,
+  vaccine_efficacy_infection = 0.5,
+  vaccine_efficacy_disease = 0.5,
+  dur_V = Inf,
+  dur_vaccine_delay = 14,
+  vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+  rel_infectiousness_vaccinated = 0.5,
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+
+rbind(
+  booster_df %>% 
+    mutate(
+      Model = "Booster"
+    ), nimue_df %>% 
+    mutate(Model = "Nimue")
+) %>%
+  mutate(compartment = stringr::str_to_title(compartment)) %>% 
+  ggplot() + 
+  geom_line(aes(x = t, y = y, colour = Model), size = 1, alpha = 0.5) +
+  facet_wrap(vars(compartment), scales = "free", strip.position = "left") + 
+  labs(y = "",  title = "Single dose no waning")
+t <- t_old
+```
+
+With waning we would expect to see some minor difference as the booster only has
+a single compartment to represent primary dose waning, though with the same overall rates
+they should be similar.
+
+```{r, echo = FALSE, warning=FALSE, fig.width=7,fig.height=3, fig.align = "center"}
+booster_df <- squire.page:::run_booster(
+  country = "United Kingdom",
+  primary_doses = 100000,
+  tt_primary_doses = 0,
+  second_dose_delay = 0,
+  booster_doses = 0,
+  tt_booster_doses = 0,
+  time_period  = t,
+  vaccine_booster_follow_up_coverage = rep(0, 17),
+  vaccine_efficacy_infection = c(0.5, 0.5, 0, 0, 0, 0),
+  vaccine_efficacy_disease = c(0.5, 0.5, 0, 0, 0, 0),
+  vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+  rel_infectiousness_vaccinated =  matrix(
+           c(0.5, 0.5, 1, 1, 1, 1), ncol = 17, nrow = 6,
+        ),
+  dur_V = rep(100, 3),
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+nimue_df <- nimue::run(
+  country = "United Kingdom",
+  max_vaccine = 100000,
+  tt_vaccine = 0,
+  time_period  = t,
+  vaccine_efficacy_infection = 0.5,
+  vaccine_efficacy_disease = 0.5,
+  dur_V = 100 + 14,
+  dur_vaccine_delay = 14,
+  vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+  rel_infectiousness_vaccinated = 0.5,
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+
+rbind(
+  booster_df %>% 
+    mutate(
+      Model = "Booster"
+    ), nimue_df %>% 
+    mutate(Model = "Nimue")
+) %>%
+  mutate(compartment = stringr::str_to_title(compartment)) %>% 
+  ggplot() + 
+  geom_line(aes(x = t, y = y, colour = Model), size = 1, alpha = 0.5) +
+  facet_wrap(vars(compartment), scales = "free", strip.position = "left") + 
+  labs(y = "",  title = "Single dose with waning")
+```
+
+In the plot above we increase the duration of waning in nimue by 14 days to account
+for the fact that in the booster model the 14 day delay in developing VE is applied
+for both first and second doses. Otherwise the second peak occurs a couple of days sooner in nimue.
+
+
+To simulate two doses we first consider the situation with a delay of 60 days between
+the two, for nimue this is translated into a dose ratio and the VE are scaled. Again for
+nimue we must increase the duration of protection to account for the delay between doses.
+
+```{r, echo = FALSE, warning=FALSE, fig.width=7,fig.height=3, fig.align = "center"}
+dose_delay <- 60
+ve_i_f <- 0.25
+ve_i_s <- 0.75
+ve_d_f <- 0.25
+ve_d_s <- 0.75
+
+primary_doses <- 100000
+
+eligible_pop <- sum(squire::population$n[squire::population$iso3c == "GBR"])*0.8
+
+#will hit saturation
+curr_first <- cumsum(rep(primary_doses, floor(eligible_pop/primary_doses)))
+curr_first <- c(curr_first, rep(eligible_pop, t - length(curr_first)))
+curr_second <- c(rep(0, dose_delay), head(curr_first, length(curr_first) - dose_delay))
+dose_ratio <- curr_second/curr_first
+
+ve_i_nimue <- ve_i_f * (1 - dose_ratio) + ve_i_s * dose_ratio
+ve_d_nimue <- ve_d_f * (1 - dose_ratio) + ve_d_s * dose_ratio
+tt_vaccine <- seq_along(dose_ratio) - 1
+
+booster_df <- squire.page:::run_booster(
+  country = "United Kingdom",
+  primary_doses = 100000,
+  tt_primary_doses = primary_doses,
+  second_dose_delay = dose_delay,
+  booster_doses = 0,
+  tt_booster_doses = 0,
+  time_period  = t,
+  vaccine_booster_follow_up_coverage = rep(0, 17),
+  vaccine_efficacy_infection = c(ve_i_f, ve_i_s, 0, 0, 0, 0),
+  vaccine_efficacy_disease = c(ve_d_f, ve_d_s, 0, 0, 0, 0),
+  vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+  rel_infectiousness_vaccinated =  matrix(
+           c(0.5, 0.5, 1, 1, 1, 1), ncol = 17, nrow = 6),
+  dur_V = rep(100, 3),
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+nimue_df <- nimue::run(
+  country = "United Kingdom",
+  max_vaccine = 100000,
+  tt_vaccine = 0,
+  time_period  = t,
+  tt_vaccine_efficacy_infection = tt_vaccine,
+  vaccine_efficacy_infection = as.list(ve_i_nimue),
+  tt_vaccine_efficacy_disease = tt_vaccine,
+  vaccine_efficacy_disease = as.list(ve_d_nimue),
+  dur_V = 100 + 14 + 60,
+  dur_vaccine_delay = 14,
+  vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+  rel_infectiousness_vaccinated = 0.5,
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+
+rbind(
+  booster_df %>% 
+    mutate(
+      Model = "Booster"
+    ), nimue_df %>% 
+    mutate(Model = "Nimue")
+) %>%
+  mutate(compartment = stringr::str_to_title(compartment)) %>% 
+  ggplot() + 
+  geom_line(aes(x = t, y = y, colour = Model), size = 1, alpha = 0.5) +
+  facet_wrap(vars(compartment), scales = "free", strip.position = "left") + 
+  labs(y = "",  title = "Two dose with waning")
+```
+
+Lastly including boosters in the booster model, we would expect a delay in deaths until waning overwhelms.
+
+```{r, echo = FALSE, warning=FALSE, fig.width=7,fig.height=3, fig.align = "center"}
+booster_doses <- 10000
+ve_i_b <- 0.9
+ve_i_b_2 <- 0.45
+ve_d_b <- 0.9
+ve_d_b_2 <- 0.45
+
+booster_df <- squire.page:::run_booster(
+  country = "United Kingdom",
+  primary_doses = 100000,
+  tt_primary_doses = primary_doses,
+  second_dose_delay = dose_delay,
+  booster_doses = booster_doses,
+  tt_booster_doses = 0,
+  time_period  = t,
+  vaccine_booster_follow_up_coverage = rep(0, 17),
+  vaccine_efficacy_infection = c(ve_i_f, ve_i_s, 0, ve_i_b, ve_i_b_2, 0),
+  vaccine_efficacy_disease = c(ve_d_f, ve_d_s, 0, ve_d_b, ve_d_b_2, 0),
+  vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+  rel_infectiousness_vaccinated =  matrix(
+           c(0.5, 0.5, 1, 0.5, 0.5, 1), ncol = 17, nrow = 6),
+  dur_V = rep(100, 3),
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+nimue_df <- nimue::run(
+  country = "United Kingdom",
+  max_vaccine = 100000,
+  tt_vaccine = 0,
+  time_period  = t,
+  tt_vaccine_efficacy_infection = tt_vaccine,
+  vaccine_efficacy_infection = as.list(ve_i_nimue),
+  tt_vaccine_efficacy_disease = tt_vaccine,
+  vaccine_efficacy_disease = as.list(ve_d_nimue),
+  dur_V = 100,
+  dur_vaccine_delay = 14,
+  vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+  rel_infectiousness_vaccinated = 0.5,
+  dur_R = dur_R
+) %>% 
+  squire.page::nimue_format(var_select = c("infections", "deaths"))
+
+rbind(
+  booster_df %>% 
+    mutate(
+      Model = "Booster"
+    ), nimue_df %>% 
+    mutate(Model = "Nimue")
+) %>%
+  mutate(compartment = stringr::str_to_title(compartment)) %>% 
+  ggplot() + 
+  geom_line(aes(x = t, y = y, colour = Model), size = 1, alpha = 0.5) +
+  facet_wrap(vars(compartment), scales = "free", strip.position = "left") + 
+  labs(y = "",  title = "Booster dose")
 ```
