@@ -273,14 +273,8 @@ generate_draws.rt_optimised <- function(out, t_end = NULL, project_forwards = FA
       initial_state <- NULL
     }
     #run model
-    sim <- tryCatch(model(Rt = sample$R0, tt_Rt = sample$tt_R0, t_start = t_start, t_end = t_end,
-                          atol = 10^-8, rtol = 10^-8, initial_state = initial_state), #low tolerance to ensure it works
-                    error = function(e){NULL})
-    if(is.null(sim)){
-      sim <- model(Rt = sample$R0, tt_Rt = sample$tt_R0, t_start = t_start, t_end = t_end,
-                   atol = 10^-9, rtol = 10^-9, initial_state = initial_state)
-    }
-
+    sim <- model(Rt = sample$R0, tt_Rt = sample$tt_R0, t_start = t_start, t_end = t_end,
+                          atol = 10^-6, rtol = 10^-6, initial_state = initial_state)
     if(project_forwards){
       #append to old output
       rbind(output[-dim(output)[1],], sim)

@@ -60,8 +60,19 @@ generate_model_function <- function(squire_model, parameters){
         unused_user_action = "ignore"
       )
     }
-    #run the model over the requested time-period
-    model_output <- odin_model$run(seq(t_start, t_end, by = 1), atol = atol, rtol = rtol)
+    #run the model over the requested time-period, with decreasing tolerance if it fails
+    ts <- seq(t_start, t_end, by = 1)
+    model_output <- tryCatch(
+      odin_model$run(ts, atol = atol, rtol = rtol),
+      error = function(e){
+        tryCatch(
+          odin_model$run(ts, atol = atol*0.1, rtol = rtol*0.1),
+          error = function(e){
+            odin_model$run(ts, atol = atol*0.01, rtol = rtol*0.01)
+          }
+        )
+      }
+    )
   }
 }
 #' Function factory for setting up the death generating function for the model

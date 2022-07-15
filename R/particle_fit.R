@@ -163,20 +163,12 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
     )$Rt_trend
 
     #calculate final model output for the whole time period covered by the data
-    model_output <- tryCatch(model(rt_trend, t_start = 0,
+    model_output <- model(rt_trend, t_start = 0,
                                    t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
                                    initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
                                    tt_Rt = rt_df$rt_change_t,
                                    #run with higher tolerance, the odin model should never fail in the fitting though it can here
-                                   atol = 10^-8, rtol = 10^-8), error = function(e){NULL})
-    if(is.null(model_output)){
-      tryCatch(model(rt_trend, t_start = 0,
-                     t_end = utils::tail(utils::tail(split_data, 1)[[1]]$t_end, 1),
-                     initial_state = assign_infections(setup_parameters(squire_model, parameters), initial_infections),
-                     tt_Rt = rt_df$rt_change_t,
-                     #run with higher tolerance, the odin model should never fail in the fitting though it can here
-                     atol = 10^-10, rtol = 10^-10), error = function(e){NULL})
-    }
+                                   atol = 10^-6, rtol = 10^-6)
 
     #diagnostics are null for now
     diagnostics <- NULL

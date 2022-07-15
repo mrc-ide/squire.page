@@ -301,45 +301,49 @@ plot.rt_optimised <- function(x, q = c(0.025, 0.975), replicates = TRUE, summari
 plot.rt_optimised_trimmed <- function(x, q = c(0.025, 0.975), replicates = TRUE, summarise = FALSE, ci = TRUE, particle_fit = FALSE, ...){
   p <- plot.rt_optimised(x = x, q = q, replicates = replicates, summarise = summarise, ci = ci, particle_fit = particle_fit, ...)
   #get the excluded trajcetories
-  x$output <- x$excluded$output
-  df <- nimue_format(x, "D", date_0 = x$inputs$start_date) %>%
-    dplyr::group_by(.data$replicate)
-  if(particle_fit){
-    df <- dplyr::mutate(df, y = diff(c(0, .data$y)))
-  }
+  #if they have outputs
+  if(!is.null(x$excluded$output)){
 
-  if(ci){
-    p <- p +
-      ggplot2::geom_ribbon(
-        data = df %>%
-          dplyr::group_by(.data$date, .data$compartment) %>%
-          dplyr::summarise(ymin = stats::quantile(.data$y, q[1]),
-                           ymax =  stats::quantile(.data$y, q[2]),
-                           .groups = "keep"),
-        ggplot2::aes(x = .data$date, ymin = .data$ymin, ymax = .data$ymax),
-        fill = "yellow",
-        alpha = 0.25, col = NA, inherit.aes = FALSE
-      )
-  }
+    x$output <- x$excluded$output
+    df <- nimue_format(x, "D", date_0 = x$inputs$start_date) %>%
+      dplyr::group_by(.data$replicate)
+    if(particle_fit){
+      df <- dplyr::mutate(df, y = diff(c(0, .data$y)))
+    }
 
-  if(replicates){
-    p <- p +
-      ggplot2::geom_line(data = df,
-                         ggplot2::aes(x = .data$date,
-                                      y = .data$y,
-                                      group = interaction(.data$compartment, .data$replicate)),
-                         alpha = max(0.2, 1 / length(unique(df$replicate))), inherit.aes = FALSE,
-                                     colour = "yellow"
-      )
-  }
-  if(summarise){
-    p <- p +
-      ggplot2::geom_line(data = df %>%
-                           dplyr::group_by(.data$compartment, .data$date) %>%
-                           dplyr::summarise(y = stats::median(.data$y), .groups = "keep"),
-                         ggplot2::aes(x = .data$date,
-                                      y = .data$y), inherit.aes = FALSE, colour = "yellow"
-      )
+    if(ci){
+      p <- p +
+        ggplot2::geom_ribbon(
+          data = df %>%
+            dplyr::group_by(.data$date, .data$compartment) %>%
+            dplyr::summarise(ymin = stats::quantile(.data$y, q[1]),
+                             ymax =  stats::quantile(.data$y, q[2]),
+                             .groups = "keep"),
+          ggplot2::aes(x = .data$date, ymin = .data$ymin, ymax = .data$ymax),
+          fill = "yellow",
+          alpha = 0.25, col = NA, inherit.aes = FALSE
+        )
+    }
+
+    if(replicates){
+      p <- p +
+        ggplot2::geom_line(data = df,
+                           ggplot2::aes(x = .data$date,
+                                        y = .data$y,
+                                        group = interaction(.data$compartment, .data$replicate)),
+                           alpha = max(0.2, 1 / length(unique(df$replicate))), inherit.aes = FALSE,
+                           colour = "yellow"
+        )
+    }
+    if(summarise){
+      p <- p +
+        ggplot2::geom_line(data = df %>%
+                             dplyr::group_by(.data$compartment, .data$date) %>%
+                             dplyr::summarise(y = stats::median(.data$y), .groups = "keep"),
+                           ggplot2::aes(x = .data$date,
+                                        y = .data$y), inherit.aes = FALSE, colour = "yellow"
+        )
+    }
   }
   p
 }

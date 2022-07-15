@@ -44,6 +44,21 @@ nimue_booster_model <- function(use_dde = TRUE) {
                               protection_delay_shape = vaccine_pars_booster$protection_delay_shape,
                               protection_delay_time = NULL,
 
+                              #disease parameters
+                              prob_hosp = probs_booster$prob_hosp,
+                              prob_hosp_multiplier = probs_booster$prob_hosp_multiplier,
+                              tt_prob_hosp_multiplier = probs_booster$tt_prob_hosp_multiplier,
+                              prob_severe = probs_booster$prob_severe,
+                              prob_severe_multiplier = probs_booster$prob_severe_multiplier,
+                              tt_prob_severe_multiplier = probs_booster$tt_prob_severe_multiplier,
+                              prob_non_severe_death_treatment = probs_booster$prob_non_severe_death_treatment,
+                              prob_non_severe_death_no_treatment = probs_booster$prob_non_severe_death_no_treatment,
+                              prob_severe_death_treatment = probs_booster$prob_severe_death_treatment,
+                              prob_severe_death_no_treatment = probs_booster$prob_severe_death_no_treatment,
+                              p_dist = probs_booster$p_dist,
+                              rel_infectiousness = probs_booster$rel_infectiousness,
+                              rel_infectiousness_vaccinated = probs_booster$rel_infectiousness_vaccinated,
+
                               # durations
                               dur_E  = durs_booster$dur_E,
                               dur_IMild = durs_booster$dur_IMild,
@@ -115,6 +130,19 @@ nimue_booster_model <- function(use_dde = TRUE) {
                protection_delay_shape = protection_delay_shape,
                protection_delay_time = protection_delay_time,
                seeding_cases = seeding_cases,
+               prob_hosp = prob_hosp,
+               prob_hosp_multiplier = prob_hosp_multiplier,
+               tt_prob_hosp_multiplier = tt_prob_hosp_multiplier,
+               prob_severe = prob_severe,
+               prob_severe_multiplier = prob_severe_multiplier,
+               tt_prob_severe_multiplier = tt_prob_severe_multiplier,
+               prob_non_severe_death_treatment = prob_non_severe_death_treatment,
+               prob_non_severe_death_no_treatment = prob_non_severe_death_no_treatment,
+               prob_severe_death_treatment = prob_severe_death_treatment,
+               prob_severe_death_no_treatment = prob_severe_death_no_treatment,
+               p_dist = p_dist,
+               rel_infectiousness = rel_infectiousness,
+               rel_infectiousness_vaccinated = rel_infectiousness_vaccinated,
                ...)
 
     # append extra pars for fitting
@@ -248,20 +276,20 @@ parameters_booster <- function(
 
   # Parameters
   # Probabilities
-  prob_hosp = probs_booster$prob_hosp,
-  prob_hosp_multiplier = probs_booster$prob_hosp_multiplier,
-  tt_prob_hosp_multiplier = probs_booster$tt_prob_hosp_multiplier,
-  prob_severe = probs_booster$prob_severe,
-  prob_severe_multiplier = probs_booster$prob_severe_multiplier,
-  tt_prob_severe_multiplier = probs_booster$tt_prob_severe_multiplier,
-  prob_non_severe_death_treatment = probs_booster$prob_non_severe_death_treatment,
-  prob_non_severe_death_no_treatment = probs_booster$prob_non_severe_death_no_treatment,
-  prob_severe_death_treatment = probs_booster$prob_severe_death_treatment,
-  prob_severe_death_no_treatment = probs_booster$prob_severe_death_no_treatment,
-  p_dist = probs_booster$p_dist,
+  prob_hosp,
+  prob_hosp_multiplier,
+  tt_prob_hosp_multiplier,
+  prob_severe,
+  prob_severe_multiplier,
+  tt_prob_severe_multiplier,
+  prob_non_severe_death_treatment,
+  prob_non_severe_death_no_treatment,
+  prob_severe_death_treatment,
+  prob_severe_death_no_treatment,
+  p_dist,
 
-  rel_infectiousness = probs_booster$rel_infectiousness,
-  rel_infectiousness_vaccinated = probs_booster$rel_infectiousness_vaccinated,
+  rel_infectiousness,
+  rel_infectiousness_vaccinated,
 
   # Durations
   dur_E,

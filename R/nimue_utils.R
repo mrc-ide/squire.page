@@ -2,7 +2,21 @@
 #'
 #' If a squire object is provided out it should be feed through to
 #' \code{squire::format_output}. However, please note that not all variables can
-#' be select for squire.
+#' be selected for squire.
+#'
+#' To better define the summaries related to the healthcare pathway:
+#' \describe{
+#'   \item{demand}{The total number of requiring hospitalisation and ICU care
+#'   at the given time, regardless of if they've received it}
+#'   \item{occupancy}{The total number of those who received ICU or hospital care
+#'   at the given time}
+#'   \item{incidence}{The total number of new people who require hospital or ICU
+#'   care}
+#'   \item{hospitalisations}{Sum of new people recieving hospital or ICU care}
+#' }
+#' Note: this is confusing and seemingly inconsistent i.e. hospital_incidence
+#' does not capture those recovering from ICU and hospitalisations is stated
+#' to equal the sum of the incidences elsewhere.
 #'
 #' @param out nimue_simulation or squire_simulation object
 #' @param var_select Vector of compartment names, e.g. \code{c("S", "R")}. In
@@ -10,13 +24,13 @@
 #' \itemize{
 #'       \item{"deaths"}{ Daily Deaths }
 #'       \item{"infections"}{ Daily Infections }
-#'       \item{"hospital_occupancy"}{ Occupied Hospital Beds }
-#'       \item{"ICU_occupancy"}{ Occupied ICU Beds }
-#'       \item{"hospital_demand"}{ Required Hospital Beds }
-#'       \item{"ICU_demand"}{ Required ICU Beds }
-#'       \item{"hospital_incidence"}{ Incidence of hospitilisation }
-#'       \item{"ICU_incidence"}{ Incidence of ICU admissions }
-#'       \item{"hospitilisations"}{ Incidence of hospital+ICU admissions }
+#'       \item{"hospital_occupancy"}{ See description }
+#'       \item{"ICU_occupancy"}{ See description }
+#'       \item{"hospital_demand"}{ See description }
+#'       \item{"ICU_demand"}{ See description }
+#'       \item{"hospital_incidence"}{ See description }
+#'       \item{"ICU_incidence"}{ See description }
+#'       \item{"hospitalisations"}{ See description }
 #'       \item{"vaccines", "unvaccinated", "vaccinated", "priorvaccinated"}{ Vaccine outputs }
 #'       \item{"long_covid"}{ Long COVID estimates}
 #'       }
