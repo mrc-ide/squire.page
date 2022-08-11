@@ -112,9 +112,6 @@
     <loc>https://mrc-ide.github.io/squire.page/reference/get_dates_greater.rt_optimised.html</loc>
   </url>
   <url>
-    <loc>https://mrc-ide.github.io/squire.page/reference/get_fits.html</loc>
-  </url>
-  <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/get_gavi_iso3c.html</loc>
   </url>
   <url>
@@ -163,16 +160,10 @@
     <loc>https://mrc-ide.github.io/squire.page/reference/plot.rt_optimised_trimmed.html</loc>
   </url>
   <url>
-    <loc>https://mrc-ide.github.io/squire.page/reference/prepare_input_json_df.html</loc>
-  </url>
-  <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/projections.html</loc>
   </url>
   <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/rt_optimise.html</loc>
-  </url>
-  <url>
-    <loc>https://mrc-ide.github.io/squire.page/reference/scan_fit.html</loc>
   </url>
   <url>
     <loc>https://mrc-ide.github.io/squire.page/reference/setup_parameters.default.html</loc>
