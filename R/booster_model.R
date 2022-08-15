@@ -61,8 +61,11 @@ nimue_booster_model <- function(use_dde = TRUE) {
 
                               # durations
                               dur_E  = durs_booster$dur_E,
+                              tt_dur_E = durs_booster$tt_dur_E,
                               dur_IMild = durs_booster$dur_IMild,
+                              tt_dur_IMild = durs_booster$tt_dur_IMild,
                               dur_ICase = durs_booster$dur_ICase,
+                              tt_dur_ICase = durs_booster$tt_dur_ICase,
 
                               # hospital durations
                               dur_get_ox_survive = durs_booster$dur_get_ox_survive,
@@ -88,62 +91,65 @@ nimue_booster_model <- function(use_dde = TRUE) {
 
     pars <- parameters_booster(
       country = country,
-               population = population,
-               contact_matrix_set = contact_matrix_set,
-               tt_contact_matrix = tt_contact_matrix,
-               hosp_bed_capacity = hosp_bed_capacity,
-               tt_hosp_beds = tt_hosp_beds,
-               ICU_bed_capacity = ICU_bed_capacity,
-               tt_ICU_beds = tt_ICU_beds,
-               dur_E = dur_E,
-               dur_IMild = dur_IMild,
-               dur_ICase = dur_ICase,
-               dur_get_ox_survive = dur_get_ox_survive,
-               tt_dur_get_ox_survive = tt_dur_get_ox_survive,
-               dur_get_ox_die = dur_get_ox_die,
-               tt_dur_get_ox_die = tt_dur_get_ox_die,
-               dur_not_get_ox_survive = dur_not_get_ox_survive,
-               dur_not_get_ox_die = dur_not_get_ox_die,
-               dur_get_mv_survive = dur_get_mv_survive,
-               tt_dur_get_mv_survive = tt_dur_get_mv_survive,
-               dur_get_mv_die = dur_get_mv_die,
-               tt_dur_get_mv_die = tt_dur_get_mv_die,
-               dur_not_get_mv_survive = dur_not_get_mv_survive,
-               dur_not_get_mv_die = dur_not_get_mv_die,
-               dur_rec = dur_rec,
-               dur_R = dur_R,
-               tt_dur_R = tt_dur_R,
-               dur_V = dur_V,
-               tt_dur_V = tt_dur_V,
-               vaccine_efficacy_infection = vaccine_efficacy_infection,
-               tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
-               vaccine_efficacy_disease = vaccine_efficacy_disease,
-               tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
-               primary_doses = primary_doses,
-               tt_primary_doses = tt_primary_doses,
-               second_dose_delay = second_dose_delay,
-               booster_doses = booster_doses,
-               tt_booster_doses = tt_booster_doses,
-               vaccine_coverage_mat = vaccine_coverage_mat,
-               vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
-               protection_delay_rate = protection_delay_rate,
-               protection_delay_shape = protection_delay_shape,
-               protection_delay_time = protection_delay_time,
-               seeding_cases = seeding_cases,
-               prob_hosp = prob_hosp,
-               prob_hosp_multiplier = prob_hosp_multiplier,
-               tt_prob_hosp_multiplier = tt_prob_hosp_multiplier,
-               prob_severe = prob_severe,
-               prob_severe_multiplier = prob_severe_multiplier,
-               tt_prob_severe_multiplier = tt_prob_severe_multiplier,
-               prob_non_severe_death_treatment = prob_non_severe_death_treatment,
-               prob_non_severe_death_no_treatment = prob_non_severe_death_no_treatment,
-               prob_severe_death_treatment = prob_severe_death_treatment,
-               prob_severe_death_no_treatment = prob_severe_death_no_treatment,
-               p_dist = p_dist,
-               rel_infectiousness = rel_infectiousness,
-               rel_infectiousness_vaccinated = rel_infectiousness_vaccinated,
-               ...)
+      population = population,
+      contact_matrix_set = contact_matrix_set,
+      tt_contact_matrix = tt_contact_matrix,
+      hosp_bed_capacity = hosp_bed_capacity,
+      tt_hosp_beds = tt_hosp_beds,
+      ICU_bed_capacity = ICU_bed_capacity,
+      tt_ICU_beds = tt_ICU_beds,
+      dur_E = dur_E,
+      tt_dur_E = tt_dur_E,
+      dur_IMild = dur_IMild,
+      tt_dur_IMild = tt_dur_IMild,
+      dur_ICase = dur_ICase,
+      tt_dur_ICase = tt_dur_ICase,
+      dur_get_ox_survive = dur_get_ox_survive,
+      tt_dur_get_ox_survive = tt_dur_get_ox_survive,
+      dur_get_ox_die = dur_get_ox_die,
+      tt_dur_get_ox_die = tt_dur_get_ox_die,
+      dur_not_get_ox_survive = dur_not_get_ox_survive,
+      dur_not_get_ox_die = dur_not_get_ox_die,
+      dur_get_mv_survive = dur_get_mv_survive,
+      tt_dur_get_mv_survive = tt_dur_get_mv_survive,
+      dur_get_mv_die = dur_get_mv_die,
+      tt_dur_get_mv_die = tt_dur_get_mv_die,
+      dur_not_get_mv_survive = dur_not_get_mv_survive,
+      dur_not_get_mv_die = dur_not_get_mv_die,
+      dur_rec = dur_rec,
+      dur_R = dur_R,
+      tt_dur_R = tt_dur_R,
+      dur_V = dur_V,
+      tt_dur_V = tt_dur_V,
+      vaccine_efficacy_infection = vaccine_efficacy_infection,
+      tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
+      vaccine_efficacy_disease = vaccine_efficacy_disease,
+      tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
+      primary_doses = primary_doses,
+      tt_primary_doses = tt_primary_doses,
+      second_dose_delay = second_dose_delay,
+      booster_doses = booster_doses,
+      tt_booster_doses = tt_booster_doses,
+      vaccine_coverage_mat = vaccine_coverage_mat,
+      vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
+      protection_delay_rate = protection_delay_rate,
+      protection_delay_shape = protection_delay_shape,
+      protection_delay_time = protection_delay_time,
+      seeding_cases = seeding_cases,
+      prob_hosp = prob_hosp,
+      prob_hosp_multiplier = prob_hosp_multiplier,
+      tt_prob_hosp_multiplier = tt_prob_hosp_multiplier,
+      prob_severe = prob_severe,
+      prob_severe_multiplier = prob_severe_multiplier,
+      tt_prob_severe_multiplier = tt_prob_severe_multiplier,
+      prob_non_severe_death_treatment = prob_non_severe_death_treatment,
+      prob_non_severe_death_no_treatment = prob_non_severe_death_no_treatment,
+      prob_severe_death_treatment = prob_severe_death_treatment,
+      prob_severe_death_no_treatment = prob_severe_death_no_treatment,
+      p_dist = p_dist,
+      rel_infectiousness = rel_infectiousness,
+      rel_infectiousness_vaccinated = rel_infectiousness_vaccinated,
+      ...)
 
     # append extra pars for fitting
     pars$dt <- dt
@@ -215,7 +221,21 @@ default_probs_booster <- function() {
 
 probs_booster <- default_probs_booster()
 
-durs_booster <- nimue:::default_durations()
+#' Get the default durations from nimue and add the time varying element
+#' @noRd
+default_durs_booster <- function() {
+  c(
+    nimue:::default_durations(),
+    list(
+      tt_dur_E = 0,
+      tt_dur_IMild = 0,
+      tt_dur_ICase = 0
+    )
+  )
+}
+
+
+durs_booster <- default_durs_booster()
 
 #' Return the default vaccine parameters for modelling
 #' @noRd
@@ -293,8 +313,11 @@ parameters_booster <- function(
 
   # Durations
   dur_E,
+  tt_dur_E,
   dur_IMild,
+  tt_dur_IMild,
   dur_ICase,
+  tt_dur_ICase,
 
   dur_get_ox_survive,
   tt_dur_get_ox_survive,
@@ -417,7 +440,9 @@ parameters_booster <- function(
   stopifnot(length(dur_get_ox_survive) == length(tt_dur_get_ox_survive))
   stopifnot(length(dur_get_ox_die) == length(tt_dur_get_ox_die))
   stopifnot(length(dur_get_mv_survive) == length(tt_dur_get_mv_survive))
-  stopifnot(length(dur_get_mv_die) == length(tt_dur_get_mv_die))
+  stopifnot(length(dur_E) == length(tt_dur_E))
+  stopifnot(length(dur_IMild) == length(tt_dur_IMild))
+  stopifnot(length(dur_ICase) == length(tt_dur_ICase))
   stopifnot(ncol(vaccine_coverage_mat) == 17)
 
   nimue:::assert_pos(dur_E)
@@ -515,12 +540,20 @@ parameters_booster <- function(
 
   if (is.null(beta_set)) {
     baseline_matrix <- squire:::process_contact_matrix_scaled_age(contact_matrix_set[[1]], population)
-    beta_set <- beta_est_infectiousness(dur_IMild = dur_IMild,
-                                        dur_ICase = dur_ICase,
-                                        prob_hosp = prob_hosp,
-                                        mixing_matrix = baseline_matrix,
-                                        rel_infectiousness = rel_infectiousness,
-                                        R0 = R0)
+    #check for time changing parameters
+    if(length(c(tt_dur_ICase, tt_dur_IMild, tt_prob_hosp_multiplier)) > 3){
+      tt_R0_old <- tt_R0
+      tt_R0 <- unique(sort(c(tt_dur_ICase, tt_dur_IMild, tt_prob_hosp_multiplier, tt_R0_old)))
+      R0 <- block_interpolate(tt_R0, R0, tt_R0_old)
+    }
+    beta_set <- beta_est_booster(
+      R0 = R0, tt_R0 = tt_R0, prob_hosp_multiplier = prob_hosp_multiplier,
+      tt_prob_hosp_multiplier = tt_prob_hosp_multiplier,
+      prob_hosp_baseline = prob_hosp, dur_ICase = dur_ICase,
+      tt_dur_ICase = tt_dur_ICase, dur_IMild = dur_IMild,
+      tt_dur_IMild = tt_dur_IMild, rel_infectiousness = rel_infectiousness,
+      mixing_matrix = baseline_matrix
+    )
   }
 
   # normalise to sum to 1
@@ -559,6 +592,9 @@ parameters_booster <- function(
   )
 
   ##Delay dosing
+  if(is.null(protection_delay_time)){
+    protection_delay_time <- time_period
+  }
   delayed <- apply_dose_delay_booster(seq_len(protection_delay_time) - 1, primary_doses, tt_primary_doses,
                                       booster_doses, tt_booster_doses,
                                       second_dose_delay, protection_delay_rate,
@@ -573,8 +609,11 @@ parameters_booster <- function(
   pars <- c(mod_init,
             list(N_age = length(population),
                  gamma_E = gamma_E,
+                 tt_dur_E = tt_dur_E,
                  gamma_IMild = gamma_IMild,
+                 tt_dur_IMild = tt_dur_IMild,
                  gamma_ICase = gamma_ICase,
+                 tt_dur_ICase = tt_dur_ICase,
                  gamma_get_ox_survive = gamma_get_ox_survive,
                  tt_dur_get_ox_survive = tt_dur_get_ox_survive,
                  gamma_get_ox_die = gamma_get_ox_die,
@@ -886,9 +925,12 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
 #'   Default = rep(1, 17), which is no impact of vaccination on onwards
 #'   transmissions
 #' @param dur_E Mean duration of incubation period (days). Default = 4.6
+#' @param tt_dur_E Times at which dur_E changes, default = 0.
 #' @param dur_IMild Mean duration of mild infection (days). Default = 2.1
-#' @param dur_ICase Mean duration from symptom onset to hospitil admission (days).
+#' @param tt_dur_IMild Times at which dur_IMild changes, default = 0.
+#' @param dur_ICase Mean duration from symptom onset to hospital admission (days).
 #'   Default = 4.5
+#' @param tt_dur_ICase Times at which dur_ICase changes, default = 0.
 #' @param dur_get_ox_survive Mean duration of oxygen given survive. Default = 5. Can be
 #'   time varying, with timing of changes given by tt_dur_get_ox_survive.
 #' @param tt_dur_get_ox_survive Timing of changes in duration of  oxygen given survive.
@@ -1015,8 +1057,11 @@ run_booster <- function(
 
   # durations
   dur_E  = durs_booster$dur_E,
+  tt_dur_E  = durs_booster$tt_dur_E,
   dur_IMild = durs_booster$dur_IMild,
+  tt_dur_IMild = durs_booster$tt_dur_IMild,
   dur_ICase = durs_booster$dur_ICase,
+  tt_dur_ICase = durs_booster$tt_dur_ICase,
 
   # hospital durations
   dur_get_ox_survive = durs_booster$dur_get_ox_survive,
@@ -1096,8 +1141,11 @@ run_booster <- function(
                      rel_infectiousness = rel_infectiousness,
                      rel_infectiousness_vaccinated = rel_infectiousness_vaccinated,
                      dur_E = dur_E,
+                     tt_dur_E = tt_dur_E,
                      dur_IMild = dur_IMild,
+                     tt_dur_IMild = tt_dur_IMild,
                      dur_ICase = dur_ICase,
+                     tt_dur_ICase = tt_dur_ICase,
                      dur_get_ox_survive = dur_get_ox_survive,
                      tt_dur_get_ox_survive = tt_dur_get_ox_survive,
                      dur_get_ox_die = dur_get_ox_die,

@@ -4,7 +4,7 @@
 \alias{beta_est.default}
 \title{An S3 method for getting Beta for a model}
 \usage{
-\method{beta_est}{default}(squire_model, model_params, R0)
+\method{beta_est}{default}(squire_model, model_params, R0, tt_R0 = NULL)
 }
 \arguments{
 \item{squire_model}{A model object}
@@ -12,6 +12,8 @@
 \item{model_params}{Parameters for the model}
 
 \item{R0}{R0/Rt value to translate into beta}
+
+\item{tt_R0}{Used}
 }
 \description{
 An S3 method for getting Beta for a model

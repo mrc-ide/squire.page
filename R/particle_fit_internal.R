@@ -32,21 +32,38 @@ assert_distribution <- function(distribution){
 generate_model_function <- function(squire_model, parameters){
   #get parameters for the model, essentially fills out missing with defaults
   squire_parameters <- setup_parameters(squire_model, parameters)
+  #a hack for the moment to so we can check if there might be time changing
+  #durations of infectiousness
+  check_for_changing_durations <- inherits(squire_model, "booster_model")
+  if(check_for_changing_durations){
+    check_for_changing_durations <- length(c(squire_parameters$tt_dur_ICase,
+                                             squire_parameters$tt_dur_IMild,
+                                             squire_parameters$tt_prob_hosp_multiplier)) > 3
+  }
   #define a function that gets the deaths for a requested period
   function(Rt, t_start, t_end, initial_state = NULL, tt_Rt = NULL, atol= 10^-6, rtol = 10^-6){
     #ensures the environment contains these objects
     force(squire_parameters)
     force(squire_model)
+    force(check_for_changing_durations)
     #set the initial state for the odin model
     if (!is.null(initial_state)) {
       squire_parameters <- initial_state
     }
     #calculate beta value from Rt
-    squire_parameters$beta_set <-
-      beta_est(squire_model, squire_parameters, Rt)
-    if(!is.null(tt_Rt)){
-      squire_parameters$tt_beta <- tt_Rt
+    if(is.null(tt_Rt)){
+      tt_Rt <- t_start
     }
+    if(check_for_changing_durations){
+      #What goes here?
+      tt_Rt <- unique(sort(c(squire_parameters$tt_dur_ICase[squire_parameters$tt_dur_ICase < t_end],
+                             squire_parameters$tt_dur_IMild[squire_parameters$tt_dur_IMild < t_end],
+                             squire_parameters$tt_prob_hosp_multiplier[squire_parameters$tt_prob_hosp_multiplier < t_end],
+                             tt_Rt)))
+    }
+    squire_parameters$beta_set <-
+      beta_est(squire_model, squire_parameters, Rt, tt_Rt)
+    squire_parameters$tt_beta <- tt_Rt
     #create odin model with these parameters
     #with catch if nimue type
     if(inherits(squire_model$odin_model, "function")){

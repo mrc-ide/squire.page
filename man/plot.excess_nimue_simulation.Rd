@@ -11,7 +11,7 @@
   summarise = TRUE,
   ci = TRUE,
   q = c(0.025, 0.975),
-  summary_f = mean,
+  summary_f = stats::median,
   x_var = "t",
   date_0 = NULL,
   particle_fit = FALSE,

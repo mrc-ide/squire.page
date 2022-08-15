@@ -193,7 +193,7 @@ get_data.rt_optimised <- function(model_out){
 #'
 #' @export
 plot.excess_nimue_simulation <- function(x, var_select = NULL, replicates = FALSE, summarise = TRUE,
-                                         ci = TRUE, q = c(0.025, 0.975), summary_f = mean, x_var = "t",
+                                         ci = TRUE, q = c(0.025, 0.975), summary_f = stats::median, x_var = "t",
                                          date_0 = NULL, particle_fit = FALSE, ...) {
   #set the dates correctly
   x$pmcmc_results$inputs$data$date <- x$pmcmc_results$inputs$data$week_start
@@ -451,24 +451,46 @@ setup_parameters.nimue_model <- function(model_obj, parameters){
 }
 #' An S3 generic for estimating Beta
 #' @noRd
-beta_est <- function(squire_model, model_params, R0) {
+beta_est <- function(squire_model, model_params, R0, tt_R0, tt_end = NULL) {
   UseMethod("beta_est")
 }
 #' An S3 method for getting Beta for a model
 #' @param squire_model A model object
 #' @param model_params Parameters for the model
 #' @param R0 R0/Rt value to translate into beta
+#' @param tt_R0 Used
 #' @export
-beta_est.default <- function(squire_model, model_params, R0) {
-  squire:::beta_est(squire_model, model_params, R0)
+beta_est.default <- function(squire_model, model_params, R0, tt_R0 = NULL) {
+    beta_set = squire:::beta_est(squire_model, model_params, R0)
 }
 #' An S3 method for getting Beta for a model
 #' @param squire_model A model object
 #' @param model_params Parameters for the model
 #' @param R0 R0/Rt value to translate into beta
+#' @param tt_R0 Which time points does each R0 value relate to
 #' @export
-beta_est.booster_model <- function(squire_model, model_params, R0) {
-  #treat this as nimue
-  class(squire_model) <- c("nimue_model", "squire_model")
-  squire:::beta_est(squire_model, model_params, R0)
+beta_est.booster_model <- function(squire_model, model_params, R0, tt_R0) {
+  #require a unique method due to time changing durations of infectiousness
+  beta_est_booster(
+    R0, tt_R0, model_params$prob_hosp_multiplier, model_params$tt_prob_hosp_multiplier,
+    model_params$prob_hosp_baseline, 2/model_params$gamma_ICase, model_params$tt_dur_ICase, 1/model_params$gamma_IMild,
+    model_params$tt_dur_IMild, model_params$rel_infectiousness,
+    squire:::process_contact_matrix_scaled_age(model_params$contact_matrix_set[[1]], model_params$population)
+  )
+}
+
+beta_est_booster <- function(R0, tt_R0, prob_hosp_multiplier, tt_prob_hosp_multiplier,
+                             prob_hosp_baseline, dur_ICase, tt_dur_ICase, dur_IMild,
+                             tt_dur_IMild, rel_infectiousness, mixing_matrix){
+  prob_hosp <- purrr::map(block_interpolate(tt_R0, prob_hosp_multiplier, tt_prob_hosp_multiplier),
+                          ~prob_hosp_baseline * .x)
+  dur_ICase <- block_interpolate(tt_R0, dur_ICase, tt_dur_ICase)
+  dur_IMild <- block_interpolate(tt_R0, dur_IMild, tt_dur_IMild)
+  rel_infectiousness <- rel_infectiousness
+  #re adjust this
+  relative_R0_by_age <- purrr::map(seq_along(tt_R0), ~prob_hosp[[.x]] * dur_ICase[.x] + (1 - prob_hosp[[.x]]) *
+                                     dur_IMild[.x])
+  adjusted_eigen <- purrr::map_dbl(relative_R0_by_age, ~Re(eigen(mixing_matrix * .x *
+                                                                   rel_infectiousness)$values[1]))
+  R0/adjusted_eigen
 }

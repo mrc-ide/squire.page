@@ -283,17 +283,22 @@ calc_loglikelihood_booster <- function(pars, data, squire_model, model_params,
                                    pars = pars,
                                    Rt_args = Rt_args)
 
-  mod_class <- class(squire_model)
-  class(squire_model) <-  c("nimue_model", "squire_model")
   # which allow us to work out our beta
-  beta_set <- squire:::beta_est(squire_model = squire_model,
+  #must adjust for changes to other tt's if neccessary
+  if(length(c(model_params$tt_dur_ICase, model_params$tt_dur_IMild, model_params$tt_prob_hosp_multiplier)) > 3){
+    tt_R0 <- unique(sort(c(model_params$tt_dur_ICase, model_params$tt_dur_IMild, model_params$tt_prob_hosp_multiplier, model_params$tt_beta)))
+    R0 <- block_interpolate(tt_R0, R0, model_params$tt_beta)
+  } else {
+    tt_R0 <- model_params$tt_beta
+  }
+  beta_set <- beta_est(squire_model = squire_model,
                                 model_params = model_params,
-                                R0 = R0)
-  class(squire_model) <- mod_class
+                                R0 = R0, tt_R0 = tt_R0)
   #----------------..
   # update the model params accordingly from new inputs
   #----------------..
   model_params$beta_set <- beta_set
+  model_params$tt_beta <- tt_R0
 
   #some parameters we won't use
   pars_obs$treated_deaths_only <- FALSE

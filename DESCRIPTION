@@ -16,7 +16,7 @@ Imports:
     tidyr,
     stringr,
     abind,
-    tidyselect,
+    tibble,
     ggplot2,
     utils,
     stats,
@@ -28,7 +28,7 @@ Imports:
     squire (>= 0.6.10),
     odin,
     progressr,
-    countrycode
+    lubridate
 Suggests:
     orderly,
     DBI,
