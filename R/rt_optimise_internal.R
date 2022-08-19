@@ -29,7 +29,7 @@ assert_distribution <- function(distribution){
 #' should work for all types, with the caveat that there must be a psedo method in
 #' squire:::beta_est that works with the model or a method for squire.page::beta_est.
 #' @noRd
-generate_model_function <- function(squire_model, parameters){
+generate_model_function <- function(squire_model, parameters, use_difference, dt){
   #get parameters for the model, essentially fills out missing with defaults
   squire_parameters <- setup_parameters(squire_model, parameters)
   #a hack for the moment to so we can check if there might be time changing
@@ -40,12 +40,20 @@ generate_model_function <- function(squire_model, parameters){
                                              squire_parameters$tt_dur_IMild,
                                              squire_parameters$tt_prob_hosp_multiplier)) > 3
   }
+  if(use_difference){
+    dt_multi <- 1/dt
+  } else {
+    dt_multi <- 1
+  }
   #define a function that gets the deaths for a requested period
   function(Rt, t_start, t_end, initial_state = NULL, tt_Rt = NULL, atol= 10^-6, rtol = 10^-6){
     #ensures the environment contains these objects
     force(squire_parameters)
     force(squire_model)
     force(check_for_changing_durations)
+    force(use_difference)
+    force(dt_multi)
+    force(dt)
     #set the initial state for the odin model
     if (!is.null(initial_state)) {
       squire_parameters <- initial_state
@@ -71,6 +79,11 @@ generate_model_function <- function(squire_model, parameters){
         user = squire_parameters,
         unused_user_action = "ignore"
       )
+    } else if (use_difference){
+      odin_model <- squire_model$odin_difference_model$new(
+        user = squire_parameters, dt = dt,
+        unused_user_action = "ignore"
+      )
     } else {
       odin_model <- squire_model$odin_model$new(
         user = squire_parameters,
@@ -78,7 +91,7 @@ generate_model_function <- function(squire_model, parameters){
       )
     }
     #run the model over the requested time-period, with decreasing tolerance if it fails
-    ts <- seq(t_start, t_end, by = 1)
+    ts <- seq(t_start, t_end, by = dt_multi)
     model_output <- tryCatch(
       odin_model$run(ts, atol = atol, rtol = rtol),
       error = function(e){
@@ -96,9 +109,9 @@ generate_model_function <- function(squire_model, parameters){
 #' should for all types, with the caveat that there must be a psedo method in
 #' squire:::beta_est that works with the model or a method for squire.page::beta_est.
 #' @noRd
-generate_deaths_function <- function(model_func){
+generate_deaths_function <- function(model_func, dt){
   #determine with columns related to deaths
-  temp_rn <- model_func(1, 0, 2, NULL)
+  temp_rn <- model_func(1, 0, 1/dt, NULL)
   #save there column indexes
   death_cols <- stringr::str_detect(colnames(temp_rn), "D\\[")
   rm(temp_rn)
@@ -259,4 +272,3 @@ ll_negative_binomial <- function(model_deaths, data_deaths, k){
   ) %>%
     sum()
 }
-

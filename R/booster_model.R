@@ -5,10 +5,13 @@
 #' @param use_dde Logical for using dde to solve. Default = TRUE
 #' We will use this structure to ensure that model fitting is flexible in the
 #' future as more models are added
+#' @param use_difference Should this model use the difference version of the model.
+#' This only effects the Rt optimise version and only uses it for the fitting
+#' process, uses a step size given by dt. Defaults to FALSE.
 #'
 #' @details Wraps the squire pmcmc fitting infrastructure.
 #' @export
-nimue_booster_model <- function(use_dde = TRUE) {
+nimue_booster_model <- function(use_dde = TRUE, use_difference = FALSE) {
 
   model_class <- "booster_model"
 
@@ -19,10 +22,10 @@ nimue_booster_model <- function(use_dde = TRUE) {
   # wrap param func in order to remove unused arguments (dt)
   # and then add in all the default that are passed to params usually
   # from run so have to add here
-  parameters_func <- function(country, population, dt,
-                              contact_matrix_set, tt_contact_matrix,
-                              hosp_bed_capacity, tt_hosp_beds,
-                              ICU_bed_capacity, tt_ICU_beds,
+  parameters_func <- function(country = NULL, population = NULL, dt = 1,
+                              contact_matrix_set = NULL, tt_contact_matrix = 0,
+                              hosp_bed_capacity = NULL, tt_hosp_beds = 0,
+                              ICU_bed_capacity = NULL, tt_ICU_beds = 0,
 
                               # vaccine defaults that are just empty in parms so declare here
                               dur_R = vaccine_pars_booster$dur_R,
@@ -199,6 +202,14 @@ nimue_booster_model <- function(use_dde = TRUE) {
                 compare_model = compare_model,
                 use_dde = use_dde)
   class(model) <- c(model_class, "nimue_model", "deterministic", "squire_model")
+
+  if(use_difference){
+    model$odin_difference_model <- function(user, dt, unused_user_action){
+      user$dt <- dt
+      nimue_booster_diff$new(user = user, unused_user_action = "ignore")
+    }
+  }
+
   model
 
 }

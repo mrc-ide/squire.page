@@ -15,7 +15,8 @@ rt_optimise(
   k = 2,
   n_particles = 14,
   initial_infections_interval = c(5, 500),
-  rt_interval = c(0.5, 20)
+  rt_interval = c(0.5, 20),
+  dt = NULL
 )
 }
 \arguments{
@@ -44,6 +45,10 @@ should be formatted relative to this date, where necessary.}
 \item{initial_infections_interval}{The range of initial number of infections to explore, default = c(5, 500).}
 
 \item{rt_interval}{The range of values that Rt can take, default = c(0.5, 20).}
+
+\item{dt}{If the passed squire_model has a difference model attached, this is the step size we shall use.
+The difference model is only used if dt is non-null and squire_model$odin_difference_model is non-null.
+Defaults to NULL.}
 }
 \value{
 An object of type rt_optimised, (model type).

@@ -4,12 +4,16 @@
 \alias{nimue_booster_model}
 \title{nimue model creation.}
 \usage{
-nimue_booster_model(use_dde = TRUE)
+nimue_booster_model(use_dde = TRUE, use_difference = FALSE)
 }
 \arguments{
 \item{use_dde}{Logical for using dde to solve. Default = TRUE
 We will use this structure to ensure that model fitting is flexible in the
 future as more models are added}
+
+\item{use_difference}{Should this model use the difference version of the model.
+This only effects the Rt optimise version and only uses it for the fitting
+process, uses a step size given by dt. Defaults to FALSE.}
 }
 \description{
 Create a nimue model class for fitting with squire tools using the booster

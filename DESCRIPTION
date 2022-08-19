@@ -34,7 +34,11 @@ Suggests:
     DBI,
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
+    rmarkdown,
+    ggpubr,
+    here,
+    scales,
+    bench
 Remotes:
     mrc-ide/squire,
     mrc-ide/nimue

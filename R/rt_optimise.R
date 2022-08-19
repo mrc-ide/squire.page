@@ -28,6 +28,9 @@
 #' @param n_particles How many particles to explore uniformly the interval of initial infections, default = 7.
 #' @param initial_infections_interval The range of initial number of infections to explore, default = c(5, 500).
 #' @param rt_interval The range of values that Rt can take, default = c(0.5, 20).
+#' @param dt If the passed squire_model has a difference model attached, this is the step size we shall use.
+#' The difference model is only used if dt is non-null and squire_model$odin_difference_model is non-null.
+#' Defaults to NULL.
 #'
 #' @return An object of type rt_optimised, (model type).
 #'
@@ -39,7 +42,8 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
                          k = 2,
                          n_particles = 14,
                          initial_infections_interval = c(5, 500),
-                         rt_interval = c(0.5, 20)
+                         rt_interval = c(0.5, 20),
+                         dt = NULL
                         ) {
   ##Initial Checks and Housekeeping
 
@@ -94,18 +98,41 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
          occuring on the overlap of Rt change periods.")
   }
 
-  map_func <- function(parameters, data, initial_infections_interval, n_particles, k, squire_model, rt_interval, p){
+  #set up difference
+  if(!is.null(dt) & !is.null(squire_model$odin_difference_model)){
+    if(dt > 1){
+      stop("dt (step size) must be smaller than 1")
+    }
+    use_difference <- TRUE
+  } else {
+    use_difference <- FALSE
+    dt <- 1
+  }
+
+  map_func <- function(parameters, data, initial_infections_interval, n_particles, k, squire_model, rt_interval, p, use_difference, dt){
     #Determine the deaths used to fit each Rt
     temp <-  get_time_series(squire_model, parameters, data, rt_spacing)
     rt_df <- temp$rt_df
     split_data <- temp$split_data
     rm(temp)
 
+    if(use_difference){
+      #adjust parameter and data timings
+      dt_multi <- 1/dt
+      #parameters <- adjust_params_for_difference(squire_model, parameters, dt_multi)
+      rt_df <- rt_df * dt_multi
+      split_data <- purrr::map(split_data, function(x){
+        x[, c("t_start", "t_end")] <-
+          x[, c("t_start", "t_end")] * dt_multi
+        x
+      })
+    }
+
     ##series of model specific functions are generated
     #generate function that just returns model output
-    model <- generate_model_function(squire_model, parameters)
+    model <- generate_model_function(squire_model, parameters, use_difference, dt)
     #generate function that returns the deaths from this output
-    deaths_function <- generate_deaths_function(model)
+    deaths_function <- generate_deaths_function(model, dt)
     #basic likelihood function
     likelihood <- function(Rt, rt_index, initial_state){
       this_data <- split_data[[rt_index]]
@@ -176,6 +203,13 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
     #update progressr so it knows that this sample is finished
     p()
 
+    if(use_difference){
+      #correct if using difference model
+      rt_df$rt_change_t <- rt_df$rt_change_t * dt
+      model_output[, "t"] <- model_output[, "t"] * dt
+      model_output[, "time"] <- model_output[, "time"] * dt
+    }
+
     #output values
     list(
       #our fitted Rt trend
@@ -202,7 +236,7 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
       initial_infections_interval = initial_infections_interval,
       n_particles = n_particles, k = k,
       squire_model = squire_model, rt_interval = rt_interval,
-      p = p,
+      p = p, use_difference = use_difference, dt = dt,
       .options = furrr::furrr_options(seed = NULL)
     )
   } else {
@@ -214,7 +248,7 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
       initial_infections_interval = initial_infections_interval,
       n_particles = n_particles, k = k,
       squire_model = squire_model, rt_interval = rt_interval,
-      p = p
+      p = p, use_difference = use_difference, dt = dt
     )
   }
 
