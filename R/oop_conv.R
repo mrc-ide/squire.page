@@ -479,6 +479,7 @@ beta_est.booster_model <- function(squire_model, model_params, R0, tt_R0) {
   )
 }
 
+#' @noRd
 beta_est_booster <- function(R0, tt_R0, prob_hosp_multiplier, tt_prob_hosp_multiplier,
                              prob_hosp_baseline, dur_ICase, tt_dur_ICase, dur_IMild,
                              tt_dur_IMild, rel_infectiousness, mixing_matrix){

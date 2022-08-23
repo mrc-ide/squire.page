@@ -264,7 +264,7 @@ generate_draws.rt_optimised <- function(out, t_end = NULL, project_forwards = FA
   map_func <- function(sample, output, parameters, squire_model, t_start, t_end, project_fowards){
     #generate model function
     parameters <- append(parameters, sample)
-    model <- generate_model_function(squire_model, parameters, use_difference = FALSE)
+    model <- generate_model_function(squire_model, parameters, use_difference = FALSE, dt = 1)
     if(project_forwards){
       #add initial condition
       initial_state <- setup_parameters(squire_model, parameters) %>%

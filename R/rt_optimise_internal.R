@@ -63,11 +63,15 @@ generate_model_function <- function(squire_model, parameters, use_difference, dt
       tt_Rt <- t_start
     }
     if(check_for_changing_durations){
-      #What goes here?
-      tt_Rt <- unique(sort(c(squire_parameters$tt_dur_ICase[squire_parameters$tt_dur_ICase < t_end],
+      tt_Rt_new <- unique(sort(c(squire_parameters$tt_dur_ICase[squire_parameters$tt_dur_ICase < t_end],
                              squire_parameters$tt_dur_IMild[squire_parameters$tt_dur_IMild < t_end],
                              squire_parameters$tt_prob_hosp_multiplier[squire_parameters$tt_prob_hosp_multiplier < t_end],
-                             tt_Rt)))
+                             tt_Rt[-1])))
+      if(length(tt_Rt_new) > 1){
+        Rt <- block_interpolate(tt_Rt_new, Rt, tt_Rt)
+      }
+      tt_Rt <- tt_Rt_new
+      rm(tt_Rt_new)
     }
     squire_parameters$beta_set <-
       beta_est(squire_model, squire_parameters, Rt, tt_Rt)
@@ -188,7 +192,7 @@ get_time_series <- function(squire_model, parameters, data, rt_spacing){
   #remove any trends that occures on or before 0, we add R0 later anyway
   rt_change_t <- rt_change_t[rt_change_t > 0]
   #ensure no changes estimated in last max delay period, (i.e. don't estimate an Rt in the last ~20 days)
-  to_remove <- which(rt_change_t > utils::tail(data$t_end, 1) - (rt_death_delay$max))
+  to_remove <- which(rt_change_t > utils::tail(data$t_end, 1) - 30)
   if(length(to_remove) > 0){
     rt_change_t <- c(0, rt_change_t[-to_remove])
   } else {
