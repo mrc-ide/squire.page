@@ -25,6 +25,7 @@
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/booster_pathway.html">Nimue rewrite: Booster Pathway</a>
+    <a class="dropdown-item" href="../articles/difference_model.html">Booster Model: Difference Model</a>
     <a class="dropdown-item" href="../articles/rt_optimise.html">New Fitting Method: Rt Optimisation</a>
   </div>
 </li>
@@ -50,7 +51,7 @@
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for default</span></span>
-<span><span class="fu">beta_est</span><span class="op">(</span><span class="va">squire_model</span>, <span class="va">model_params</span>, <span class="va">R0</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">beta_est</span><span class="op">(</span><span class="va">squire_model</span>, <span class="va">model_params</span>, <span class="va">R0</span>, tt_R0 <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -65,6 +66,10 @@
 
 <dt>R0</dt>
 <dd><p>R0/Rt value to translate into beta</p></dd>
+
+
+<dt>tt_R0</dt>
+<dd><p>Used</p></dd>
 
 </dl></div>
 

@@ -27,6 +27,7 @@ dose framework."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/booster_pathway.html">Nimue rewrite: Booster Pathway</a>
+    <a class="dropdown-item" href="../articles/difference_model.html">Booster Model: Difference Model</a>
     <a class="dropdown-item" href="../articles/rt_optimise.html">New Fitting Method: Rt Optimisation</a>
   </div>
 </li>
@@ -52,7 +53,7 @@ dose framework.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nimue_booster_model</span><span class="op">(</span>use_dde <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nimue_booster_model</span><span class="op">(</span>use_dde <span class="op">=</span> <span class="cn">TRUE</span>, use_difference <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -61,6 +62,12 @@ dose framework.</p>
 <dd><p>Logical for using dde to solve. Default = TRUE
 We will use this structure to ensure that model fitting is flexible in the
 future as more models are added</p></dd>
+
+
+<dt>use_difference</dt>
+<dd><p>Should this model use the difference version of the model.
+This only effects the Rt optimise version and only uses it for the fitting
+process, uses a step size given by dt. Defaults to FALSE.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -31,6 +31,7 @@ modelling."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/booster_pathway.html">Nimue rewrite: Booster Pathway</a>
+    <a class="dropdown-item" href="../articles/difference_model.html">Booster Model: Difference Model</a>
     <a class="dropdown-item" href="../articles/rt_optimise.html">New Fitting Method: Rt Optimisation</a>
   </div>
 </li>
@@ -69,7 +70,8 @@ modelling.</p>
 <span>  k <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  n_particles <span class="op">=</span> <span class="fl">14</span>,</span>
 <span>  initial_infections_interval <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span>, <span class="fl">500</span><span class="op">)</span>,</span>
-<span>  rt_interval <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">20</span><span class="op">)</span></span>
+<span>  rt_interval <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">20</span><span class="op">)</span>,</span>
+<span>  dt <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -121,6 +123,12 @@ should be formatted relative to this date, where necessary.</p></dd>
 
 <dt>rt_interval</dt>
 <dd><p>The range of values that Rt can take, default = c(0.5, 20).</p></dd>
+
+
+<dt>dt</dt>
+<dd><p>If the passed squire_model has a difference model attached, this is the step size we shall use.
+The difference model is only used if dt is non-null and squire_model$odin_difference_model is non-null.
+Defaults to NULL.</p></dd>
 
 </dl></div>
     <div class="section level2">
