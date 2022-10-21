@@ -8,7 +8,7 @@ Description: Contains miscellaneous functions used in the repo global-lmic-repor
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.0
+RoxygenNote: 7.2.1
 Imports: 
     rlang,
     dplyr,
