@@ -61,7 +61,7 @@ get_future_Rt <- function(model_out, forcast_days){
       dplyr::mutate(
         gradient_pos = .data$gradient >0
       ) %>%
-      dplyr::select(.data$rep, .data$gradient_pos) %>%
+      dplyr::select("rep", "gradient_pos") %>%
       unique() %>%
       dplyr::summarise(
         got_both = utils::head(.data$gradient_pos, 1) != utils::tail(.data$gradient_pos, 1)

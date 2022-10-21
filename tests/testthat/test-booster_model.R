@@ -116,7 +116,8 @@ test_that("LMIC Booster Likelihood Function", {
     date_R0_change = "2020-03-01",
     second_dose_delay = 60,
     protection_delay_rate = NULL,
-    protection_delay_shape = NULL
+    protection_delay_shape = NULL,
+    drjacoby_list = list(silent = TRUE)
   ))
 
   expect_s3_class(pmcmc_output, "lmic_booster_nimue_simulation")

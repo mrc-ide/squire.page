@@ -4,7 +4,7 @@ compare_adjustment_plot <- function(out){
   #get the model infections
   plotting_data <- nimue_format(out, var_select = "infections") %>%
     dplyr::filter(t >= (max(.data$t, na.rm = TRUE) - out$pmcmc_results$inputs$pars_obs$cases_days - out$pmcmc_results$inputs$pars_obs$cases_reporting)) %>%
-    dplyr::rename(model_infections = .data$y) %>%
+    dplyr::rename(model_infections = "y") %>%
     dplyr::select(replicate, .data$t, .data$model_infections) %>%
     dplyr::mutate(
       reporting = .data$t < max(.data$t, na.rm = TRUE) - out$pmcmc_results$inputs$pars_obs$cases_days
@@ -593,11 +593,11 @@ sero_plot <- function(res, sero_df) {
 
   # get symptom onset data
   inf <- nimue_format(res, c("infections"), date_0 = date_0) %>%
-    dplyr::rename(symptoms = .data$y) %>%
+    dplyr::rename(symptoms = "y") %>%
     dplyr::left_join(nimue_format(res, "S", date_0 = date_0),
               by = c("replicate", "t", "date")) %>%
-    dplyr::rename(S = .data$y) %>%
-    dplyr::select(.data$replicate,.data$t, .data$date, .data$S, .data$symptoms)
+    dplyr::rename(S = "y") %>%
+    dplyr::select("replicate","t", "date", "S", "symptoms")
 
   inf <- inf %>% dplyr::group_by(.data$replicate) %>%
     dplyr::mutate(sero_positive = roll_func(.data$symptoms, .data$sero_det),
@@ -636,7 +636,7 @@ ar_plot <- function(res) {
   S_tot <- sum(get_parameters(res)$population)
   inf <- nimue_format(res, "infections", date_0 = date_0) %>%
     dplyr::mutate(infections = as.integer(.data$y)) %>%
-    dplyr::select(replicate, .data$t, .data$date, .data$infections) %>%
+    dplyr::select(replicate, "t", "date", "infections") %>%
     dplyr::group_by(replicate) %>%
     dplyr::mutate(infections = dplyr::lag(cumsum(tidyr::replace_na(.data$infections, 0)), 5, default = 0))
 

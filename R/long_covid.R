@@ -33,11 +33,11 @@ get_lc <- function(res,
   if(reduce_age) {
     infs <- dplyr::group_by(infs, .data$replicate, .data$compartment, .data$t) %>%
       dplyr::summarise(y = sum(lc, na.rm=TRUE)) %>%
-      dplyr::select(replicate, .data$compartment, .data$t, .data$y)
+      dplyr::select(replicate, "compartment", "t", "y")
   } else {
     infs <- dplyr::group_by(infs, .data$replicate, .data$compartment, .data$age_group, .data$t) %>%
       dplyr::summarise(y = sum(lc, na.rm=TRUE)) %>%
-      dplyr::select(replicate, .data$compartment, .data$age_group, .data$t, .data$y)
+      dplyr::select(replicate, "compartment", "age_group", "t", "y")
   }
 
   return(infs)

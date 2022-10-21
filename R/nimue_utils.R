@@ -169,7 +169,7 @@ nimue_format <- function(out,
     pd <- purrr::map_dfr(seq_len(dim(out$output)[3]), function(i) {
       format_squirepage(out, compartments = comps, summaries = summs, replicate = i, reduce_age = reduce_age & !any(c(ICU_inc_fix, hosp_inc_fix)))
     }) %>%
-      dplyr::rename(y = .data$value)
+      dplyr::rename(y = "value")
 
     if(any(c(hosp_inc_fix, ICU_inc_fix))){
       #extract data for the fix
@@ -444,7 +444,7 @@ format_squirepage <- function(x,
     ag <- c(paste0(seq(0, 75, 5), "-", seq(5, 80, 5)), "80+")
     output$age_group = factor(ag[output$age_index], levels = ag)
     output <- output  %>%
-      dplyr::select(-.data$age_index)
+      dplyr::select(-"age_index")
   }
 
   return(output)
