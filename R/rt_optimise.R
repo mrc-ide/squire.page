@@ -78,23 +78,20 @@ rt_optimise <- function(data, distribution, squire_model, parameters,
   #check that rt_spacing and data are compatible
   if(!purrr::every(seq(data_start_date, data_end_date, by = rt_spacing), function(rt_date){
     #check a death period occurs in its coverage period
-    (data %>%
+    ((data %>%
      dplyr::filter(.data$date_start >= rt_date) %>%
      dplyr::filter(.data$date_start == min(.data$date_start)) %>%
-     dplyr::pull(.data$date_end) %>%
-     `<=`(rt_date + rt_spacing)) &
+     dplyr::pull(.data$date_end)) <=(rt_date + rt_spacing)) &
       #check that there is no overlap on the low end
-      (data %>%
+      ((data %>%
        dplyr::filter(.data$date_end > rt_date) %>%
        dplyr::filter(.data$date_end == min(.data$date_end)) %>%
-       dplyr::pull(.data$date_start) %>%
-       `>=`(rt_date)) &
+       dplyr::pull(.data$date_start)) >= (rt_date)) &
       #check that there is no overlap on the high end
-      (data %>%
+      ((data %>%
        dplyr::filter(.data$date_start < rt_date + rt_spacing) %>%
        dplyr::filter(.data$date_start == max(.data$date_start)) %>%
-       dplyr::pull(.data$date_end) %>%
-       `<=`(rt_date + rt_spacing))
+       dplyr::pull(.data$date_end)) <= (rt_date + rt_spacing))
   })){
     stop("data is not compatible with rt_spacing, every period of change in Rt must
          have a death period occuring within it and there can be no death periods
