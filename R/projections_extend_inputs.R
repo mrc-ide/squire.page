@@ -1,4 +1,9 @@
-#'
+#' Updates vaccine inputs into the future.
+#' I.e. prevents coverage of second doses going above 100% of first doses.
+#' @param vacc_inputs inputs used in the model
+#' @param time_period how far to model
+#' @param out model object
+#' @param end_date date that our fit ends on
 #'@export
 extend_vaccine_inputs <- function(vacc_inputs, time_period, out, end_date) {
 

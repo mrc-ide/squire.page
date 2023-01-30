@@ -1,8 +1,17 @@
-#taken from squire, has added ability to update prob hospital multiplier, and
-# variant dependant variables and duration in R. Also incorporates adjustment
-# to cases for last few days
-#'
-#'@export
+#' Likelihood function for reported deaths with VoC adjustments
+#' Not for individual use, only exported so it is easy to call in pmcmc functions.
+#' @param pars Parameter inputs
+#' @param data data to fit to
+#' @param squire_model the model object
+#' @param model_params the fixed parameters
+#' @param pars_obs extra non fitted parameters
+#' @param n_particles unused
+#' @param forecast_days unused
+#' @param return Specifies we are return likelihood for model outputs
+#' @param Rt_args parameters for Rt
+#' @param interventions parameters around vaccination
+#' @param ... unused (for compatibility)
+#' @export
 calc_loglikelihood_variant <- function(pars, data, squire_model, model_params,
                                      pars_obs, n_particles,
                                      forecast_days = 0, return = "ll",

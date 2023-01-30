@@ -1,4 +1,13 @@
-#'
+#' Runs an adaptive metropolis hasting MCMC on the specified model.
+#' Adapted from squire::pmcmc, but handles the weekly death data from excess-mortality.
+#' @inheritParams squire::pmcmc
+#' @param use_drjacoby Should we use drjacoby to fit the model
+#' @param drjacoby_list Parameters to use in drjacoby
+#' @param date_Rt_change The dates corresponding to each Rt change
+#' @param dur_R Allows the specification of the duration of immunity
+#' @param dose_ratio The time dependent number of people with two doses
+#' @param date_vaccine_efficacy Dates at which VE changes
+#' @param vaccine_efficacies Values for the VE that can vary over time.
 #'@export
 pmcmc_excess <- function(data,
                          n_mcmc,

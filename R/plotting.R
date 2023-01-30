@@ -1,4 +1,5 @@
-#'
+#' A diagnostic plot for looking at the infections-based fitting
+#' @param out model object
 #'@export
 compare_adjustment_plot <- function(out){
   #get the model infections
@@ -468,8 +469,15 @@ get_immunity_ratios.rt_optimised <- function(out, max_date = NULL, vaccine = FAL
     return(ratio)
   })
 }
-#'
-#'@export
+#' Plot the Rt trends for a country accounting for immunity
+#' @param df model output
+#' @param min_date Date to start the plot at
+#' @param date_0 Current date
+#' @param vjust unused
+#' @param R0 plot R0
+#' @param Rt plot Rt
+#' @param Reff plot Reff
+#' @export
 country_immunity_plot <- function(df, min_date, date_0, vjust = -1.2, R0 = FALSE, Rt = FALSE, Reff = TRUE) {
   g1 <- ggplot2::ggplot(df %>% dplyr::filter(
     .data$date > min_date & .data$date <= as.Date(as.character(date_0 + as.POSIXlt(date_0)$wday + 1)))) +
@@ -513,7 +521,11 @@ country_immunity_plot <- function(df, min_date, date_0, vjust = -1.2, R0 = FALSE
   g1
 }
 
-#'
+#' Plot the Rt trends accounting for immunity
+#' @param out model output
+#' @param vaccine Should we account for vaccinations?
+#' @param R0_plot plot R0
+#' @param Rt_plot plot Rt
 #'@export
 rt_plot_immunity <- function(out, vaccine = TRUE, R0_plot = FALSE, Rt_plot = FALSE) {
 
@@ -569,7 +581,11 @@ rt_plot_immunity <- function(out, vaccine = TRUE, R0_plot = FALSE, Rt_plot = FAL
   return(res)
 }
 
-#'
+
+#' Plot the seroprevalence from the model
+#' Under some assumptions
+#' @param res model output
+#' @param sero_df Data to plot against
 #'@export
 sero_plot <- function(res, sero_df) {
 
@@ -625,7 +641,9 @@ sero_plot <- function(res, sero_df) {
   return(gg)
 
 }
-#'
+
+#' Plot the attack rate from the model
+#' @param res model output
 #'@export
 ar_plot <- function(res) {
 
@@ -648,7 +666,9 @@ ar_plot <- function(res) {
   return(g2)
 }
 
-#'
+#' Plot the cumulative deaths from the model
+#' @param res model output
+#' @param extra_df data to plot if need
 #'@export
 cdp_plot <- function(res, extra_df = NULL) {
 
@@ -728,7 +748,7 @@ dp_plot <- function(res) {
                    ggplot2::aes(x = .data$date_start, xend = .data$date_end,
                        y = .data$deaths/as.numeric(.data$date_end - .data$date_start),
                        yend = .data$deaths/as.numeric(.data$date_end - .data$date_start)),
-                   size = 1)
+                   linewidth = 1)
   } else {
     dp <- dp +
       ggplot2::geom_point(data = get_data(res),

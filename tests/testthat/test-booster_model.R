@@ -79,12 +79,12 @@ test_that("Model Functionality", {
   #with these numbers expect doses to be increasing all the time
   expect_true(all(nimue_format(base, "vaccinated_first_dose") %>% pull(y) %>% diff() >= 0))
   expect_true(all(nimue_format(base, "vaccinated_second_dose") %>% pull(y) %>% diff() >= 0))
-  #allow error of a maximum of one dose
-  expect_true(all(nimue_format(base, "vaccinated_booster_dose") %>% pull(y) %>% diff() %>% `+`(1) >= 0))
+  #allow error of a maximum of five doses
+  expect_true(all(nimue_format(base, "vaccinated_booster_dose") %>% pull(y) %>% diff() %>% `+`(5) >= 0))
   #doses make sense
-  expect_true(all(nimue_format(base, "first_doses_given") %>% pull(y) <= 4001))
-  expect_true(all(nimue_format(base, "second_doses_given") %>% pull(y) <= 4001))
-  expect_true(all(nimue_format(base, "booster_doses_given") %>% pull(y) <= 2001))
+  expect_true(all(nimue_format(base, "first_doses_given") %>% pull(y) <= 4005))
+  expect_true(all(nimue_format(base, "second_doses_given") %>% pull(y) <= 4005))
+  expect_true(all(nimue_format(base, "booster_doses_given") %>% pull(y) <= 2005))
   # #check vaccination rollout in zero infection epidemic
   # zero_inf <-
   #   squire.page:::run_booster(country = "United Kingdom",

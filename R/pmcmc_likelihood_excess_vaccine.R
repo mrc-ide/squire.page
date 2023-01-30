@@ -1,4 +1,16 @@
-#'
+#' Likelihood function for excess mortality with fitted vaccine parameters
+#' Not for individual use, only exported so it is easy to call in pmcmc functions.
+#' @param pars Parameter inputs
+#' @param data data to fit to
+#' @param squire_model the model object
+#' @param model_params the fixed parameters
+#' @param pars_obs extra non fitted parameters
+#' @param n_particles unused
+#' @param forecast_days unused
+#' @param return Specifies we are return likelihood for model outputs
+#' @param Rt_args parameters for Rt
+#' @param interventions parameters around vaccination
+#' @param ... unused (for compatibility)
 #'@export
 excess_log_likelihood_vaccine <- function(pars, data, squire_model, model_params, pars_obs, n_particles,
                                   forecast_days = 0, return = "ll", Rt_args, interventions, ...) {

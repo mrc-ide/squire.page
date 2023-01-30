@@ -1,4 +1,16 @@
-#'
+#' Runs an parallel tempering MCMC (drjacoby) on the specified model.
+#' Adapted from squire::pmcmc, but handles the weekly death data from excess-mortality.
+#' @inheritParams squire::pmcmc
+#' @param drjacoby_list Parameters to use in drjacoby
+#' @param n_burnin How many iterations to drop as burnin
+#' @param primary_doses Time series of primary vaccine doses
+#' @param baseline_primary_doses Primary doses a day at the start of the epidemic
+#' @param booster_doses Time series of booster vaccine doses
+#' @param baseline_booster_doses Booster doses a day at the start of the epidemic
+#' @param date_vaccine_efficacy_change Dates at which VE changes
+#' @param second_dose_delay Delay in days between first and second doses
+#' @param protection_delay_rate Assuming vaccine protection is delayed by some gamma distribution, specify the rate
+#' @param protection_delay_shape Assuming vaccine protection is delayed by some gamma distribution, specify the shape
 #'@export
 pmcmc_drjacoby <- function(data,
                            replicates = 100,

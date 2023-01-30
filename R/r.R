@@ -1,9 +1,10 @@
-#'
+#' Methods to calculate Rt over time from each model type
+#' @param model_out Model object
 #'@export
 get_Rt <- function(model_out){
   UseMethod("get_Rt")
 }
-#'
+#' @rdname get_Rt
 #'@export
 get_Rt.nimue_simulation <- function(model_out){
   date_0 <- max(as.Date(model_out$pmcmc_results$inputs$data$date))
@@ -50,6 +51,7 @@ get_Rt.nimue_simulation <- function(model_out){
   )
 }
 #'
+#' @rdname get_Rt
 #'@export
 get_Rt.excess_nimue_simulation <- function(model_out){
   date_0 <- max(as.Date(model_out$pmcmc_results$inputs$data$week_start))
@@ -92,6 +94,7 @@ get_Rt.excess_nimue_simulation <- function(model_out){
   )
 }
 #'
+#' @rdname get_Rt
 #'@export
 get_Rt.vacc_durR_nimue_simulation <- function(model_out){
   date_0 <- max(as.Date(model_out$pmcmc_results$inputs$data$week_start))
@@ -133,6 +136,7 @@ get_Rt.vacc_durR_nimue_simulation <- function(model_out){
   )
 }
 #'
+#' @rdname get_Rt
 #'@export
 get_Rt.rt_optimised <- function(model_out){
   date_0 <- model_out$inputs$start_date

@@ -1,4 +1,6 @@
-#'
+#' Calculates the Rt used in the short term scenarios
+#' @param model_out a model object
+#' @param forcast_days how far to calculate for
 #'@export
 get_future_Rt <- function(model_out, forcast_days){
   if("excess_nimue_simulation" %in% class(model_out)){
@@ -117,7 +119,10 @@ get_future_Rt <- function(model_out, forcast_days){
   return(Rt_futures)
 }
 
-#'
+#' Applies new Rt to the data
+#' @param model_user_args list of values for each replicates
+#' @param Rt Values to change Rt to
+#' @param model_out model object
 #'@export
 update_Rt <- function(model_user_args, Rt, model_out){
   #get the Rt values for each replicate over time
