@@ -26,6 +26,7 @@ Imports:
     purrr,
     nimue (>= 0.1.22),
     squire (>= 0.6.10),
+    drjacoby,
     odin,
     progressr,
     lubridate
@@ -41,7 +42,8 @@ Suggests:
     bench
 Remotes:
     mrc-ide/squire,
-    mrc-ide/nimue
+    mrc-ide/nimue,
+    mrc-ide/drjacoby
 Config/testthat/edition: 3
 Depends: 
     R (>= 2.10)
