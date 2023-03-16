@@ -42,6 +42,7 @@ nimue_booster_model <- function(use_dde = TRUE, use_difference = FALSE) {
                               booster_doses = vaccine_pars_booster$booster_doses,
                               tt_booster_doses = vaccine_pars_booster$tt_booster_doses,
                               vaccine_coverage_mat = vaccine_pars_booster$vaccine_coverage_mat,
+                              vaccine_booster_initial_coverage = vaccine_pars_booster$vaccine_booster_initial_coverage,
                               vaccine_booster_follow_up_coverage = vaccine_pars_booster$vaccine_booster_follow_up_coverage,
                               protection_delay_rate = vaccine_pars_booster$protection_delay_rate,
                               protection_delay_shape = vaccine_pars_booster$protection_delay_shape,
@@ -134,6 +135,7 @@ nimue_booster_model <- function(use_dde = TRUE, use_difference = FALSE) {
       booster_doses = booster_doses,
       tt_booster_doses = tt_booster_doses,
       vaccine_coverage_mat = vaccine_coverage_mat,
+      vaccine_booster_initial_coverage = vaccine_booster_initial_coverage,
       vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
       protection_delay_rate = protection_delay_rate,
       protection_delay_shape = protection_delay_shape,
@@ -275,6 +277,7 @@ default_vaccine_pars_booster <- function() {
        booster_doses = 100,
        tt_booster_doses = 0,
        vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
+       vaccine_booster_initial_coverage = NULL,
        vaccine_booster_follow_up_coverage = NULL,
        protection_delay_rate = 1/7,
        protection_delay_shape = 2)
@@ -361,6 +364,7 @@ parameters_booster <- function(
   tt_booster_doses,
   second_dose_delay,
   vaccine_coverage_mat,
+  vaccine_booster_initial_coverage,
   vaccine_booster_follow_up_coverage,
   protection_delay_rate,
   protection_delay_shape,
@@ -530,6 +534,14 @@ parameters_booster <- function(
     }
   }
 
+  if(is.null(vaccine_booster_initial_coverage)){
+    vaccine_booster_initial_coverage <- rep(1, 17)
+  } else {
+    if(any(!vaccine_booster_initial_coverage %in% c(0, 1))){
+      stop("vaccine_booster_initial_coverage must be NULL for a vector of 0s and 1s with length = N_age")
+    }
+  }
+
 
   # Convert and Generate Parameters As Required
   # ----------------------------------------------------------------------------
@@ -672,6 +684,7 @@ parameters_booster <- function(
                  tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
                  tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
                  vaccine_coverage_mat = vaccine_coverage_mat,
+                 vaccine_booster_initial_coverage = vaccine_booster_initial_coverage,
                  vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
                  N_vaccine = 7,
                  N_prioritisation_steps = nrow(vaccine_coverage_mat),
@@ -1019,6 +1032,8 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
 #' @param booster_doses The maximum number of individuals who can be vaccinated with their booster dose per day.
 #' @param tt_booster_doses Time change points for vaccine capacity (\code{booster_doses}).
 #' @param vaccine_coverage_mat Vaccine coverage targets by age (columns) and priority (row)
+#' @param vaccine_booster_initial_coverage Age group eligibility for initial boosters (i.e. 1st booster dose),
+#' default = NULL means all are eligible. Format: 0 indicates not eligible, 1 indicates eligible.
 #' @param vaccine_booster_follow_up_coverage Age group eligibility for follow-up boosters (i.e. 2nd, 3rd, ... booster doses),
 #' default = NULL means all are eligible. Format: 0 indicates not eligible, 1 indicates eligible.
 #' @param protection_delay_rate Rate for the delay in development of vaccine protection, applied via gamma/erlang distribution,
@@ -1106,6 +1121,7 @@ run_booster <- function(
   tt_booster_doses = vaccine_pars_booster$tt_booster_doses,
   second_dose_delay = vaccine_pars_booster$second_dose_delay,
   vaccine_coverage_mat = vaccine_pars_booster$vaccine_coverage_mat,
+  vaccine_booster_initial_coverage = vaccine_pars_booster$vaccine_booster_initial_coverage,
   vaccine_booster_follow_up_coverage = vaccine_pars_booster$vaccine_booster_follow_up_coverage,
   protection_delay_rate = vaccine_pars_booster$protection_delay_rate,
   protection_delay_shape = vaccine_pars_booster$protection_delay_shape,
@@ -1191,6 +1207,7 @@ run_booster <- function(
                      protection_delay_shape = protection_delay_shape,
                      protection_delay_time = time_period,
                      vaccine_coverage_mat = vaccine_coverage_mat,
+                     vaccine_booster_initial_coverage = vaccine_booster_initial_coverage,
                      vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
                      init = init)
 
