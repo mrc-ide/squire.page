@@ -23,9 +23,9 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
   # and then add in all the default that are passed to params usually
   # from run so have to add here
   parameters_func <- function(country = NULL, population = NULL, dt = 1,
-                              contact_matrix_set = NULL, tt_contact_matrix = 0,
-                              hosp_bed_capacity = NULL, tt_hosp_beds = 0,
-                              ICU_bed_capacity = NULL, tt_ICU_beds = 0,
+                              contact_matrix_set = NULL,
+                              hosp_bed_capacity = NULL,
+                              ICU_bed_capacity = NULL,
 
                               # vaccine defaults that are just empty in parms so declare here
                               dur_R = vaccine_pars_booster_min$dur_R,
@@ -42,7 +42,6 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
                               booster_doses = vaccine_pars_booster_min$booster_doses,
                               tt_booster_doses = vaccine_pars_booster_min$tt_booster_doses,
                               vaccine_coverage_mat = vaccine_pars_booster_min$vaccine_coverage_mat,
-                              vaccine_booster_initial_coverage = vaccine_pars_booster_min$vaccine_booster_initial_coverage,
                               vaccine_booster_follow_up_coverage = vaccine_pars_booster_min$vaccine_booster_follow_up_coverage,
                               protection_delay_rate = vaccine_pars_booster_min$protection_delay_rate,
                               protection_delay_shape = vaccine_pars_booster_min$protection_delay_shape,
@@ -96,11 +95,8 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
       country = country,
       population = population,
       contact_matrix_set = contact_matrix_set,
-      tt_contact_matrix = tt_contact_matrix,
       hosp_bed_capacity = hosp_bed_capacity,
-      tt_hosp_beds = tt_hosp_beds,
       ICU_bed_capacity = ICU_bed_capacity,
-      tt_ICU_beds = tt_ICU_beds,
       dur_E = dur_E,
       tt_dur_E = tt_dur_E,
       dur_IMild = dur_IMild,
@@ -134,7 +130,6 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
       booster_doses = booster_doses,
       tt_booster_doses = tt_booster_doses,
       vaccine_coverage_mat = vaccine_coverage_mat,
-      vaccine_booster_initial_coverage = vaccine_booster_initial_coverage,
       vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
       protection_delay_rate = protection_delay_rate,
       protection_delay_shape = protection_delay_shape,
@@ -166,9 +161,9 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
 
   # wrap run func correctly
   run_func <- function(country, population, dt,
-                       contact_matrix_set, tt_contact_matrix,
-                       hosp_bed_capacity, tt_hosp_beds,
-                       ICU_bed_capacity, tt_ICU_beds,
+                       contact_matrix_set,
+                       hosp_bed_capacity,
+                       ICU_bed_capacity,
                        replicates = 1,
                        day_return = TRUE,
                        time_period = 365,
@@ -176,11 +171,8 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
 
     out <- squire.page:::run_booster(country = country,
                                      contact_matrix_set = contact_matrix_set,
-                                     tt_contact_matrix = tt_contact_matrix,
                                      hosp_bed_capacity = hosp_bed_capacity,
-                                     tt_hosp_beds = tt_hosp_beds,
                                      ICU_bed_capacity = ICU_bed_capacity,
-                                     tt_ICU_beds = tt_ICU_beds,
                                      population = population,
                                      replicates = 1,
                                      time_period = time_period,
@@ -220,10 +212,8 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
 default_probs_booster_min <- function() {
   c(squire::default_probs(),
     list(rel_infectiousness = rep(1, 17),
-         rel_infectiousness_vaccinated = matrix(
-           c(0.5, 0.5, 1, 1, 0.5, 0.5, 1), ncol = 17, nrow = 7,
-           dimnames = list(c("pV_1", "fV_1", "fV_2", "fV_3", "bV_1", "bV_2", "bV_3"))
-         ),
+         rel_infectiousness_vaccinated =
+           c("pV_1" = 0.5, "fV_1" = 0.5, "fV_2" = 0.5, "fV_3" = 1, "bV_1" = 0.5, "bV_2" = 0.5, "bV_3" = 0.1),
          prob_hosp_multiplier = 1,
          tt_prob_hosp_multiplier = 0,
          prob_severe_multiplier = 1,
@@ -240,22 +230,16 @@ durs_booster_min <- default_durs_booster()
 #' @noRd
 default_vaccine_pars_booster_min <- function() {
   #scale VE for breakthrough
-  d <- c(0.75, 0.9, 0.5, 0, 0.95, 0.14865027, 0.02109197)
-  i <- c(0.55, 0.75, 0, 0, 0.8, 0.1285048, 0)
+  d <- c("pV_1" = 0.75, "fV_1" = 0.9, "fV_2" = 0.5, "fV_3" = 0, "bV_1" = 0.95, "bV_2" = 0.14865027, "bV_3" = 0.02109197)
+  i <- c("pV_1" = 0.55, "fV_1" = 0.75, "fV_2" = 0, "fV_3" = 0, "bV_1" = 0.8, "bV_2" = 0.1285048, "bV_3" = 0)
   d <- (d - i)/(1 - i)
   list(dur_R = Inf,
        tt_dur_R = 0,
        dur_V = c(0.5/0.007466205, 0.5/0.007466205, 1/0.00807429, 1/0.03331390),
        tt_dur_V = 0,
-       vaccine_efficacy_infection = matrix(
-         i, ncol = 17, nrow = 7,
-         dimnames = list(c("pV_1", "fV_1", "fV_2", "fV_3", "bV_1", "bV_2", "bV_3"))
-       ),
+       vaccine_efficacy_infection = i,
        tt_vaccine_efficacy_infection = 0,
-       vaccine_efficacy_disease = matrix(
-         d, ncol = 17, nrow = 7,
-         dimnames = list(c("pV_1", "fV_1", "fV_2", "fV_3", "bV_1", "bV_2", "bV_3"))
-       ),
+       vaccine_efficacy_disease = d,
        tt_vaccine_efficacy_disease = 0,
        primary_doses = 1000,
        tt_primary_doses = 0,
@@ -263,7 +247,6 @@ default_vaccine_pars_booster_min <- function() {
        booster_doses = 100,
        tt_booster_doses = 0,
        vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
-       vaccine_booster_initial_coverage = NULL,
        vaccine_booster_follow_up_coverage = NULL,
        protection_delay_rate = 1/7,
        protection_delay_shape = 2)
@@ -280,7 +263,6 @@ parameters_booster_min <- function(
   # Demography
   country = NULL,
   population = NULL,
-  tt_contact_matrix = 0,
   contact_matrix_set = NULL,
 
   # Transmission
@@ -349,7 +331,6 @@ parameters_booster_min <- function(
   tt_booster_doses,
   second_dose_delay,
   vaccine_coverage_mat,
-  vaccine_booster_initial_coverage,
   vaccine_booster_follow_up_coverage,
   protection_delay_rate,
   protection_delay_shape,
@@ -357,9 +338,7 @@ parameters_booster_min <- function(
 
   # Health system capacity
   hosp_bed_capacity,
-  ICU_bed_capacity,
-  tt_hosp_beds,
-  tt_ICU_beds
+  ICU_bed_capacity
 
 
 ) {
@@ -372,27 +351,11 @@ parameters_booster_min <- function(
   population <- cpm$population
   contact_matrix_set <- cpm$contact_matrix_set
 
-  # Standardise contact matrix set
-  if(is.matrix(contact_matrix_set)){
-    contact_matrix_set <- list(contact_matrix_set)
-  }
-
-  # populate contact matrix set if not provided
-  if (length(contact_matrix_set) == 1) {
-    baseline <- contact_matrix_set[[1]]
-    contact_matrix_set <- vector("list", length(tt_contact_matrix))
-    for(i in seq_along(tt_contact_matrix)) {
-      contact_matrix_set[[i]] <- baseline
-    }
-  }
-
-
   # populate hospital and ICU bed capacity if not provided
   if (is.null(hosp_bed_capacity)) {
     if (!is.null(country)) {
       beds <- squire::get_healthcare_capacity(country)
-      hosp_beds <- beds$hosp_beds
-      hosp_bed_capacity <- rep(round(hosp_beds * sum(population)/1000), length(tt_hosp_beds))
+      hosp_bed_capacity <- beds$hosp_beds
     } else {
       hosp_bed_capacity <- round(5 * sum(population)/1000)
     }
@@ -400,8 +363,7 @@ parameters_booster_min <- function(
   if (is.null(ICU_bed_capacity)) {
     if (!is.null(country)) {
       beds <- squire::get_healthcare_capacity(country)
-      ICU_beds <- beds$ICU_beds
-      ICU_bed_capacity <- rep(round(ICU_beds * sum(population)/1000), length(tt_ICU_beds))
+      ICU_bed_capacity <- beds$ICU_beds
     } else {
       ICU_bed_capacity <- round(3 * hosp_bed_capacity/100)
     }
@@ -418,7 +380,7 @@ parameters_booster_min <- function(
     purrr::map(~cbind(.x, rep(0, nrow(.x))))
 
   # Convert contact matrices to input matrices
-  matrices_set <- squire:::matrix_set_explicit(contact_matrix_set, population)
+  matrices_set <- squire:::matrix_set_explicit(list(contact_matrix_set), population)[1,,]
 
   # If a vector is put in for matrix targeting
   if(is.vector(vaccine_coverage_mat)){
@@ -427,11 +389,10 @@ parameters_booster_min <- function(
 
   # Input checks
   # ----------------------------------------------------------------------------
-  mc <- squire:::matrix_check(population[-1], contact_matrix_set)
+  mc <- squire:::matrix_check(population[-1], list(contact_matrix_set))
   stopifnot(length(R0) == length(tt_R0))
-  stopifnot(length(contact_matrix_set) == length(tt_contact_matrix))
-  stopifnot(length(hosp_bed_capacity) == length(tt_hosp_beds))
-  stopifnot(length(ICU_bed_capacity) == length(tt_ICU_beds))
+  stopifnot(length(hosp_bed_capacity) == 1)
+  stopifnot(length(ICU_bed_capacity) == 1)
   stopifnot(length(primary_doses) == length(tt_primary_doses))
   stopifnot(length(booster_doses) == length(tt_booster_doses))
   stopifnot(length(prob_hosp_multiplier) == length(tt_prob_hosp_multiplier))
@@ -515,15 +476,6 @@ parameters_booster_min <- function(
     }
   }
 
-  if(is.null(vaccine_booster_initial_coverage)){
-    vaccine_booster_initial_coverage <- rep(1, 17)
-  } else {
-    if(any(!vaccine_booster_initial_coverage %in% c(0, 1))){
-      stop("vaccine_booster_initial_coverage must be NULL for a vector of 0s and 1s with length = N_age")
-    }
-  }
-
-
   # Convert and Generate Parameters As Required
   # ----------------------------------------------------------------------------
 
@@ -543,7 +495,7 @@ parameters_booster_min <- function(
   gamma_R <- 2 * 1/dur_R
 
   if (is.null(beta_set)) {
-    baseline_matrix <- squire:::process_contact_matrix_scaled_age(contact_matrix_set[[1]], population)
+    baseline_matrix <- squire:::process_contact_matrix_scaled_age(contact_matrix_set, population)
     #check for time changing parameters
     if(length(c(tt_dur_ICase, tt_dur_IMild, tt_prob_hosp_multiplier)) > 3){
       tt_R0_old <- tt_R0
@@ -640,11 +592,8 @@ parameters_booster_min <- function(
                  prob_severe_death_no_treatment = prob_severe_death_no_treatment,
                  rel_infectiousness = rel_infectiousness,
                  rel_infectiousness_vaccinated = rel_infectiousness_vaccinated,
-                 hosp_beds = hosp_bed_capacity,
-                 ICU_beds = ICU_bed_capacity,
-                 tt_hosp_beds = tt_hosp_beds,
-                 tt_ICU_beds = tt_ICU_beds,
-                 tt_matrix = tt_contact_matrix,
+                 hosp_bed_capacity = hosp_bed_capacity,
+                 ICU_bed_capacity = ICU_bed_capacity,
                  mix_mat_set = matrices_set,
                  tt_beta = tt_R0,
                  beta_set = beta_set,
@@ -659,7 +608,6 @@ parameters_booster_min <- function(
                  tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
                  tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
                  vaccine_coverage_mat = vaccine_coverage_mat,
-                 vaccine_booster_initial_coverage = vaccine_booster_initial_coverage,
                  vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
                  N_prioritisation_steps = nrow(vaccine_coverage_mat),
                  gamma_vaccine = gamma_vaccine,
@@ -675,24 +623,24 @@ format_rel_inf_vacc_for_odin_booster_min <- function(rel_inf_vacc) {
 
   #if only have one assume this holds for all ages/compartments
   if(length(rel_inf_vacc) == 1){
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 7)
+    rel_inf_vacc <- rep(rel_inf_vacc, 7)
   } else if (is.numeric(rel_inf_vacc) & length(rel_inf_vacc) == 7){
     #expand across age groups
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 7)
+    rel_inf_vacc <- rel_inf_vacc
   } else if (is.numeric(rel_inf_vacc) & length(rel_inf_vacc) == 17){
     #expand across vaccine comparments
-    rel_inf_vacc <- matrix(rel_inf_vacc, ncol = 17, nrow = 7, byrow = TRUE)
+    stop("for this model rel_infectiousness_vaccinated cannot vary by age")
   } else if (!(nrow(rel_inf_vacc) == 7 & ncol(rel_inf_vacc) == 17)){
     stop("rel_infectiousness_vaccinated must be a single value, a vector of length 7 or 17, or a matrix with 7 rows and 17 columns")
   }
 
 
-  #add 1 for unvaccinated, then rotate to match model requirements
+  #add 1 for unvaccinated
   return(
-    t(rbind(
-      rep(1, 17),
+    c(
+      1,
       rel_inf_vacc
-    ))
+    )
   )
 
 }
@@ -709,47 +657,24 @@ format_ve_i_for_odin_booster_min <- function(vaccine_efficacy_infection,
   # check that the correct length agreement between tt_vaccine_efficacy_infection
   nimue:::assert_length(vaccine_efficacy_infection, length(vaccine_efficacy_infection))
 
-  # now check that each vaccine efficacy is correct number of columns (1 or 17)
+  # now check that each vaccine efficacy is correct number of columns (1)
   vaccine_efficacy_infection <- lapply(vaccine_efficacy_infection, function(ve_i) {
 
     #if numeric vector
     if(any(class(ve_i) == "numeric")) {
-      if(length(ve_i) == 7) {
-        #make into matrix
-        ve_i <- matrix(ve_i, ncol = 17, nrow = 7)
-      } else {
+      if(length(ve_i) != 7) {
         stop("If element of vaccine_efficacy_infection is a vector, it must have 7 values corresponding to a first dose, second dose, two waned compartments, booster dose, and the two waning levels")
       }
     }
 
-    if(ncol(ve_i) != 17 | nrow(ve_i) != 7){
-      stop("Parameter vaccine_efficacy_infection must be vector of length 7 or a matrix with ncol = 17, nrow = 7")
-    }
-
-    return(ve_i)
-
-  })
-
-  # and now format so each list is the vaccine_efficacy_infection at each time
-  # point for the 5 vaccine classes
-  ve_i_list <- lapply(seq_along(tt_vaccine_efficacy_infection), function(ve_i_index) {
-    ve_i <-
-      rbind(
-        vaccine_efficacy_infection[[ve_i_index]]
-      )
     #add 0 for unvaccinated
-    ve_i <- rbind(
-      rep(0, ncol(ve_i)),
-      ve_i
-    )
-    ve_i = 1 - ve_i
+
+    return(1 - c(0, ve_i))
+
   })
 
-  # and use this list to create an array that is in right format for odin
-  vaccine_efficacy_infection_odin_array <- aperm(
-    array(unlist(ve_i_list), dim = c(dim(ve_i_list[[1]]), length(ve_i_list))),
-    c(3, 2, 1)
-  )
+  #make into array
+  vaccine_efficacy_infection_odin_array <- do.call(rbind, vaccine_efficacy_infection)
 
   return(vaccine_efficacy_infection_odin_array)
 
@@ -836,7 +761,6 @@ format_ve_d_for_odin_booster_min <- function(vaccine_efficacy_disease,
 #'   \code{contact_matrix_set} must be provided.
 #' @param contact_matrix_set Contact matrices used in simulation. Default =
 #'   NULL, which will generate this based on the \code{country}.
-#' @param tt_contact_matrix Time change points for matrix change. Default = 0
 #' @param R0 Basic Reproduction Number. Default = 3
 #' @param tt_R0 Change time points for R0. Default = 0
 #' @param beta_set Alternative parameterisation via beta rather than R0.
@@ -909,10 +833,8 @@ format_ve_d_for_odin_booster_min <- function(vaccine_efficacy_disease,
 #' @param dur_not_get_mv_die Mean duration without ventilation given
 #'   death. Default = 1
 #' @param dur_rec Duration of recovery after coming off ventilation. Default = 2
-#' @param hosp_bed_capacity General bed capacity. Can be single number of vector if capacity time-varies.
-#' @param ICU_bed_capacity ICU bed capacity. Can be single number of vector if capacity time-varies.
-#' @param tt_hosp_beds Times at which hospital bed capacity changes (Default = 0 = doesn't change)
-#' @param tt_ICU_beds Times at which ICU bed capacity changes (Default = 0 = doesn't change)
+#' @param hosp_bed_capacity General bed capacity.
+#' @param ICU_bed_capacity ICU bed capacity.
 #' @param seeding_cases Initial number of cases seeding the epidemic
 #' @param seeding_age_order Vector specifying the order in which seeds are allocated to ages.
 #'   If NULL, seeds are distributed randomly within working ages. If specified, must be a vector
@@ -965,8 +887,6 @@ format_ve_d_for_odin_booster_min <- function(vaccine_efficacy_disease,
 #' @param booster_doses The maximum number of individuals who can be vaccinated with their booster dose per day.
 #' @param tt_booster_doses Time change points for vaccine capacity (\code{booster_doses}).
 #' @param vaccine_coverage_mat Vaccine coverage targets by age (columns) and priority (row)
-#' @param vaccine_booster_initial_coverage Age group eligibility for initial boosters (i.e. 1st booster dose),
-#' default = NULL means all are eligible. Format: 0 indicates not eligible, 1 indicates eligible.
 #' @param vaccine_booster_follow_up_coverage Age group eligibility for follow-up boosters (i.e. 2nd, 3rd, ... booster doses),
 #' default = NULL means all are eligible. Format: 0 indicates not eligible, 1 indicates eligible.
 #' @param protection_delay_rate Rate for the delay in development of vaccine protection, applied via gamma/erlang distribution,
@@ -983,7 +903,6 @@ run_booster_min <- function(
   # demography
   country = NULL,
   population = NULL,
-  tt_contact_matrix = 0,
   contact_matrix_set = NULL,
 
   # transmission
@@ -1053,7 +972,6 @@ run_booster_min <- function(
   tt_booster_doses = vaccine_pars_booster_min$tt_booster_doses,
   second_dose_delay = vaccine_pars_booster_min$second_dose_delay,
   vaccine_coverage_mat = vaccine_pars_booster_min$vaccine_coverage_mat,
-  vaccine_booster_initial_coverage = vaccine_pars_booster_min$vaccine_booster_initial_coverage,
   vaccine_booster_follow_up_coverage = vaccine_pars_booster_min$vaccine_booster_follow_up_coverage,
   protection_delay_rate = vaccine_pars_booster_min$protection_delay_rate,
   protection_delay_shape = vaccine_pars_booster_min$protection_delay_shape,
@@ -1061,8 +979,6 @@ run_booster_min <- function(
   # health system capacity
   hosp_bed_capacity = NULL,
   ICU_bed_capacity = NULL,
-  tt_hosp_beds = 0,
-  tt_ICU_beds = 0,
 
   seeding_cases = 20,
   seeding_age_order = NULL,
@@ -1078,7 +994,6 @@ run_booster_min <- function(
   # create parameter list
   pars <- parameters_booster_min(country = country,
                              population = population,
-                             tt_contact_matrix = tt_contact_matrix,
                              contact_matrix_set = contact_matrix_set,
                              R0 = R0,
                              tt_R0 = tt_R0 ,
@@ -1121,8 +1036,6 @@ run_booster_min <- function(
                              tt_dur_R = tt_dur_R,
                              hosp_bed_capacity = hosp_bed_capacity,
                              ICU_bed_capacity = ICU_bed_capacity,
-                             tt_hosp_beds = tt_hosp_beds,
-                             tt_ICU_beds = tt_ICU_beds,
                              dur_V = dur_V,
                              tt_dur_V = tt_dur_V,
                              vaccine_efficacy_infection = vaccine_efficacy_infection,
@@ -1138,7 +1051,6 @@ run_booster_min <- function(
                              protection_delay_shape = protection_delay_shape,
                              protection_delay_time = time_period,
                              vaccine_coverage_mat = vaccine_coverage_mat,
-                             vaccine_booster_initial_coverage = vaccine_booster_initial_coverage,
                              vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
                              init = init)
 
@@ -1161,8 +1073,8 @@ run_booster_min <- function(
   # Summarise inputs
   parameters <- args
   parameters$population <- pars$population
-  parameters$hosp_bed_capacity <- pars$hosp_beds
-  parameters$ICU_bed_capacity <- pars$ICU_beds
+  parameters$hosp_bed_capacity <- pars$hosp_bed_capacity
+  parameters$ICU_bed_capacity <- pars$ICU_bed_capacity
   parameters$beta_set <- pars$beta_set
   parameters$seeding_cases <- pars$E1_0
   parameters$contact_matrix_set <- pars$contact_matrix_set

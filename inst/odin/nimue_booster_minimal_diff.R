@@ -19,8 +19,8 @@ dim(S_0) <- c(17, 8)
 initial(S[, ]) <- S_0[i, j]
 
 #ISSUE with these empty rates might actually be quite slow see if it speeds up when changed
-update(S[, 1]) <- S[i, j] + dt*( (gamma_R_t * R2[i, j]) - (lambda[i] * vaccine_efficacy_infection_t[i, j] * S[i, j]) - gamma_vaccine_t[j] * S[i, j] + vaccinations_S[i,j])
-update(S[, 2:8]) <- S[i, j] + dt*( (gamma_R_t * R2[i, j]) - (lambda[i] * vaccine_efficacy_infection_t[i, j] * S[i, j]) - gamma_vaccine_t[j] * S[i, j] + vaccinations_S[i,j] + gamma_vaccine_t[j - 1] * S[i, j - 1])
+update(S[, 1]) <- S[i, j] + dt*( (gamma_R_t * R2[i, j]) - (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]) - gamma_vaccine_t[j] * S[i, j] + vaccinations_S[i,j])
+update(S[, 2:8]) <- S[i, j] + dt*( (gamma_R_t * R2[i, j]) - (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]) - gamma_vaccine_t[j] * S[i, j] + vaccinations_S[i,j] + gamma_vaccine_t[j - 1] * S[i, j - 1])
 
 vaccinations_S[, 1] <-  - primary_first[i] * S[i, j]
 vaccinations_S[, 2] <-  primary_first[i] * S[i, j - 1] - primary_second * S[i, j]
@@ -53,8 +53,8 @@ tt_dur_E_dt[] <- tt_dur_E[i] / dt
 dim(tt_dur_E_dt) <- length(tt_dur_E)
 gamma_E_t <- interpolate(tt_dur_E_dt, gamma_E, "constant")
 
-update(E1[, 1]) <- E1[i, j] + dt*( (lambda[i] * vaccine_efficacy_infection_t[i, j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j])
-update(E1[, 2:8]) <- E1[i, j] + dt*( (lambda[i] * vaccine_efficacy_infection_t[i, j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j] + gamma_vaccine_t[j - 1] * E1[i, j - 1])
+update(E1[, 1]) <- E1[i, j] + dt*( (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j])
+update(E1[, 2:8]) <- E1[i, j] + dt*( (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j] + gamma_vaccine_t[j - 1] * E1[i, j - 1])
 
 vaccinations_E1[, 1] <-  - primary_first[i] * E1[i, j]
 vaccinations_E1[, 2] <-  primary_first[i] * E1[i, j - 1] - primary_second * E1[i, j]
@@ -422,12 +422,12 @@ dim(vaccine_coverage_mat) <- c(N_prioritisation_steps, 17)
 # Generating Vaccine Efficacy Over Time
 tt_vaccine_efficacy_infection_dt[] <- tt_vaccine_efficacy_infection[i] / dt
 dim(tt_vaccine_efficacy_infection_dt) <- length(tt_vaccine_efficacy_infection)
-vaccine_efficacy_infection_t[, ] <- interpolate(tt_vaccine_efficacy_infection_dt, vaccine_efficacy_infection, "constant")
-dim(vaccine_efficacy_infection_t) <- c(17, 8)
+vaccine_efficacy_infection_t[] <- interpolate(tt_vaccine_efficacy_infection_dt, vaccine_efficacy_infection, "constant")
+dim(vaccine_efficacy_infection_t) <- 8
 tt_vaccine_efficacy_infection[] <- user()
-vaccine_efficacy_infection[, , ] <- user()
+vaccine_efficacy_infection[, ] <- user()
 dim(tt_vaccine_efficacy_infection) <- user()
-dim(vaccine_efficacy_infection) <- c(length(tt_vaccine_efficacy_infection), 17, 8)
+dim(vaccine_efficacy_infection) <- c(length(tt_vaccine_efficacy_infection), 8)
 
 gamma_vaccine[,] <- user() # Vector of vaccine progression parameters by vaccination status (only effects rate of waning)
 tt_dur_vaccine[] <- user()
@@ -522,21 +522,8 @@ dim(booster_second) <- 17
 ### Hospital and ICU capacity ##################################################
 ################################################################################
 ## Interpolation for Hospital and ICU Capacity
-tt_hosp_beds_dt[] <- tt_hosp_beds[i] / dt
-dim(tt_hosp_beds_dt) <- length(tt_hosp_beds)
-hosp_bed_capacity <- interpolate(tt_hosp_beds_dt, hosp_beds, "constant")
-tt_hosp_beds[] <- user()
-hosp_beds[] <- user()
-dim(tt_hosp_beds) <- user()
-dim(hosp_beds) <- length(tt_hosp_beds)
-
-tt_ICU_beds_dt[] <- tt_ICU_beds[i] / dt
-dim(tt_ICU_beds_dt) <- length(tt_ICU_beds)
-ICU_bed_capacity <- interpolate(tt_ICU_beds_dt, ICU_beds, "constant")
-tt_ICU_beds[] <- user()
-ICU_beds[] <- user()
-dim(tt_ICU_beds) <- user()
-dim(ICU_beds) <- length(tt_ICU_beds)
+hosp_bed_capacity <- user()
+ICU_bed_capacity <- user()
 
 # Generating prob_hosp Over Time
 tt_vaccine_efficacy_disease_dt[] <- tt_vaccine_efficacy_disease[i] / dt
@@ -591,8 +578,8 @@ dim(prob_severe_death_no_treatment) <- 17
 rel_infectiousness[] <- user() # Relative infectiousness of age categories relative to maximum infectiousness age category
 dim(rel_infectiousness) <- 17
 
-rel_infectiousness_vaccinated[, ] <- user() # Relative infectiousness of vaccinated age categories relative to maximum infectiousness age category
-dim(rel_infectiousness_vaccinated) <- c(17, 8)
+rel_infectiousness_vaccinated[] <- user() # Relative infectiousness of vaccinated age categories relative to maximum infectiousness age category
+dim(rel_infectiousness_vaccinated) <- 8
 
 # Infections Requiring Oxygen (a general Hosptial Bed)
 hosp_occ <- sum(IOxGetLive1) + sum(IOxGetLive2) - gamma_get_ox_survive_t * sum(IOxGetLive2) + sum(IOxGetDie1) + sum(IOxGetDie2) - gamma_get_ox_die_t * sum(IOxGetDie2) + sum(IRec1) + sum(IRec2) - gamma_rec * sum(IRec2) # Summing number of infections in compartments that use general hospital beds
@@ -617,14 +604,8 @@ p_ventilation <- if (total_number_requiring_IMV <= (ICU_bed_capacity - ICU_occ) 
 ### FOI and contact matrix #####################################################
 ################################################################################
 # Generating Force of Infection
-tt_matrix_dt[] <- tt_matrix[i] / dt
-dim(tt_matrix_dt) <- length(tt_matrix)
-m[, ] <- interpolate(tt_matrix_dt, mix_mat_set, "constant")
-dim(m) <- c(17, 17)
-tt_matrix[] <- user()
-mix_mat_set[, , ] <- user()
-dim(tt_matrix) <- user()
-dim(mix_mat_set) <- c(length(tt_matrix), 17, 17)
+mix_mat_set[,] <- user()
+dim(mix_mat_set) <- c(17, 17)
 
 # Interpolation for beta
 tt_beta_dt[] <- tt_beta[i] / dt
@@ -636,12 +617,12 @@ dim(tt_beta) <- user()
 dim(beta_set) <- length(tt_beta)
 
 # Generating Force of Infection
-temp_rel[, ] <- (IMild[i, j] * rel_infectiousness_vaccinated[i, j]) + (ICase1[i, j] * rel_infectiousness_vaccinated[i, j]) + (ICase2[i, j] * rel_infectiousness_vaccinated[i, j])
+temp_rel[, ] <- (IMild[i, j] * rel_infectiousness_vaccinated[j]) + (ICase1[i, j] * rel_infectiousness_vaccinated[j]) + (ICase2[i, j] * rel_infectiousness_vaccinated[j])
 temp[] <- sum(temp_rel[i, ])
 dim(temp_rel) <- c(17, 8)
 dim(temp) <- c(17)
 
-s_ij[, ] <- m[i, j] * temp[j] * rel_infectiousness[j]
+s_ij[, ] <- mix_mat_set[i, j] * temp[j] * rel_infectiousness[j]
 dim(s_ij) <- c(17, 17)
 
 lambda[] <- beta * sum(s_ij[i, ])
@@ -682,7 +663,7 @@ output(deaths_cumu[, ]) <- D[i, j]
 dim(deaths_cumu) <- c(17, 8)
 
 # Infections
-update(infections_cumu[, ]) <- infections_cumu[i, j] + dt*( (lambda[i] * vaccine_efficacy_infection_t[i, j] * S[i, j]))
+update(infections_cumu[, ]) <- infections_cumu[i, j] + dt*( (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]))
 dim(infections_cumu) <- c(17, 8)
 initial(infections_cumu[, ]) <- 0
 
