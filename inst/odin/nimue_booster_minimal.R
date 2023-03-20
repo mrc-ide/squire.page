@@ -498,14 +498,18 @@ hosp_bed_capacity <- user()
 ICU_bed_capacity <- user()
 
 # Generating prob_hosp Over Time
-prob_hosp_t[, ] <- interpolate(tt_vaccine_efficacy_disease, prob_hosp, "constant")
-prob_hosp_t_mult[, ] <- prob_hosp_multiplier_t * prob_hosp_t[i, j]
-dim(prob_hosp_t) <- c(17, 8) # probability of requiring hospitalisation by age and vaccination status at time t
+prob_hosp_t_mult[, ] <- prob_hosp_multiplier_t * prob_hosp[i] * vaccine_efficacy_disease_t[j]
 dim(prob_hosp_t_mult) <- c(17, 8) # probability of requiring hospitalisation by age and vaccination status at time t
+
+prob_hosp[] <- user()
+dim(prob_hosp) <- 17
+
+vaccine_efficacy_disease_t[] <- interpolate(tt_vaccine_efficacy_disease, vaccine_efficacy_disease, "constant")
+dim(vaccine_efficacy_disease_t) <- 8
 tt_vaccine_efficacy_disease[] <- user()
-prob_hosp[, , ] <- user()
 dim(tt_vaccine_efficacy_disease) <- user()
-dim(prob_hosp) <- c(length(tt_vaccine_efficacy_disease), 17, 8)
+vaccine_efficacy_disease[, ] <- user()
+dim(vaccine_efficacy_disease) <- c(length(tt_vaccine_efficacy_disease), 8)
 
 # Interpolation for prob_hosp_multiplier
 prob_hosp_multiplier_t <- interpolate(tt_prob_hosp_multiplier, prob_hosp_multiplier, "constant")

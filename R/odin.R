@@ -189,7 +189,7 @@ nimue_booster_minimal_diff_ <- R6::R6Class(
              "tt_prob_hosp_multiplier", "tt_prob_severe_multiplier",
              "tt_vaccine_efficacy_disease", "tt_vaccine_efficacy_infection",
              "vaccine_booster_follow_up_coverage", "vaccine_coverage_mat",
-             "vaccine_efficacy_infection"),
+             "vaccine_efficacy_disease", "vaccine_efficacy_infection"),
 
     ## This is never called, but is used to ensure that R finds our
     ## symbols that we will use from the package; without this they
@@ -335,7 +335,7 @@ nimue_booster_minimal_ <- R6::R6Class(
              "tt_prob_hosp_multiplier", "tt_prob_severe_multiplier",
              "tt_vaccine_efficacy_disease", "tt_vaccine_efficacy_infection",
              "vaccine_booster_follow_up_coverage", "vaccine_coverage_mat",
-             "vaccine_efficacy_infection"),
+             "vaccine_efficacy_disease", "vaccine_efficacy_infection"),
 
     ## This is never called, but is used to ensure that R finds our
     ## symbols that we will use from the package; without this they

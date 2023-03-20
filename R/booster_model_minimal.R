@@ -536,12 +536,13 @@ parameters_booster_min <- function(
     tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection
   )
 
-  # Second the vaccine efficacy disease affecting prob_hosp
-  prob_hosp_odin_array <- format_ve_d_for_odin_booster_min(
+  # Second the vaccine efficacy disease
+  vaccine_efficacy_disease_odin_array <- format_ve_d_for_odin_booster_min(
     vaccine_efficacy_disease = vaccine_efficacy_disease,
-    tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
-    prob_hosp = prob_hosp
+    tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease
   )
+
+
 
   ##Delay dosing
   if(is.null(protection_delay_time)){
@@ -580,7 +581,7 @@ parameters_booster_min <- function(
                  gamma_rec = gamma_rec,
                  gamma_R = gamma_R,
                  tt_dur_R = tt_dur_R,
-                 prob_hosp = prob_hosp_odin_array,
+                 prob_hosp = prob_hosp,
                  prob_hosp_multiplier = prob_hosp_multiplier,
                  tt_prob_hosp_multiplier = tt_prob_hosp_multiplier,
                  prob_severe = prob_severe,
@@ -606,6 +607,7 @@ parameters_booster_min <- function(
                  second_dose_delay = second_dose_delay,
                  vaccine_efficacy_infection = vaccine_efficacy_infection_odin_array,
                  tt_vaccine_efficacy_infection = tt_vaccine_efficacy_infection,
+                 vaccine_efficacy_disease = vaccine_efficacy_disease_odin_array,
                  tt_vaccine_efficacy_disease = tt_vaccine_efficacy_disease,
                  vaccine_coverage_mat = vaccine_coverage_mat,
                  vaccine_booster_follow_up_coverage = vaccine_booster_follow_up_coverage,
@@ -680,12 +682,8 @@ format_ve_i_for_odin_booster_min <- function(vaccine_efficacy_infection,
 
 }
 
-
-#' @noRd
 format_ve_d_for_odin_booster_min <- function(vaccine_efficacy_disease,
-                                         tt_vaccine_efficacy_disease,
-                                         prob_hosp) {
-
+                                             tt_vaccine_efficacy_disease) {
 
   # If just provided as a vector then we put into a list ready for formatting
   if(!is.list(vaccine_efficacy_disease)){
@@ -695,59 +693,26 @@ format_ve_d_for_odin_booster_min <- function(vaccine_efficacy_disease,
   # check that the correct length agreement between tt_vaccine_efficacy_disease
   nimue:::assert_length(vaccine_efficacy_disease, length(vaccine_efficacy_disease))
 
-  # now check that each vaccine efficacy is correct length (1 or 17)
-  vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, function(ve_d) {
+  # now check that each vaccine efficacy is correct number of columns (1)
+  vaccine_efficacy_disease <- lapply(vaccine_efficacy_disease, function(ve_i) {
 
     #if numeric vector
-    if(any(class(ve_d) == "numeric")) {
-      if(length(ve_d) == 7) {
-        #make into matrix
-        ve_d <- matrix(ve_d, ncol = 17, nrow = 7)
-      } else {
-        stop("If element of vaccine_efficacy_disease is a vector, it must have 7 values corresponding to a first dose, two waned compartments, second dose, and the two waning levels")
+    if(any(class(ve_i) == "numeric")) {
+      if(length(ve_i) != 7) {
+        stop("If element of vaccine_efficacy_disease is a vector, it must have 7 values corresponding to a first dose, second dose, two waned compartments, booster dose, and the two waning levels")
       }
     }
 
-    if(ncol(ve_d) != 17 | nrow(ve_d) != 7){
-      stop("Parameter vaccine_efficacy_disease must be vector of length 6 or a matrix with ncol = 17, nrow = 7")
-    }
+    #add 0 for unvaccinated
 
-    return(ve_d)
-
-  })
-  # and now format so each list is the prob_hosp at each time
-  # point for the 5 vaccine classes
-  prob_hosp_list <- lapply(seq_along(tt_vaccine_efficacy_disease), function(ve_d_index) {
-
-    ve_d <-
-      vaccine_efficacy_disease[[ve_d_index]]
-
-
-    prob_hosp_vaccine <-
-      sweep(
-        (1 - ve_d),
-        MARGIN = 2,
-        STATS = prob_hosp,
-        FUN = "*"
-      )
-
-    # add the baseline for unvaccinated
-    prob_hosp <- rbind(
-      prob_hosp,
-      prob_hosp_vaccine
-    )
-
-    return(prob_hosp)
+    return(1 - c(0, ve_i))
 
   })
 
-  # and use this list to create an array that is in right format for odin
-  prob_hosp_odin_array <- aperm(
-    array(unlist(prob_hosp_list), dim = c(dim(prob_hosp_list[[1]]), length(prob_hosp_list))),
-    c(3, 2, 1)
-  )
+  #make into array
+  vaccine_efficacy_disease_odin_array <- do.call(rbind, vaccine_efficacy_disease)
 
-  return(prob_hosp_odin_array)
+  return(vaccine_efficacy_disease_odin_array)
 
 }
 
