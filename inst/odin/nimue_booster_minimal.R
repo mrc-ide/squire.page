@@ -454,9 +454,12 @@ dim(dose_pops) <- c(17, 7) # 1 is everyone alive, 2 is all with first dose, 3 is
 
 # number of people at each vaccination level
 # useful to see vaccination levels, also used in outputs
-vaccination_cov[,] <- dose_pops[i, j] - dose_pops[i, j + 1]
-dim(vaccination_cov) <- c(17, 6)
-#1: Unvaccinated, 2: First Dose, 3: Second Dose, 4,5:Waned Second Dose, 6:Boosted
+unvacc[] <- dose_pops[i, 1] - dose_pops[i, 2]
+dim(unvacc) <- 17
+first_dosed[] <- dose_pops[i, 2] - dose_pops[i, 3]
+dim(first_dosed) <- 17
+second_dosed[] <- dose_pops[i, 3] - dose_pops[i, 6]
+dim(second_dosed) <- 17
 
 # Calculate priorisation step for the first doses (THIS BREAKS IF NOT INCLUSIVE OF PREVIOUS TARGETS, WRITE A CHECK!!!)
 target_met_matrix[, ] <- (vaccine_coverage_mat[i, j] * dose_pops[j, 1]) <= (dose_pops[j, 2] + 1)
@@ -469,12 +472,12 @@ prioritisation_step <- if (sum(target_met_column) < N_prioritisation_steps) sum(
 target_pop_first[] <- max(((vaccine_coverage_mat[as.integer(prioritisation_step), i] * dose_pops[i, 1]) - dose_pops[i, 2]), 0)
 dim(target_pop_first) <- 17
 # number of doses
-primary_first[] <- min(t_primary_doses * target_pop_first[i] / max(sum(target_pop_first) * (vaccination_cov[i,1]), 1), 1)
+primary_first[] <- min(t_primary_doses * target_pop_first[i] / max(sum(target_pop_first) * (unvacc[i]), 1), 1)
 dim(primary_first) <- 17
-primary_second <- min(t_second_doses / max(sum(vaccination_cov[, 2]), 1), 1)
+primary_second <- min(t_second_doses / max(sum(first_dosed), 1), 1)
 #first boosters:
 #ISSUE: I'd like to stack them up but Odins dependency check sucks, maybe mention to Rich
-eligible_for_first_booster <- sum(vaccination_cov[, 3:5])
+eligible_for_first_booster <- sum(second_dosed[])
 booster_first <- min(t_booster_doses / max(eligible_for_first_booster, 1), 1)
 #second boosters
 remaining_boosters <- t_booster_doses - (booster_first * eligible_for_first_booster)
@@ -655,7 +658,7 @@ dim(booster_doses_given) <- 17
 
 
 # Unvaccinated
-output(unvaccinated[]) <- vaccination_cov[i, 1]
+output(unvaccinated[]) <- unvacc[i]
 dim(unvaccinated) <- 17
 # Vaccinated First Dose
 output(vaccinated_first_dose[]) <- dose_pops[i, 2]
