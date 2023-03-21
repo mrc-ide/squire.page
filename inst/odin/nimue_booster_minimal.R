@@ -47,7 +47,7 @@ gamma_E[] <- user() # rate of progression through latent infection
 dim(gamma_E) <- user()
 tt_dur_E[] <- user()
 dim(tt_dur_E) <- length(gamma_E)
-gamma_E_t <- interpolate(tt_dur_E, gamma_E, "constant")
+gamma_E_t <- interpolate(tt_dur_E, gamma_E, "linear")
 
 deriv(E1[, 1]) <- (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j]
 deriv(E1[, 2:8]) <- (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j] + gamma_vaccine_t[j - 1] * E1[i, j - 1]
@@ -88,7 +88,7 @@ gamma_IMild[] <- user() # rate of progression from mild infection to recovery
 dim(gamma_IMild) <- user()
 tt_dur_IMild[] <- user()
 dim(tt_dur_IMild) <- length(gamma_IMild)
-gamma_IMild_t <- interpolate(tt_dur_IMild, gamma_IMild, "constant")
+gamma_IMild_t <- interpolate(tt_dur_IMild, gamma_IMild, "linear")
 
 deriv(IMild[, 1]) <- (gamma_E_t * E2[i, j] * (1 - prob_hosp_t_mult[i, j])) - (gamma_IMild_t * IMild[i, j]) - gamma_vaccine_t[j] * IMild[i, j]
 deriv(IMild[, 2:8]) <- (gamma_E_t * E2[i, j] * (1 - prob_hosp_t_mult[i, j])) - (gamma_IMild_t * IMild[i, j]) - gamma_vaccine_t[j] * IMild[i, j] + gamma_vaccine_t[j - 1] * IMild[i, j - 1]
@@ -160,7 +160,7 @@ gamma_ICase[] <- user() # rate of progression from symptom onset to requiring ho
 dim(gamma_ICase) <- user()
 tt_dur_ICase[] <- user()
 dim(tt_dur_ICase) <- length(gamma_ICase)
-gamma_ICase_t <- interpolate(tt_dur_ICase, gamma_ICase, "constant")
+gamma_ICase_t <- interpolate(tt_dur_ICase, gamma_ICase, "linear")
 
 deriv(ICase1[, 1]) <- (gamma_E_t * E2[i, j] * prob_hosp_t_mult[i, j]) - (gamma_ICase_t * ICase1[i, j]) - gamma_vaccine_t[j] * ICase1[i, j]
 deriv(ICase1[, 2:8]) <- (gamma_E_t * E2[i, j] * prob_hosp_t_mult[i, j]) - (gamma_ICase_t * ICase1[i, j]) - gamma_vaccine_t[j] * ICase1[i, j] + gamma_vaccine_t[j - 1] * ICase1[i, j - 1]
@@ -188,7 +188,7 @@ gamma_get_ox_survive[] <- user() # rate of progression through requiring oxygen 
 dim(gamma_get_ox_survive) <- user()
 tt_dur_get_ox_survive[] <- user()
 dim(tt_dur_get_ox_survive) <- length(gamma_get_ox_survive)
-gamma_get_ox_survive_t <- interpolate(tt_dur_get_ox_survive, gamma_get_ox_survive, "constant")
+gamma_get_ox_survive_t <- interpolate(tt_dur_get_ox_survive, gamma_get_ox_survive, "linear")
 
 
 deriv(IOxGetLive1[, 1]) <- (gamma_ICase_t * ICase2[i, j] * (1 - prob_severe_multi[i]) * p_oxygen * (1 - prob_non_severe_death_treatment[i])) - (gamma_get_ox_survive_t * IOxGetLive1[i, j]) - gamma_vaccine_t[j] * IOxGetLive1[i, j]
@@ -215,7 +215,7 @@ gamma_get_ox_die[] <- user() # rate of progression through requiring oxygen comp
 dim(gamma_get_ox_die) <- user()
 tt_dur_get_ox_die[] <- user()
 dim(tt_dur_get_ox_die) <- length(gamma_get_ox_die)
-gamma_get_ox_die_t <- interpolate(tt_dur_get_ox_die, gamma_get_ox_die, "constant")
+gamma_get_ox_die_t <- interpolate(tt_dur_get_ox_die, gamma_get_ox_die, "linear")
 
 deriv(IOxGetDie1[, ]) <- (gamma_ICase_t * ICase2[i, j] * (1 - prob_severe_multi[i]) * p_oxygen * prob_non_severe_death_treatment[i]) - gamma_get_ox_die_t * IOxGetDie1[i, j]
 
@@ -281,7 +281,7 @@ gamma_get_mv_survive[] <- user() # rate of progression through requiring mechani
 dim(gamma_get_mv_survive) <- user()
 tt_dur_get_mv_survive[] <- user()
 dim(tt_dur_get_mv_survive) <- length(gamma_get_mv_survive)
-gamma_get_mv_survive_t <- interpolate(tt_dur_get_mv_survive, gamma_get_mv_survive, "constant")
+gamma_get_mv_survive_t <- interpolate(tt_dur_get_mv_survive, gamma_get_mv_survive, "linear")
 
 deriv(IMVGetLive1[, 1]) <- (gamma_ICase_t * ICase2[i, j] * prob_severe_multi[i] * p_ventilation * (1 - prob_severe_death_treatment[i])) - (gamma_get_mv_survive_t * IMVGetLive1[i, j]) - gamma_vaccine_t[j] * IMVGetLive1[i, j]
 deriv(IMVGetLive1[, 2:8]) <- (gamma_ICase_t * ICase2[i, j] * prob_severe_multi[i] * p_ventilation * (1 - prob_severe_death_treatment[i])) - (gamma_get_mv_survive_t * IMVGetLive1[i, j]) - gamma_vaccine_t[j] * IMVGetLive1[i, j] + gamma_vaccine_t[j - 1] * IMVGetLive1[i, j - 1]
@@ -307,7 +307,7 @@ gamma_get_mv_die[] <- user() # rate of progression through requiring mechanical 
 dim(gamma_get_mv_die) <- user()
 tt_dur_get_mv_die[] <- user()
 dim(tt_dur_get_mv_die) <- length(gamma_get_mv_die)
-gamma_get_mv_die_t <- interpolate(tt_dur_get_mv_die, gamma_get_mv_die, "constant")
+gamma_get_mv_die_t <- interpolate(tt_dur_get_mv_die, gamma_get_mv_die, "linear")
 
 deriv(IMVGetDie1[, ]) <- (gamma_ICase_t * ICase2[i, j] * prob_severe_multi[i] * p_ventilation * prob_severe_death_treatment[i]) - (gamma_get_mv_die_t * IMVGetDie1[i, j])
 
@@ -402,7 +402,7 @@ vaccine_coverage_mat[, ] <- user()
 dim(vaccine_coverage_mat) <- c(N_prioritisation_steps, 17)
 
 # Generating Vaccine Efficacy Over Time
-vaccine_efficacy_infection_t[] <- interpolate(tt_vaccine_efficacy_infection, vaccine_efficacy_infection, "constant")
+vaccine_efficacy_infection_t[] <- interpolate(tt_vaccine_efficacy_infection, vaccine_efficacy_infection, "linear")
 dim(vaccine_efficacy_infection_t) <- 8
 tt_vaccine_efficacy_infection[] <- user()
 vaccine_efficacy_infection[, ] <- user()
@@ -413,7 +413,7 @@ gamma_vaccine[,] <- user() # Vector of vaccine progression parameters by vaccina
 tt_dur_vaccine[] <- user()
 dim(gamma_vaccine) <- c(length(tt_dur_vaccine), 8)
 dim(tt_dur_vaccine) <- user()
-gamma_vaccine_t[] <- interpolate(tt_dur_vaccine, gamma_vaccine, "constant")
+gamma_vaccine_t[] <- interpolate(tt_dur_vaccine, gamma_vaccine, "linear")
 dim(gamma_vaccine_t) <- 8
 
 # Interpolation of vaccination rate over time
@@ -504,7 +504,7 @@ dim(prob_hosp_t_mult) <- c(17, 8) # probability of requiring hospitalisation by 
 prob_hosp[] <- user()
 dim(prob_hosp) <- 17
 
-vaccine_efficacy_disease_t[] <- interpolate(tt_vaccine_efficacy_disease, vaccine_efficacy_disease, "constant")
+vaccine_efficacy_disease_t[] <- interpolate(tt_vaccine_efficacy_disease, vaccine_efficacy_disease, "linear")
 dim(vaccine_efficacy_disease_t) <- 8
 tt_vaccine_efficacy_disease[] <- user()
 dim(tt_vaccine_efficacy_disease) <- user()
@@ -512,7 +512,7 @@ vaccine_efficacy_disease[, ] <- user()
 dim(vaccine_efficacy_disease) <- c(length(tt_vaccine_efficacy_disease), 8)
 
 # Interpolation for prob_hosp_multiplier
-prob_hosp_multiplier_t <- interpolate(tt_prob_hosp_multiplier, prob_hosp_multiplier, "constant")
+prob_hosp_multiplier_t <- interpolate(tt_prob_hosp_multiplier, prob_hosp_multiplier, "linear")
 tt_prob_hosp_multiplier[] <- user()
 dim(tt_prob_hosp_multiplier) <- user()
 dim(prob_hosp_multiplier) <- length(tt_prob_hosp_multiplier)
@@ -528,7 +528,7 @@ tt_prob_severe_multiplier[] <- user()
 dim(tt_prob_severe_multiplier) <- user()
 
 # interpolate severity
-prob_severe_multiplier_t <- interpolate(tt_prob_severe_multiplier, prob_severe_multiplier, "constant")
+prob_severe_multiplier_t <- interpolate(tt_prob_severe_multiplier, prob_severe_multiplier, "linear")
 # calculate the new severity
 prob_severe_multi[] <- prob_severe_multiplier_t * prob_severe[i]
 dim(prob_severe_multi) <- 17

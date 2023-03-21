@@ -51,7 +51,7 @@ tt_dur_E[] <- user()
 dim(tt_dur_E) <- length(gamma_E)
 tt_dur_E_dt[] <- tt_dur_E[i] / dt
 dim(tt_dur_E_dt) <- length(tt_dur_E)
-gamma_E_t <- interpolate(tt_dur_E_dt, gamma_E, "constant")
+gamma_E_t <- interpolate(tt_dur_E_dt, gamma_E, "linear")
 
 update(E1[, 1]) <- E1[i, j] + dt*( (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j])
 update(E1[, 2:8]) <- E1[i, j] + dt*( (lambda[i] * vaccine_efficacy_infection_t[j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j] + gamma_vaccine_t[j - 1] * E1[i, j - 1])
@@ -94,7 +94,7 @@ tt_dur_IMild[] <- user()
 dim(tt_dur_IMild) <- length(gamma_IMild)
 tt_dur_IMild_dt[] <- tt_dur_IMild[i] / dt
 dim(tt_dur_IMild_dt) <- length(tt_dur_IMild)
-gamma_IMild_t <- interpolate(tt_dur_IMild_dt, gamma_IMild, "constant")
+gamma_IMild_t <- interpolate(tt_dur_IMild_dt, gamma_IMild, "linear")
 
 update(IMild[, 1]) <- IMild[i, j] + dt*( (gamma_E_t * E2[i, j] * (1 - prob_hosp_t_mult[i, j])) - (gamma_IMild_t * IMild[i, j]) - gamma_vaccine_t[j] * IMild[i, j])
 update(IMild[, 2:8]) <- IMild[i, j] + dt*( (gamma_E_t * E2[i, j] * (1 - prob_hosp_t_mult[i, j])) - (gamma_IMild_t * IMild[i, j]) - gamma_vaccine_t[j] * IMild[i, j] + gamma_vaccine_t[j - 1] * IMild[i, j - 1])
@@ -170,7 +170,7 @@ tt_dur_ICase[] <- user()
 dim(tt_dur_ICase) <- length(gamma_ICase)
 tt_dur_ICase_dt[] <- tt_dur_ICase[i] / dt
 dim(tt_dur_ICase_dt) <- length(tt_dur_ICase)
-gamma_ICase_t <- interpolate(tt_dur_ICase_dt, gamma_ICase, "constant")
+gamma_ICase_t <- interpolate(tt_dur_ICase_dt, gamma_ICase, "linear")
 
 update(ICase1[, 1]) <- ICase1[i, j] + dt*( (gamma_E_t * E2[i, j] * prob_hosp_t_mult[i, j]) - (gamma_ICase_t * ICase1[i, j]) - gamma_vaccine_t[j] * ICase1[i, j])
 update(ICase1[, 2:8]) <- ICase1[i, j] + dt*( (gamma_E_t * E2[i, j] * prob_hosp_t_mult[i, j]) - (gamma_ICase_t * ICase1[i, j]) - gamma_vaccine_t[j] * ICase1[i, j] + gamma_vaccine_t[j - 1] * ICase1[i, j - 1])
@@ -200,7 +200,7 @@ tt_dur_get_ox_survive[] <- user()
 dim(tt_dur_get_ox_survive) <- length(gamma_get_ox_survive)
 tt_dur_get_ox_survive_dt[] <- tt_dur_get_ox_survive[i] / dt
 dim(tt_dur_get_ox_survive_dt) <- length(tt_dur_get_ox_survive)
-gamma_get_ox_survive_t <- interpolate(tt_dur_get_ox_survive_dt, gamma_get_ox_survive, "constant")
+gamma_get_ox_survive_t <- interpolate(tt_dur_get_ox_survive_dt, gamma_get_ox_survive, "linear")
 
 
 update(IOxGetLive1[, 1]) <- IOxGetLive1[i, j] + dt*( (gamma_ICase_t * ICase2[i, j] * (1 - prob_severe_multi[i]) * p_oxygen * (1 - prob_non_severe_death_treatment[i])) - (gamma_get_ox_survive_t * IOxGetLive1[i, j]) - gamma_vaccine_t[j] * IOxGetLive1[i, j])
@@ -229,7 +229,7 @@ tt_dur_get_ox_die[] <- user()
 dim(tt_dur_get_ox_die) <- length(gamma_get_ox_die)
 tt_dur_get_ox_die_dt[] <- tt_dur_get_ox_die[i] / dt
 dim(tt_dur_get_ox_die_dt) <- length(tt_dur_get_ox_die)
-gamma_get_ox_die_t <- interpolate(tt_dur_get_ox_die_dt, gamma_get_ox_die, "constant")
+gamma_get_ox_die_t <- interpolate(tt_dur_get_ox_die_dt, gamma_get_ox_die, "linear")
 
 update(IOxGetDie1[, ]) <- IOxGetDie1[i, j] + dt*( (gamma_ICase_t * ICase2[i, j] * (1 - prob_severe_multi[i]) * p_oxygen * prob_non_severe_death_treatment[i]) - gamma_get_ox_die_t * IOxGetDie1[i, j])
 
@@ -297,7 +297,7 @@ tt_dur_get_mv_survive[] <- user()
 dim(tt_dur_get_mv_survive) <- length(gamma_get_mv_survive)
 tt_dur_get_mv_survive_dt[] <- tt_dur_get_mv_survive[i] / dt
 dim(tt_dur_get_mv_survive_dt) <- length(tt_dur_get_mv_survive)
-gamma_get_mv_survive_t <- interpolate(tt_dur_get_mv_survive_dt, gamma_get_mv_survive, "constant")
+gamma_get_mv_survive_t <- interpolate(tt_dur_get_mv_survive_dt, gamma_get_mv_survive, "linear")
 
 update(IMVGetLive1[, 1]) <- IMVGetLive1[i, j] + dt*( (gamma_ICase_t * ICase2[i, j] * prob_severe_multi[i] * p_ventilation * (1 - prob_severe_death_treatment[i])) - (gamma_get_mv_survive_t * IMVGetLive1[i, j]) - gamma_vaccine_t[j] * IMVGetLive1[i, j])
 update(IMVGetLive1[, 2:8]) <- IMVGetLive1[i, j] + dt*( (gamma_ICase_t * ICase2[i, j] * prob_severe_multi[i] * p_ventilation * (1 - prob_severe_death_treatment[i])) - (gamma_get_mv_survive_t * IMVGetLive1[i, j]) - gamma_vaccine_t[j] * IMVGetLive1[i, j] + gamma_vaccine_t[j - 1] * IMVGetLive1[i, j - 1])
@@ -325,7 +325,7 @@ tt_dur_get_mv_die[] <- user()
 dim(tt_dur_get_mv_die) <- length(gamma_get_mv_die)
 tt_dur_get_mv_die_dt[] <- tt_dur_get_mv_die[i] / dt
 dim(tt_dur_get_mv_die_dt) <- length(tt_dur_get_mv_die)
-gamma_get_mv_die_t <- interpolate(tt_dur_get_mv_die_dt, gamma_get_mv_die, "constant")
+gamma_get_mv_die_t <- interpolate(tt_dur_get_mv_die_dt, gamma_get_mv_die, "linear")
 
 update(IMVGetDie1[, ]) <- IMVGetDie1[i, j] + dt*( (gamma_ICase_t * ICase2[i, j] * prob_severe_multi[i] * p_ventilation * prob_severe_death_treatment[i]) - (gamma_get_mv_die_t * IMVGetDie1[i, j]))
 
@@ -422,7 +422,7 @@ dim(vaccine_coverage_mat) <- c(N_prioritisation_steps, 17)
 # Generating Vaccine Efficacy Over Time
 tt_vaccine_efficacy_infection_dt[] <- tt_vaccine_efficacy_infection[i] / dt
 dim(tt_vaccine_efficacy_infection_dt) <- length(tt_vaccine_efficacy_infection)
-vaccine_efficacy_infection_t[] <- interpolate(tt_vaccine_efficacy_infection_dt, vaccine_efficacy_infection, "constant")
+vaccine_efficacy_infection_t[] <- interpolate(tt_vaccine_efficacy_infection_dt, vaccine_efficacy_infection, "linear")
 dim(vaccine_efficacy_infection_t) <- 8
 tt_vaccine_efficacy_infection[] <- user()
 vaccine_efficacy_infection[, ] <- user()
@@ -435,7 +435,7 @@ dim(gamma_vaccine) <- c(length(tt_dur_vaccine), 8)
 dim(tt_dur_vaccine) <- user()
 tt_dur_vaccine_dt[] <- tt_dur_vaccine[i] / dt
 dim(tt_dur_vaccine_dt) <- length(tt_dur_vaccine)
-gamma_vaccine_t[] <- interpolate(tt_dur_vaccine_dt, gamma_vaccine, "constant")
+gamma_vaccine_t[] <- interpolate(tt_dur_vaccine_dt, gamma_vaccine, "linear")
 dim(gamma_vaccine_t) <- 8
 
 # Interpolation of vaccination rate over time
@@ -534,7 +534,7 @@ dim(prob_hosp) <- 17
 
 tt_vaccine_efficacy_disease_dt[] <- tt_vaccine_efficacy_disease[i] / dt
 dim(tt_vaccine_efficacy_disease_dt) <- length(tt_vaccine_efficacy_disease)
-vaccine_efficacy_disease_t[] <- interpolate(tt_vaccine_efficacy_disease_dt, vaccine_efficacy_disease, "constant")
+vaccine_efficacy_disease_t[] <- interpolate(tt_vaccine_efficacy_disease_dt, vaccine_efficacy_disease, "linear")
 dim(vaccine_efficacy_disease_t) <- 8
 tt_vaccine_efficacy_disease[] <- user()
 dim(tt_vaccine_efficacy_disease) <- user()
@@ -544,7 +544,7 @@ dim(vaccine_efficacy_disease) <- c(length(tt_vaccine_efficacy_disease), 8)
 # Interpolation for prob_hosp_multiplier
 tt_prob_hosp_multiplier_dt[] <- tt_prob_hosp_multiplier[i] / dt
 dim(tt_prob_hosp_multiplier_dt) <- length(tt_prob_hosp_multiplier)
-prob_hosp_multiplier_t <- interpolate(tt_prob_hosp_multiplier_dt, prob_hosp_multiplier, "constant")
+prob_hosp_multiplier_t <- interpolate(tt_prob_hosp_multiplier_dt, prob_hosp_multiplier, "linear")
 tt_prob_hosp_multiplier[] <- user()
 dim(tt_prob_hosp_multiplier) <- user()
 dim(prob_hosp_multiplier) <- length(tt_prob_hosp_multiplier)
@@ -562,7 +562,7 @@ dim(tt_prob_severe_multiplier) <- user()
 # interpolate severity
 tt_prob_severe_multiplier_dt[] <- tt_prob_severe_multiplier[i] / dt
 dim(tt_prob_severe_multiplier_dt) <- length(tt_prob_severe_multiplier)
-prob_severe_multiplier_t <- interpolate(tt_prob_severe_multiplier_dt, prob_severe_multiplier, "constant")
+prob_severe_multiplier_t <- interpolate(tt_prob_severe_multiplier_dt, prob_severe_multiplier, "linear")
 # calculate the new severity
 prob_severe_multi[] <- prob_severe_multiplier_t * prob_severe[i]
 dim(prob_severe_multi) <- 17

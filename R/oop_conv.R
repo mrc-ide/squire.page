@@ -449,6 +449,23 @@ setup_parameters.nimue_model <- function(model_obj, parameters){
     do.call(model_obj$parameter_func, parameters)
   }
 }
+#' If no particular method we default to calling the parameter function
+#' attached to the model
+#' @param model_obj A nimue/squire model object
+#' @param parameters The parameters to the pass to the parameter function
+#' @export
+setup_parameters.booster_min_model <- function(model_obj, parameters){
+  #if initial infections is not null we add them at the end
+  if(!is.null(parameters$initial_infections)){
+    initial_inf <- parameters$initial_infections
+    parameters$initial_infections <- NULL
+    assign_infections(do.call(model_obj$parameter_func, parameters), initial_inf)
+  } else {
+    do.call(model_obj$parameter_func, parameters)
+  }
+}
+
+
 #' An S3 generic for estimating Beta
 #' @noRd
 beta_est <- function(squire_model, model_params, R0, tt_R0, tt_end = NULL) {
@@ -478,7 +495,21 @@ beta_est.booster_model <- function(squire_model, model_params, R0, tt_R0) {
     squire:::process_contact_matrix_scaled_age(model_params$contact_matrix_set[[1]], model_params$population)
   )
 }
-
+#' An S3 method for getting Beta for a model
+#' @param squire_model A model object
+#' @param model_params Parameters for the model
+#' @param R0 R0/Rt value to translate into beta
+#' @param tt_R0 Which time points does each R0 value relate to
+#' @export
+beta_est.booster_min_model <- function(squire_model, model_params, R0, tt_R0) {
+  #require a unique method due to time changing durations of infectiousness
+  beta_est_booster(
+    R0, tt_R0, model_params$prob_hosp_multiplier, model_params$tt_prob_hosp_multiplier,
+    model_params$prob_hosp, 2/model_params$gamma_ICase, model_params$tt_dur_ICase, 1/model_params$gamma_IMild,
+    model_params$tt_dur_IMild, model_params$rel_infectiousness,
+    squire:::process_contact_matrix_scaled_age(model_params$contact_matrix_set, model_params$population)
+  )
+}
 #' @noRd
 beta_est_booster <- function(R0, tt_R0, prob_hosp_multiplier, tt_prob_hosp_multiplier,
                              prob_hosp_baseline, dur_ICase, tt_dur_ICase, dur_IMild,

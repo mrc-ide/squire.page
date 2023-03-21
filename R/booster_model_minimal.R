@@ -151,7 +151,6 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
 
     # append extra pars for fitting
     pars$dt <- dt
-    pars$prob_hosp_baseline <- pars$prob_hosp[1, ,1]
     pars$use_dde <- use_dde
 
     class(pars) <- c("vaccine_parameters", "squire_parameters")
@@ -169,7 +168,7 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
                        time_period = 365,
                        ...) {
 
-    out <- squire.page:::run_booster(country = country,
+    out <- squire.page:::run_booster_min(country = country,
                                      contact_matrix_set = contact_matrix_set,
                                      hosp_bed_capacity = hosp_bed_capacity,
                                      ICU_bed_capacity = ICU_bed_capacity,
@@ -193,7 +192,7 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
                 run_func = run_func,
                 compare_model = compare_model,
                 use_dde = use_dde)
-  class(model) <- c(model_class, "nimue_model", "deterministic", "squire_model")
+  class(model) <- c(model_class, "booster_model", "nimue_model", "deterministic", "squire_model")
 
   if(use_difference){
     model$odin_difference_model <- function(user, dt, unused_user_action){
@@ -477,7 +476,7 @@ parameters_booster_min <- function(
   }
 
   # Convert and Generate Parameters As Required
-  # ----------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
   # durations
   gamma_E = 2 * 1/dur_E
@@ -614,6 +613,20 @@ parameters_booster_min <- function(
                  N_prioritisation_steps = nrow(vaccine_coverage_mat),
                  gamma_vaccine = gamma_vaccine,
                  tt_dur_vaccine = tt_dur_vaccine))
+
+  #add max time to tt_pars that are linear
+
+  for(var in c("vaccine_efficacy_infection", "gamma_vaccine", "vaccine_efficacy_disease", "prob_hosp_multiplier", "prob_severe_multiplier", "gamma_E", "gamma_IMild", "gamma_ICase", "gamma_get_ox_survive", "gamma_get_ox_die", "gamma_get_mv_survive", "gamma_get_mv_die")){
+    tt_var <- paste0("tt_", gsub("gamma_", "dur_", var))
+    if(tail(pars[[tt_var]], 1) < time_period){
+      pars[[tt_var]] <- c(pars[[tt_var]], time_period)
+      if("matrix" %in% class(pars[[var]])){
+        pars[[var]] <- rbind(pars[[var]], pars[[var]][nrow(pars[[var]]), ])
+      } else {
+        pars[[var]] <- c(pars[[var]], tail(pars[[var]], 1))
+      }
+    }
+  }
 
   class(pars) <- c("booster_min_vaccine_parameters", "vaccine_parameters", "nimue_parameters")
 
