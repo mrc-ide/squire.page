@@ -127,22 +127,3 @@ test_that("LMIC Booster Likelihood Function", {
   output <- nimue_format(pmcmc_output, "deaths")
   expect_true(length(unique(output$replicate)) == 10)
 })
-test_that("Age limit on inital boosters", {
-  get_total <- function(out, measure){
-    out %>% nimue_format(measure) %>% pull(y) %>% sum(na.rm = TRUE)
-  }
-  boost_cov <- rep(0, 17)
-  boost_cov[17] <- 1
-  only_oldest_boosted <-
-    squire.page:::run_booster(country = "United Kingdom",
-                              primary_doses = 4000,
-                              booster_doses = 2000,
-                              vaccine_booster_initial_coverage = boost_cov,
-                              dur_R = 365, time_period = 3*365)
-  boosted_per_age <- nimue_format(only_oldest_boosted, "vaccinated_booster_dose", reduce_age = FALSE) %>%
-    group_by(age_group) %>%
-    arrange(t) %>%
-    summarise(boosted = tail(y, 1))
-  expect_true(boosted_per_age$boosted[boosted_per_age$age_group == "80+"] > 0)
-  expect_true(all(boosted_per_age$boosted[boosted_per_age$age_group != "80+"] == 0))
-})

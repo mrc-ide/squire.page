@@ -158,10 +158,18 @@ update_initial_state <- function(initial_state, model_output){
       as.numeric(model_output[, cols])
     }
   )
-  if("N_vaccine" %in% names(initial_state)){
+  if("gamma_vaccine" %in% names(initial_state)){
+    if(is.null(initial_state$N_age)){
+      N_vaccine <- 8
+      N_age <- 17
+    } else {
+      N_vaccine <- initial_state$N_vaccine
+      N_age <- initial_state$N_age
+    }
     #convert to matrices if vaccine model
     new_values <- purrr::map(
-      new_values, ~matrix(.x, nrow = initial_state$N_age, ncol = initial_state$N_vaccine)
+      new_values, ~matrix(.x, nrow = N_age, ncol = N_vaccine),
+      N_age = N_age, N_vaccine = N_vaccine
     )
   }
   #update the values
