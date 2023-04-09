@@ -221,8 +221,8 @@ nimue_format <- function(out,
         prob_severe_age <- NULL
       }
       list(
-        gamma_E = pars$gamma_E,
-        gamma_ICase = pars$gamma_ICase,
+        gamma_E = utils::tail(pars$gamma_E, 1),
+        gamma_ICase = utils::tail(pars$gamma_ICase, 1),
         prob_severe_age = prob_severe_age
       )
     })

@@ -158,10 +158,13 @@ update_initial_state <- function(initial_state, model_output){
       as.numeric(model_output[, cols])
     }
   )
-  if("N_vaccine" %in% names(initial_state)){
+  if("gamma_vaccine" %in% names(initial_state)){
     #convert to matrices if vaccine model
+    s_names <- stringr::str_remove_all(stringr::str_subset(dimnames(model_output)[[2]], "S\\["), "[S\\[\\]]")
+    n_age <- max(as.numeric(stringr::str_split_i(s_names, "\\,", 1)))
+    n_vaccine <- max(as.numeric(stringr::str_split_i(s_names, "\\,", 2)))
     new_values <- purrr::map(
-      new_values, ~matrix(.x, nrow = initial_state$N_age, ncol = initial_state$N_vaccine)
+      new_values, ~matrix(.x, nrow = n_age, ncol = n_vaccine)
     )
   }
   #update the values

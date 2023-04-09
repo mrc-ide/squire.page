@@ -63,11 +63,8 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
 
                               # durations
                               dur_E  = durs_booster_min$dur_E,
-                              tt_dur_E = durs_booster_min$tt_dur_E,
                               dur_IMild = durs_booster_min$dur_IMild,
-                              tt_dur_IMild = durs_booster_min$tt_dur_IMild,
                               dur_ICase = durs_booster_min$dur_ICase,
-                              tt_dur_ICase = durs_booster_min$tt_dur_ICase,
 
                               # hospital durations
                               dur_get_ox_survive = durs_booster_min$dur_get_ox_survive,
@@ -98,11 +95,8 @@ nimue_booster_min_model <- function(use_dde = TRUE, use_difference = FALSE) {
       hosp_bed_capacity = hosp_bed_capacity,
       ICU_bed_capacity = ICU_bed_capacity,
       dur_E = dur_E,
-      tt_dur_E = tt_dur_E,
       dur_IMild = dur_IMild,
-      tt_dur_IMild = tt_dur_IMild,
       dur_ICase = dur_ICase,
-      tt_dur_ICase = tt_dur_ICase,
       dur_get_ox_survive = dur_get_ox_survive,
       tt_dur_get_ox_survive = tt_dur_get_ox_survive,
       dur_get_ox_die = dur_get_ox_die,
@@ -225,8 +219,6 @@ durs_booster_min <- default_durs_booster()
 
 #' Return the default vaccine parameters for modelling
 #' @noRd
-#' Return the default vaccine parameters for modelling
-#' @noRd
 default_vaccine_pars_booster_min <- function() {
   #scale VE for breakthrough
   d <- c("pV_1" = 0.75, "fV_1" = 0.9, "fV_2" = 0.5, "fV_3" = 0, "bV_1" = 0.95, "bV_2" = 0.14865027, "bV_3" = 0.02109197)
@@ -293,11 +285,8 @@ parameters_booster_min <- function(
 
   # Durations
   dur_E,
-  tt_dur_E,
   dur_IMild,
-  tt_dur_IMild,
   dur_ICase,
-  tt_dur_ICase,
 
   dur_get_ox_survive,
   tt_dur_get_ox_survive,
@@ -400,9 +389,6 @@ parameters_booster_min <- function(
   stopifnot(length(dur_get_ox_survive) == length(tt_dur_get_ox_survive))
   stopifnot(length(dur_get_ox_die) == length(tt_dur_get_ox_die))
   stopifnot(length(dur_get_mv_survive) == length(tt_dur_get_mv_survive))
-  stopifnot(length(dur_E) == length(tt_dur_E))
-  stopifnot(length(dur_IMild) == length(tt_dur_IMild))
-  stopifnot(length(dur_ICase) == length(tt_dur_ICase))
   stopifnot(ncol(vaccine_coverage_mat) == 17)
 
   nimue:::assert_pos(dur_E)
@@ -496,17 +482,17 @@ parameters_booster_min <- function(
   if (is.null(beta_set)) {
     baseline_matrix <- squire:::process_contact_matrix_scaled_age(contact_matrix_set, population)
     #check for time changing parameters
-    if(length(c(tt_dur_ICase, tt_dur_IMild, tt_prob_hosp_multiplier)) > 3){
+    if(length(tt_prob_hosp_multiplier) > 1){
       tt_R0_old <- tt_R0
-      tt_R0 <- unique(sort(c(tt_dur_ICase, tt_dur_IMild, tt_prob_hosp_multiplier, tt_R0_old)))
+      tt_R0 <- unique(sort(c(tt_prob_hosp_multiplier, tt_R0_old)))
       R0 <- block_interpolate(tt_R0, R0, tt_R0_old)
     }
     beta_set <- beta_est_booster(
       R0 = R0, tt_R0 = tt_R0, prob_hosp_multiplier = prob_hosp_multiplier,
       tt_prob_hosp_multiplier = tt_prob_hosp_multiplier,
       prob_hosp_baseline = prob_hosp, dur_ICase = dur_ICase,
-      tt_dur_ICase = tt_dur_ICase, dur_IMild = dur_IMild,
-      tt_dur_IMild = tt_dur_IMild, rel_infectiousness = rel_infectiousness,
+      tt_dur_ICase = 0, dur_IMild = dur_IMild,
+      tt_dur_IMild = 0, rel_infectiousness = rel_infectiousness,
       mixing_matrix = baseline_matrix
     )
   }
@@ -560,11 +546,8 @@ parameters_booster_min <- function(
   # Collate Parameters Into List
   pars <- c(mod_init,
             list(gamma_E = gamma_E,
-                 tt_dur_E = tt_dur_E,
                  gamma_IMild = gamma_IMild,
-                 tt_dur_IMild = tt_dur_IMild,
                  gamma_ICase = gamma_ICase,
-                 tt_dur_ICase = tt_dur_ICase,
                  gamma_get_ox_survive = gamma_get_ox_survive,
                  tt_dur_get_ox_survive = tt_dur_get_ox_survive,
                  gamma_get_ox_die = gamma_get_ox_die,
@@ -616,14 +599,14 @@ parameters_booster_min <- function(
 
   #add max time to tt_pars that are linear
 
-  for(var in c("vaccine_efficacy_infection", "gamma_vaccine", "vaccine_efficacy_disease", "prob_hosp_multiplier", "prob_severe_multiplier", "gamma_E", "gamma_IMild", "gamma_ICase", "gamma_get_ox_survive", "gamma_get_ox_die", "gamma_get_mv_survive", "gamma_get_mv_die")){
+  for(var in c("vaccine_efficacy_infection", "gamma_vaccine", "vaccine_efficacy_disease", "prob_hosp_multiplier", "prob_severe_multiplier", "gamma_get_ox_survive", "gamma_get_ox_die", "gamma_get_mv_survive", "gamma_get_mv_die")){
     tt_var <- paste0("tt_", gsub("gamma_", "dur_", var))
-    if(tail(pars[[tt_var]], 1) < time_period){
+    if(utils::tail(pars[[tt_var]], 1) < time_period){
       pars[[tt_var]] <- c(pars[[tt_var]], time_period)
       if("matrix" %in% class(pars[[var]])){
         pars[[var]] <- rbind(pars[[var]], pars[[var]][nrow(pars[[var]]), ])
       } else {
-        pars[[var]] <- c(pars[[var]], tail(pars[[var]], 1))
+        pars[[var]] <- c(pars[[var]], utils::tail(pars[[var]], 1))
       }
     }
   }
@@ -784,12 +767,9 @@ format_ve_d_for_odin_booster_min <- function(vaccine_efficacy_disease,
 #'   Default = rep(1, 17), which is no impact of vaccination on onwards
 #'   transmissions
 #' @param dur_E Mean duration of incubation period (days). Default = 4.6
-#' @param tt_dur_E Times at which dur_E changes, default = 0.
 #' @param dur_IMild Mean duration of mild infection (days). Default = 2.1
-#' @param tt_dur_IMild Times at which dur_IMild changes, default = 0.
 #' @param dur_ICase Mean duration from symptom onset to hospital admission (days).
 #'   Default = 4.5
-#' @param tt_dur_ICase Times at which dur_ICase changes, default = 0.
 #' @param dur_get_ox_survive Mean duration of oxygen given survive. Default = 5. Can be
 #'   time varying, with timing of changes given by tt_dur_get_ox_survive.
 #' @param tt_dur_get_ox_survive Timing of changes in duration of  oxygen given survive.
@@ -912,11 +892,8 @@ run_booster_min <- function(
 
   # durations
   dur_E  = durs_booster_min$dur_E,
-  tt_dur_E  = durs_booster_min$tt_dur_E,
   dur_IMild = durs_booster_min$dur_IMild,
-  tt_dur_IMild = durs_booster_min$tt_dur_IMild,
   dur_ICase = durs_booster_min$dur_ICase,
-  tt_dur_ICase = durs_booster_min$tt_dur_ICase,
 
   # hospital durations
   dur_get_ox_survive = durs_booster_min$dur_get_ox_survive,
@@ -992,11 +969,8 @@ run_booster_min <- function(
                              rel_infectiousness = rel_infectiousness,
                              rel_infectiousness_vaccinated = rel_infectiousness_vaccinated,
                              dur_E = dur_E,
-                             tt_dur_E = tt_dur_E,
                              dur_IMild = dur_IMild,
-                             tt_dur_IMild = tt_dur_IMild,
                              dur_ICase = dur_ICase,
-                             tt_dur_ICase = tt_dur_ICase,
                              dur_get_ox_survive = dur_get_ox_survive,
                              tt_dur_get_ox_survive = tt_dur_get_ox_survive,
                              dur_get_ox_die = dur_get_ox_die,

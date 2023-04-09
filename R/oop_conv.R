@@ -505,8 +505,8 @@ beta_est.booster_min_model <- function(squire_model, model_params, R0, tt_R0) {
   #require a unique method due to time changing durations of infectiousness
   beta_est_booster(
     R0, tt_R0, model_params$prob_hosp_multiplier, model_params$tt_prob_hosp_multiplier,
-    model_params$prob_hosp, 2/model_params$gamma_ICase, model_params$tt_dur_ICase, 1/model_params$gamma_IMild,
-    model_params$tt_dur_IMild, model_params$rel_infectiousness,
+    model_params$prob_hosp, 2/model_params$gamma_ICase, 0, 1/model_params$gamma_IMild,
+    0, model_params$rel_infectiousness,
     squire:::process_contact_matrix_scaled_age(model_params$contact_matrix_set, model_params$population)
   )
 }
