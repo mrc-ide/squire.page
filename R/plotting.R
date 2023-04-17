@@ -363,27 +363,36 @@ get_immunity_ratios.rt_optimised <- function(out, max_date = NULL, vaccine = FAL
     #remove initial infections since this doesn't matter (won't be regenerating simulations)
     sample$initial_infections <- NULL
     model_params <- setup_parameters(out$squire_model, append(out$parameters, sample))
-
-    mixing_matrix <- squire:::process_contact_matrix_scaled_age(
+    if(inherits(model_params$contact_matrix_set, "list")){
+      mixing_matrix <- squire:::process_contact_matrix_scaled_age(
       model_params$contact_matrix_set[[1]],
       model_params$population
-    )
+      )
+    } else {
+      mixing_matrix <- squire:::process_contact_matrix_scaled_age(
+      model_params$contact_matrix_set,
+      model_params$population
+      )
+    }
 
     dur_ICase <- 2/model_params$gamma_ICase
     dur_IMild <- 1/model_params$gamma_IMild
-    prob_hosp <- model_params$prob_hosp_baseline
 
     # assertions
     squire:::assert_single_pos(dur_ICase, zero_allowed = FALSE)
     squire:::assert_single_pos(dur_IMild, zero_allowed = FALSE)
-    squire:::assert_numeric(prob_hosp)
     squire:::assert_numeric(mixing_matrix)
     squire:::assert_square_matrix(mixing_matrix)
-    squire:::assert_same_length(mixing_matrix[,1], prob_hosp)
 
-    if(sum(is.na(prob_hosp)) > 0) {
-      stop("prob_hosp must not contain NAs")
+    if(!vaccine){
+      prob_hosp <- model_params$prob_hosp_baseline
+      squire:::assert_numeric(prob_hosp)
+      if(sum(is.na(prob_hosp)) > 0) {
+        stop("prob_hosp must not contain NAs")
+      }
+      squire:::assert_same_length(mixing_matrix[,1], prob_hosp)
     }
+
     if(sum(is.na(mixing_matrix)) > 0) {
       stop("mixing_matrix must not contain NAs")
     }
@@ -396,7 +405,61 @@ get_immunity_ratios.rt_optimised <- function(out, max_date = NULL, vaccine = FAL
     }
 
     t_now <- which(as.Date(rownames(out$output)) == max_date)
-    if(vaccine){
+    if(vaccine & is.null(model_params$prob_hosp_baseline)){
+      # make the vaccine time changing args
+      nrs <- t_now
+      vei <- purrr::map(seq_len(nrs), function(t){
+        #find the change point equivalent
+        eff_index <- max(which(model_params$tt_vaccine_efficacy_infection <= t))
+        model_params$vaccine_efficacy_infection[eff_index,]
+      })
+      phl <- purrr::map(seq_len(nrs), function(t){
+        #find the change point equivalent
+        eff_index <- max(which(model_params$tt_vaccine_efficacy_disease <= t))
+        outer(model_params$prob_hosp, model_params$vaccine_efficacy_disease[eff_index,], "*")
+      })
+
+      # prop susceptible
+      susceptible <- array(
+        out$output[seq_len(t_now),index$S,sample_index],
+        dim=c(t_now, dim(index$S))
+      )
+
+      # We divide by the total population
+      prop_susc <- sweep(susceptible, 2, pop, FUN='/')
+
+      # We multiply by the effect of vaccines on onward infectiousness
+      prop_susc <- vapply(
+        seq_len(nrow(prop_susc)),
+        FUN = function(i){sweep(prop_susc[i,,], 2, vei[[i]], FUN = "*")},
+        FUN.VALUE = prop_susc[1,,]
+      )
+      prop_susc <- aperm(prop_susc, c(3,1,2))
+
+      relative_R0_by_age <- lapply(phl, function(x) {
+        x*dur_ICase + (1-x)*dur_IMild
+      })
+
+      rel_vacc <- model_params$rel_infectiousness_vaccinated
+
+      adjusted_eigen <- unlist(lapply(seq_len(nrow(prop_susc)), function(y) {
+        if(any(is.na(prop_susc[y,,]))) {
+          return(NA)
+        } else {
+          Re(eigen(mixing_matrix*rowSums(prop_susc[y,,]* sweep(relative_R0_by_age[[y]], 2, rel_vacc, FUN = "*")))$values[1])
+        }
+      }))
+
+      beta <- model_params$beta_set[1]
+
+      ratio <- (beta * adjusted_eigen) / out$samples[[sample_index]]$R0[1]
+
+      # and patch NA gaps
+      if(any(is.na(ratio))) {
+        ratio[which(is.na(ratio))] <- ratio[which(!is.na(ratio))[1]]
+      }
+    }
+    else if(vaccine){
       # make the vaccine time changing args
       nrs <- t_now
       vei <- purrr::map(seq_len(nrs), function(t){

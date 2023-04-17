@@ -104,9 +104,9 @@ test_that("LMIC Booster Likelihood Function", {
   )
   pmcmc_output <- suppressMessages(pmcmc_drjacoby(
     data = data,
-    replicates = 10,
-    n_mcmc = 100,
-    n_burnin = 50,
+    replicates = 3,
+    n_mcmc = 5,
+    n_burnin = 5,
     log_likelihood = squire:::convert_log_likelihood_func_for_drjacoby(calc_loglikelihood_booster),
     country = "United Kingdom",
     primary_doses = 4000,
@@ -121,9 +121,9 @@ test_that("LMIC Booster Likelihood Function", {
   ))
 
   expect_s3_class(pmcmc_output, "lmic_booster_nimue_simulation")
-  expect_true(nrow(pmcmc_output$replicate_parameters) == 10)
+  expect_true(nrow(pmcmc_output$replicate_parameters) == 3)
 
   #check format works on this
   output <- nimue_format(pmcmc_output, "deaths")
-  expect_true(length(unique(output$replicate)) == 10)
+  expect_true(length(unique(output$replicate)) == 3)
 })

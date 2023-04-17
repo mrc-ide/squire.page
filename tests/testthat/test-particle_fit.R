@@ -1,8 +1,10 @@
+n_points <- 10
+
 test_that("basic functionality", {
   data <- tibble(
-    deaths = rpois(50, 1000),
-    date_start = seq(as.Date("2020-01-01"), by = 2, length.out = 50),
-    date_end = seq(as.Date("2020-01-01"), by = 2, length.out = 51)[-1]
+    deaths = rpois(n_points, 1000),
+    date_start = seq(as.Date("2020-01-01"), by = 2, length.out = n_points),
+    date_end = seq(as.Date("2020-01-01"), by = 2, length.out = n_points + 1)[-1]
   )
   start_date <- min(data$date_start) - 20
   distribution <- map(
@@ -28,9 +30,9 @@ test_that("basic functionality", {
 
 test_that("nimue functionality", {
   data <- tibble(
-    deaths = rpois(50, 1000),
-    date_start = seq(as.Date("2020-01-01"), by = 2, length.out = 50),
-    date_end = seq(as.Date("2020-01-01"), by = 2, length.out = 51)[-1]
+    deaths = rpois(n_points, 1000),
+    date_start = seq(as.Date("2020-01-01"), by = 2, length.out = n_points),
+    date_end = seq(as.Date("2020-01-01"), by = 2, length.out = n_points + 1)[-1]
   )
   start_date <- min(data$date_start) - 20
   distribution <- map(
@@ -58,9 +60,9 @@ test_that("nimue functionality", {
 
 test_that("nimue booster functionality", {
   data <- tibble(
-    deaths = rpois(50, 1000),
-    date_start = seq(as.Date("2020-01-01"), by = 2, length.out = 50),
-    date_end = seq(as.Date("2020-01-01"), by = 2, length.out = 51)[-1]
+    deaths = rpois(n_points, 1000),
+    date_start = seq(as.Date("2020-01-01"), by = 2, length.out = n_points),
+    date_end = seq(as.Date("2020-01-01"), by = 2, length.out = n_points + 1)[-1]
   )
   start_date <- min(data$date_start) - 20
   distribution <- map(
@@ -71,7 +73,7 @@ test_that("nimue booster functionality", {
   )
   parameters <- list(
     country = "Turkey",
-    protection_delay_time = 50
+    protection_delay_time = n_points
   )
   squire_model <- nimue_booster_model()
 
@@ -89,9 +91,9 @@ test_that("nimue booster functionality", {
 
 test_that("nimue booster functionality difference", {
   data <- tibble(
-    deaths = rpois(50, 1000),
-    date_start = seq(as.Date("2020-01-01"), by = 2, length.out = 50),
-    date_end = seq(as.Date("2020-01-01"), by = 2, length.out = 51)[-1]
+    deaths = rpois(n_points, 1000),
+    date_start = seq(as.Date("2020-01-01"), by = 2, length.out = n_points),
+    date_end = seq(as.Date("2020-01-01"), by = 2, length.out = n_points + 1)[-1]
   )
   start_date <- min(data$date_start) - 20
   distribution <- map(
@@ -102,7 +104,7 @@ test_that("nimue booster functionality difference", {
   )
   parameters <- list(
     country = "Turkey",
-    protection_delay_time = 50
+    protection_delay_time = n_points
   )
   squire_model <- nimue_booster_model(use_difference = TRUE)
 

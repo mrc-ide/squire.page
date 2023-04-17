@@ -167,6 +167,9 @@ update_initial_state <- function(initial_state, model_output){
       N_age <- initial_state$N_age
     }
     #convert to matrices if vaccine model
+    s_names <- stringr::str_remove_all(stringr::str_subset(dimnames(model_output)[[2]], "S\\["), "[S\\[\\]]")
+    n_age <- max(as.numeric(stringr::str_split_i(s_names, "\\,", 1)))
+    n_vaccine <- max(as.numeric(stringr::str_split_i(s_names, "\\,", 2)))
     new_values <- purrr::map(
       new_values, ~matrix(.x, nrow = N_age, ncol = N_vaccine),
       N_age = N_age, N_vaccine = N_vaccine
