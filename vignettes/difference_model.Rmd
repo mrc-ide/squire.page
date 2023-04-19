@@ -37,7 +37,7 @@ accessed normally. Instead, specifying `use_difference=TRUE` when calling
 where it can be called like `$odin_model`.
 
 ```{r, model setup, echo=FALSE}
-nimue_booster <- nimue_booster_model(use_difference = TRUE)
+nimue_booster <- nimue_booster_min_model(use_difference = TRUE)
 
 model_params <- list(
   country = "Turkey"
@@ -68,7 +68,6 @@ dts <- c(0.1^seq(0, 3, by = 1), 0.25)
 names(dts) <- dts
 #load GBR data
 fit <- readRDS(here::here("vignettes", "GBR.Rds"))
-fit$squire_model<- nimue_booster_model()
 #use first fitted sample
 fit$parameters <- c(fit$parameters,
                     fit$samples[[1]])
@@ -183,13 +182,20 @@ plot_perf <- function(perf){
 
 
 ```{r, perfomance, fig.width=7,fig.height=3, fig.align = "center"}
+diff_models <- purrr::map(dts, function(dt){
+  new_mod <- nimue_booster$odin_difference_model(use = user_params, dt = 1)
+  new_conds <- odin_params
+  new_conds$dt <- dt
+  update_model_pars(new_mod, new_conds)
+  new_mod
+})
 perf <- bench::mark(
   ode_model$run(t),
-  run_diff_model(diff_model, t, dts[1]),
-  run_diff_model(diff_model, t, dts[2]),
-  run_diff_model(diff_model, t, dts[3]),
-  run_diff_model(diff_model, t, dts[4]),
-  run_diff_model(diff_model, t, dts[5]),
+  run_diff_model(diff_models[[1]], t, dts[1]),
+  run_diff_model(diff_models[[2]], t, dts[2]),
+  run_diff_model(diff_models[[3]], t, dts[3]),
+  run_diff_model(diff_models[[4]], t, dts[4]),
+  run_diff_model(diff_models[[5]], t, dts[5]),
   check = FALSE, iterations = 20
 )
 perf$dt <- c(0, dts)
@@ -206,9 +212,7 @@ This period of simulation may not be representative, so we will also look at a
 period where there are more time-varying parameters i.e. vaccinations are occurring.
 
 ```{r, vaccination period, fig.width=7,fig.height=3, fig.align = "center"}
-sim_t <- fit$parameters$tt_R0[
-  min(which((fit$parameters$tt_R0 + fit$inputs$start_date) > as.Date("2022-01-01")))
-]
+sim_t <- tail(fit$parameters$tt_R0, 2)[-2] #just the end of the simulation
 #generate ODE simulation up to this time
 output <- ode_model$run(c(0, sim_t))[2,]
 #setup the initial conditions
@@ -252,13 +256,20 @@ purrr::map_dfr(diff_runs, ~tibble(
 ```
 
 ```{r, vaccination performance, fig.width=7,fig.height=3, fig.align = "center"}
+diff_models <- purrr::map(dts, function(dt) {
+  new_mod <- nimue_booster$odin_difference_model(use = user_params, dt = 1)
+  new_conds <- initial_conds
+  new_conds$dt <- dt
+  update_model_pars(new_mod, new_conds)
+  new_mod
+})
 perf <- bench::mark(
-  ode_model$run(t),
-  run_diff_model(diff_model, t, dts[1]),
-  run_diff_model(diff_model, t, dts[2]),
-  run_diff_model(diff_model, t, dts[3]),
-  run_diff_model(diff_model, t, dts[4]),
-  run_diff_model(diff_model, t, dts[5]),
+  ode_model$run(sim_period),
+  run_diff_model(diff_models[[1]], sim_period, dts[1]),
+  run_diff_model(diff_models[[2]], sim_period, dts[2]),
+  run_diff_model(diff_models[[3]], sim_period, dts[3]),
+  run_diff_model(diff_models[[4]], sim_period, dts[4]),
+  run_diff_model(diff_models[[5]], sim_period, dts[5]),
   check = FALSE, iterations = 20
 )
 perf$dt <- c(0, dts)

@@ -126,26 +126,29 @@ calculated elsewhere.
 
 Vaccine Efficacies:
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 tribble(
-  ~`Compartment`, ~`Protection Against Disease`, ~`Protection Against Infection`,
-  "~pV_1~", 0.75, 0.55,
-  "~fV_1~", 0.90, 0.75,
-  "~fV_2~", 0.049041065, 0,
-  "~bV_1~", 0.95, 0.80,
-  "~bV_2~", 0.14865027, 0.12850480,
-  "~bV_3~", 0.02109197, 0
-) %>% 
+  ~`Compartment`, ~`Protection Against Hospitalisation`, ~`Protection Against Infection`,
+  "~pV~", 0.444, 0.55,
+  "~fV_1~", 0.856, 0.942,
+  "~fV_2~", 0.755, 0.339,
+  "~fV_3~", 0.265, 0.000,
+  "~bV_1~", 0.848, 0.923,
+  "~bV_2~", 0.768, 0.358,
+  "~bV_3~", 0.287, 0.000
+) %>%
   knitr::kable()
 ```
 
 Waning Rates:
 
-* $w_p$ = 0.007466205 (134 days)
-* $w_1$ = 0.00807429 (123.8 days)
-* $w_2$ = 0.03331390 (30 days)
+* $w_{f,1}$ = 0.014000362 (71.4 days)
+* $w_{f,2}$ = 0.001162850 (860.0 days)
+* $w_{b,1}$ = 0.009689185 (103.2 days)
+* $w_{b,2}$ = 0.000913242 (1094 days)
 
-Delay in second dose protection is assumed to be 60 days.
+Delay in second dose protection is assumed to be 60 days. Note that VE against hospitalisation is scaled for break through infections.
+See `inst/misc/fit_ve_curve.r` for the code used to fit these curves.
 
 To calculate these values we utilised an approach taken previously with waning 
 vaccine efficacy via AB titres ([Report 48](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-48-global-omicron/)). We took our assumed 
@@ -195,7 +198,7 @@ rbind(
 ) %>%
   mutate(compartment = stringr::str_to_title(compartment)) %>% 
   ggplot() + 
-  geom_line(aes(x = t, y = y, colour = Model), size = 1, alpha = 0.5) +
+  geom_line(aes(x = t, y = y, colour = Model), linewidth = 1, alpha = 0.5) +
   facet_wrap(vars(compartment), scales = "free", strip.position = "left") + 
   labs(y = "", title = "No Vaccinations")
 ```
@@ -215,11 +218,11 @@ booster_df <- squire.page:::run_booster(
   tt_booster_doses = 0,
   time_period  = t,
   vaccine_booster_follow_up_coverage = rep(0, 17),
-  vaccine_efficacy_infection = rep(0.5, 6),
-  vaccine_efficacy_disease = rep(0.5, 6),
+  vaccine_efficacy_infection = rep(0.5, 7),
+  vaccine_efficacy_disease = rep(0.5, 7),
   vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
   rel_infectiousness_vaccinated =  matrix(
-           rep(0.5, 6), ncol = 17, nrow = 6,
+           rep(0.5, 7), ncol = 17, nrow = 7
         ),
   dur_R = dur_R
 ) %>% 
@@ -248,15 +251,13 @@ rbind(
 ) %>%
   mutate(compartment = stringr::str_to_title(compartment)) %>% 
   ggplot() + 
-  geom_line(aes(x = t, y = y, colour = Model), size = 1, alpha = 0.5) +
+  geom_line(aes(x = t, y = y, colour = Model), linewidth = 1, alpha = 0.5) +
   facet_wrap(vars(compartment), scales = "free", strip.position = "left") + 
   labs(y = "",  title = "Single dose no waning")
 t <- t_old
 ```
 
-With waning we would expect to see some minor difference as the booster only has
-a single compartment to represent primary dose waning, though with the same overall rates
-they should be similar.
+With waning we would expect to see almost no difference.
 
 ```{r, echo = FALSE, warning=FALSE, fig.width=7,fig.height=3, fig.align = "center"}
 booster_df <- squire.page:::run_booster(
@@ -268,13 +269,13 @@ booster_df <- squire.page:::run_booster(
   tt_booster_doses = 0,
   time_period  = t,
   vaccine_booster_follow_up_coverage = rep(0, 17),
-  vaccine_efficacy_infection = c(0.5, 0.5, 0, 0, 0, 0),
-  vaccine_efficacy_disease = c(0.5, 0.5, 0, 0, 0, 0),
+  vaccine_efficacy_infection = c(0.5, 0.5, 0.5, 0, 0, 0, 0),
+  vaccine_efficacy_disease = c(0.5, 0.5, 0.5, 0, 0, 0, 0),
   vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
   rel_infectiousness_vaccinated =  matrix(
-           c(0.5, 0.5, 1, 1, 1, 1), ncol = 17, nrow = 6,
+           c(0.5, 0.5, 0.5, 1, 1, 1, 1), ncol = 17, nrow = 7,
         ),
-  dur_V = rep(100, 3),
+  dur_V = rep(50, 4),
   dur_R = dur_R
 ) %>% 
   squire.page::nimue_format(var_select = c("infections", "deaths"))
@@ -346,12 +347,12 @@ booster_df <- squire.page:::run_booster(
   tt_booster_doses = 0,
   time_period  = t,
   vaccine_booster_follow_up_coverage = rep(0, 17),
-  vaccine_efficacy_infection = c(ve_i_f, ve_i_s, 0, 0, 0, 0),
-  vaccine_efficacy_disease = c(ve_d_f, ve_d_s, 0, 0, 0, 0),
+  vaccine_efficacy_infection = c(ve_i_f, ve_i_s, ve_i_s, 0, 0, 0, 0),
+  vaccine_efficacy_disease = c(ve_d_f, ve_d_s, ve_d_s, 0, 0, 0, 0),
   vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
   rel_infectiousness_vaccinated =  matrix(
-           c(0.5, 0.5, 1, 1, 1, 1), ncol = 17, nrow = 6),
-  dur_V = rep(100, 3),
+           c(0.5, 0.5, 0.5, 1, 1, 1, 1), ncol = 17, nrow = 7),
+  dur_V = rep(50, 4),
   dur_R = dur_R
 ) %>% 
   squire.page::nimue_format(var_select = c("infections", "deaths"))
@@ -404,12 +405,12 @@ booster_df <- squire.page:::run_booster(
   tt_booster_doses = 0,
   time_period  = t,
   vaccine_booster_follow_up_coverage = rep(0, 17),
-  vaccine_efficacy_infection = c(ve_i_f, ve_i_s, 0, ve_i_b, ve_i_b_2, 0),
-  vaccine_efficacy_disease = c(ve_d_f, ve_d_s, 0, ve_d_b, ve_d_b_2, 0),
+  vaccine_efficacy_infection = c(ve_i_f, ve_i_s, ve_i_s, 0, ve_i_b, ve_i_b_2, 0),
+  vaccine_efficacy_disease = c(ve_d_f, ve_d_s, ve_d_s, 0, ve_d_b, ve_d_b_2, 0),
   vaccine_coverage_mat = matrix(0.8, ncol = 17, nrow = 1),
   rel_infectiousness_vaccinated =  matrix(
-           c(0.5, 0.5, 1, 0.5, 0.5, 1), ncol = 17, nrow = 6),
-  dur_V = rep(100, 3),
+           c(0.5, 0.5, 0.5, 1, 0.5, 0.5, 1), ncol = 17, nrow = 7),
+  dur_V = c(rep(50, 2), rep(100, 2)),
   dur_R = dur_R
 ) %>% 
   squire.page::nimue_format(var_select = c("infections", "deaths"))
