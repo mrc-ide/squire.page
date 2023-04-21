@@ -614,6 +614,11 @@ deriv(hospitalisations_cumu[, ]) <- number_requiring_IMV[i, j] * p_ventilation +
 dim(hospitalisations_cumu) <- c(17, 8)
 initial(hospitalisations_cumu[, ]) <- 0
 
+# Hospitalisation demand
+deriv(hospitalisation_demand_cumu[, ]) <- number_requiring_IMV[i, j] + number_requiring_Ox[i, j]
+dim(hospitalisation_demand_cumu) <- c(17, 8)
+initial(hospitalisation_demand_cumu[, ]) <- 0
+
 # Deaths
 output(deaths_cumu[, ]) <- D[i, j]
 dim(deaths_cumu) <- c(17, 8)
