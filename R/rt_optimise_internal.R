@@ -102,7 +102,12 @@ generate_model_function <- function(squire_model, parameters, use_difference, dt
         tryCatch(
           odin_model$run(ts, atol = atol*0.1, rtol = rtol*0.1),
           error = function(e){
-            odin_model$run(ts, atol = atol*0.01, rtol = rtol*0.01)
+            tryCatch(
+              odin_model$run(ts, atol = atol*0.01, rtol = rtol*0.01),
+              error = function(e){
+                odin_model$run(ts, atol = atol*0.001, rtol = rtol*0.001)
+              }
+            )
           }
         )
       }
