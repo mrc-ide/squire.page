@@ -43,7 +43,8 @@ nimue_booster_diff_ <- R6::R6Class(
              "tt_matrix", "tt_primary_doses", "tt_prob_hosp_multiplier",
              "tt_prob_severe_multiplier", "tt_vaccine_efficacy_disease",
              "tt_vaccine_efficacy_infection",
-             "vaccine_booster_follow_up_coverage", "vaccine_coverage_mat",
+             "vaccine_booster_follow_up_coverage",
+             "vaccine_booster_initial_coverage", "vaccine_coverage_mat",
              "vaccine_efficacy_infection"),
 
     ## This is never called, but is used to ensure that R finds our
@@ -483,7 +484,8 @@ nimue_booster_ <- R6::R6Class(
              "tt_matrix", "tt_primary_doses", "tt_prob_hosp_multiplier",
              "tt_prob_severe_multiplier", "tt_vaccine_efficacy_disease",
              "tt_vaccine_efficacy_infection",
-             "vaccine_booster_follow_up_coverage", "vaccine_coverage_mat",
+             "vaccine_booster_follow_up_coverage",
+             "vaccine_booster_initial_coverage", "vaccine_coverage_mat",
              "vaccine_efficacy_infection"),
 
     ## This is never called, but is used to ensure that R finds our
