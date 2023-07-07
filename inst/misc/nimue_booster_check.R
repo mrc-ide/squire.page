@@ -21,8 +21,8 @@ deriv(S[, 1]) <- (gamma_R_t * R2[i, j]) - (lambda[i] * vaccine_efficacy_infectio
 deriv(S[, 2:8]) <- (gamma_R_t * R2[i, j]) - (lambda[i] * vaccine_efficacy_infection_t[i, j] * S[i, j]) - gamma_vaccine_t[j] * S[i, j] + vaccinations_S[i,j] + gamma_vaccine_t[j - 1] * S[i, j - 1]
 
 vaccinations_S[, 1] <-  - primary_first[i] * S[i, j]
-vaccinations_S[, 2] <-  primary_first[i] * S[i, j - 1] - primary_second * S[i, j]
-vaccinations_S[, 3] <-  primary_second * S[i, j - 1] - booster_first[i] * S[i, j]
+vaccinations_S[, 2] <-  primary_first[i] * S[i, j - 1] - primary_second[i] * S[i, j]
+vaccinations_S[, 3] <-  primary_second[i] * S[i, j - 1] - booster_first[i] * S[i, j]
 vaccinations_S[, 4] <-  - booster_first[i] * S[i, j]
 vaccinations_S[, 5] <-  - booster_first[i] * S[i, j]
 vaccinations_S[, 6] <-  booster_first[i] * sum(S[i, 3:5]) + booster_second[i] * sum(S[i, (j + 1):8])
@@ -53,8 +53,8 @@ deriv(E1[, 1]) <- (lambda[i] * vaccine_efficacy_infection_t[i, j] * S[i, j]) - (
 deriv(E1[, 2:8]) <- (lambda[i] * vaccine_efficacy_infection_t[i, j] * S[i, j]) - (gamma_E_t * E1[i, j]) - gamma_vaccine_t[j] * E1[i, j] + vaccinations_E1[i,j] + gamma_vaccine_t[j - 1] * E1[i, j - 1]
 
 vaccinations_E1[, 1] <-  - primary_first[i] * E1[i, j]
-vaccinations_E1[, 2] <-  primary_first[i] * E1[i, j - 1] - primary_second * E1[i, j]
-vaccinations_E1[, 3] <-  primary_second * E1[i, j - 1] - booster_first[i] * E1[i, j]
+vaccinations_E1[, 2] <-  primary_first[i] * E1[i, j - 1] - primary_second[i] * E1[i, j]
+vaccinations_E1[, 3] <-  primary_second[i] * E1[i, j - 1] - booster_first[i] * E1[i, j]
 vaccinations_E1[, 4] <-  - booster_first[i] * E1[i, j]
 vaccinations_E1[, 5] <-  - booster_first[i] * E1[i, j]
 vaccinations_E1[, 6] <-  booster_first[i] * sum(E1[i, 3:5]) + booster_second[i] * sum(E1[i, (j + 1):8])
@@ -65,8 +65,8 @@ deriv(E2[, 1]) <- (gamma_E_t * E1[i, j]) - (gamma_E_t * E2[i, j]) - gamma_vaccin
 deriv(E2[, 2:8]) <- (gamma_E_t * E1[i, j]) - (gamma_E_t * E2[i, j]) - gamma_vaccine_t[j] * E2[i, j] + vaccinations_E2[i,j] + gamma_vaccine_t[j - 1] * E2[i, j - 1]
 
 vaccinations_E2[, 1] <-  - primary_first[i] * E2[i, j]
-vaccinations_E2[, 2] <-  primary_first[i] * E2[i, j - 1] - primary_second * E2[i, j]
-vaccinations_E2[, 3] <-  primary_second * E2[i, j - 1] - booster_first[i] * E2[i, j]
+vaccinations_E2[, 2] <-  primary_first[i] * E2[i, j - 1] - primary_second[i] * E2[i, j]
+vaccinations_E2[, 3] <-  primary_second[i] * E2[i, j - 1] - booster_first[i] * E2[i, j]
 vaccinations_E2[, 4] <-  - booster_first[i] * E2[i, j]
 vaccinations_E2[, 5] <-  - booster_first[i] * E2[i, j]
 vaccinations_E2[, 6] <-  booster_first[i] * sum(E2[i, 3:5]) + booster_second[i] * sum(E2[i, (j + 1):8])
@@ -120,8 +120,8 @@ deriv(R1[, 1]) <- (gamma_rec * IRec2[i, j]) + (gamma_IMild_t * IMild[i, j]) + (g
 deriv(R1[, 2:8]) <- (gamma_rec * IRec2[i, j]) + (gamma_IMild_t * IMild[i, j]) + (gamma_get_ox_survive_t * IOxGetLive2[i, j]) + (gamma_not_get_ox_survive * IOxNotGetLive2[i, j]) + (gamma_not_get_mv_survive * IMVNotGetLive2[i, j]) - (gamma_R_t * R1[i, j]) - gamma_vaccine_t[j] * R1[i, j] + vaccinations_R1[i,j] + gamma_vaccine_t[j - 1] * R1[i, j - 1]
 
 vaccinations_R1[, 1] <-  - primary_first[i] * R1[i, j]
-vaccinations_R1[, 2] <-  primary_first[i] * R1[i, j - 1] - primary_second * R1[i, j]
-vaccinations_R1[, 3] <-  primary_second * R1[i, j - 1] - booster_first[i] * R1[i, j]
+vaccinations_R1[, 2] <-  primary_first[i] * R1[i, j - 1] - primary_second[i] * R1[i, j]
+vaccinations_R1[, 3] <-  primary_second[i] * R1[i, j - 1] - booster_first[i] * R1[i, j]
 vaccinations_R1[, 4] <-  - booster_first[i] * R1[i, j]
 vaccinations_R1[, 5] <-  - booster_first[i] * R1[i, j]
 vaccinations_R1[, 6] <-  booster_first[i] * sum(R1[i, 3:5]) + booster_second[i] * sum(R1[i, (j + 1):8])
@@ -132,8 +132,8 @@ deriv(R2[, 1]) <- (gamma_R_t * R1[i, j]) - (gamma_R_t * R2[i, j]) - gamma_vaccin
 deriv(R2[, 2:8]) <- (gamma_R_t * R1[i, j]) - (gamma_R_t * R2[i, j]) - gamma_vaccine_t[j] * R2[i, j] + vaccinations_R2[i,j] + gamma_vaccine_t[j - 1] * R2[i, j - 1]
 
 vaccinations_R2[, 1] <-  - primary_first[i] * R2[i, j]
-vaccinations_R2[, 2] <-  primary_first[i] * R2[i, j - 1] - primary_second * R2[i, j]
-vaccinations_R2[, 3] <-  primary_second * R2[i, j - 1] - booster_first[i] * R2[i, j]
+vaccinations_R2[, 2] <-  primary_first[i] * R2[i, j - 1] - primary_second[i] * R2[i, j]
+vaccinations_R2[, 3] <-  primary_second[i] * R2[i, j - 1] - booster_first[i] * R2[i, j]
 vaccinations_R2[, 4] <-  - booster_first[i] * R2[i, j]
 vaccinations_R2[, 5] <-  - booster_first[i] * R2[i, j]
 vaccinations_R2[, 6] <-  booster_first[i] * sum(R2[i, 3:5]) + booster_second[i] * sum(R2[i, (j + 1):8])
@@ -442,6 +442,7 @@ dim(gamma_vaccine_t) <- 8
 # dim(tt_booster_doses) <- user()
 # dim(booster_doses) <- length(tt_booster_doses)
 
+
 ### Altered so that we can have BPSV and Spec have different second dose delays (even though they're both put in the model as the same vaccine series for diff age groups)
 runtime <- user()
 
@@ -452,7 +453,7 @@ second_doses[] <- user()      # Calculate outside (including the second_dose_del
 dim(second_doses) <- runtime
 
 booster_doses[] <- user()       # Calculate outside (including the time-variable delay to protection)
-dim(booster_doses) <- runtime
+dim(booster_doses) <- user()
 
 ######
 
@@ -486,19 +487,22 @@ dim(target_met_column) <- c(N_prioritisation_steps)
 prioritisation_step <- if (sum(target_met_column) < N_prioritisation_steps) sum(target_met_column) + 1 else N_prioritisation_steps
 
 # Calculate number of people available to vaccinate for first/second/boosters
-## dose_pops[i, 1] is everyone alive; dose_pops[i, 2] is everyone vaxxed once. Difference is everyone unvaccinated (i.e number to receive first dose)
 target_pop_first[] <- max(((vaccine_coverage_mat[as.integer(prioritisation_step), i] * dose_pops[i, 1]) - dose_pops[i, 2]), 0)
 dim(target_pop_first) <- 17
 # number of doses
 primary_first[] <- min(primary_doses[as.integer(t)] * target_pop_first[i] / max(sum(target_pop_first) * (vaccination_cov[i,1]), 1), 1)
-# primary_doses[as.integer(t)] is the number of doses to be given out
-# target_pop_first[i] is the size of the number of folks who could be vaxxed in the ith age group
-# sum(target_pop_first) is the total number of folks who could be vaxxed
-# (vaccination_cov[i,1]) is the number of unvaccinated folks, and you divide by it on the bottom to convert the total going doses to that age-group into a proportion of that age-group that get vaccinated
 dim(primary_first) <- 17
 
+output(primary_first[]) <- TRUE
+output(booster_first[]) <- TRUE
+
 ## Original
-primary_second <- min(second_doses[as.integer(t)] / max(sum(vaccination_cov[, 2]), 1), 1)
+primary_second[] <- min(second_doses[as.integer(t)] / max(sum(vaccination_cov[i, 2]), 1), 1)
+dim(primary_second) <- 17
+
+## Consider changing to make age specific??
+# primary_second[] <- min(second_doses[as.integer(t)] / max(sum(vaccination_cov[, 2]), 1), 1)
+# dim(primary_second) <- 17
 
 #first boosters:
 #ISSUE: I'd like to stack them up but Odins dependency check sucks, maybe mention to Rich
@@ -509,10 +513,9 @@ dim(eligible_for_first_booster) <- 17
 booster_first[] <- min(booster_doses[as.integer(t)] / max(sum(eligible_for_first_booster[]), 1), 1) * vaccine_booster_initial_coverage[i]
 dim(booster_first) <- 17
 
-## sacking off follow up boosters
-a_initial_boosted[] <- 0 # booster_first[i] * eligible_for_first_booster[i]
+a_initial_boosted[] <- booster_first[i] * eligible_for_first_booster[i]
 dim(a_initial_boosted) <- 17
-remaining_boosters <- 1 # booster_doses[as.integer(t)] - sum(a_initial_boosted)
+remaining_boosters <- booster_doses[as.integer(t)] - sum(a_initial_boosted)
 eligible_for_follow_up_booster[] <- dose_pops[i, 7] * vaccine_booster_follow_up_coverage[i]
 dim(eligible_for_follow_up_booster) <- 17
 booster_second[] <- min(remaining_boosters / max(sum(eligible_for_follow_up_booster[]), 1), 1) * vaccine_booster_follow_up_coverage[i]
@@ -685,7 +688,7 @@ initial(infections_cumu[, ]) <- 0
 output(first_doses_given[]) <- primary_first[i] * (S[i, 1] + E1[i, 1] + E2[i, 1] + R1[i, 1] + R2[i, 1])
 dim(first_doses_given) <- 17
 
-output(second_doses_given[]) <- primary_second * (S[i, 2] + E1[i, 2] + E2[i, 2] + R1[i, 2] + R2[i, 2])
+output(second_doses_given[]) <- primary_second[i] * (S[i, 2] + E1[i, 2] + E2[i, 2] + R1[i, 2] + R2[i, 2])
 dim(second_doses_given) <- 17
 
 output(booster_doses_given[]) <- booster_first[i] * (sum(S[i, 3:5]) + sum(E1[i, 3:5]) +

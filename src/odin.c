@@ -564,6 +564,7 @@ typedef struct nimue_booster_internal {
   double *R2_0;
   double *rel_infectiousness;
   double *rel_infectiousness_vaccinated;
+  double remaining_boosters;
   int runtime;
   double *S_0;
   double *s_ij;
@@ -1031,6 +1032,7 @@ typedef struct nimue_booster_check_internal {
   double *number_requiring_IMV;
   double *number_requiring_Ox;
   int offset_output_booster_doses_given;
+  int offset_output_booster_first;
   int offset_output_deaths_cumu;
   int offset_output_first_doses_given;
   int offset_output_hospital_demand;
@@ -1043,6 +1045,7 @@ typedef struct nimue_booster_check_internal {
   int offset_output_IMildout;
   int offset_output_IRec;
   int offset_output_N;
+  int offset_output_primary_first;
   int offset_output_R;
   int offset_output_second_doses_given;
   int offset_output_unvaccinated;
@@ -3887,6 +3890,7 @@ SEXP nimue_booster_create(SEXP user) {
   internal->dim_vaccine_booster_initial_coverage = 17;
   internal->dim_vaccine_efficacy_infection_t_1 = 17;
   internal->dim_vaccine_efficacy_infection_t_2 = 8;
+  internal->remaining_boosters = 1;
   R_Free(internal->a_initial_boosted);
   internal->a_initial_boosted = (double*) R_Calloc(internal->dim_a_initial_boosted, double);
   R_Free(internal->booster_first);
@@ -4005,6 +4009,9 @@ SEXP nimue_booster_create(SEXP user) {
   internal->offset_output_vaccinated_first_dose = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + 1;
   internal->offset_output_vaccinated_second_dose = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_first_dose + 1;
   internal->offset_output_vaccinated_second_waned = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + 1;
+  for (int i = 1; i <= internal->dim_a_initial_boosted; ++i) {
+    internal->a_initial_boosted[i - 1] = 0;
+  }
   R_Free(internal->dose_pops);
   internal->dose_pops = (double*) R_Calloc(internal->dim_dose_pops, double);
   R_Free(internal->initial_D);
@@ -4237,7 +4244,7 @@ void nimue_booster_initmod_desolve(void(* odeparms) (int *, double *)) {
 }
 SEXP nimue_booster_contents(SEXP internal_p) {
   nimue_booster_internal *internal = nimue_booster_get_internal(internal_p, 1);
-  SEXP contents = PROTECT(allocVector(VECSXP, 529));
+  SEXP contents = PROTECT(allocVector(VECSXP, 530));
   SEXP a_initial_boosted = PROTECT(allocVector(REALSXP, internal->dim_a_initial_boosted));
   memcpy(REAL(a_initial_boosted), internal->a_initial_boosted, internal->dim_a_initial_boosted * sizeof(double));
   SET_VECTOR_ELT(contents, 0, a_initial_boosted);
@@ -4970,133 +4977,134 @@ SEXP nimue_booster_contents(SEXP internal_p) {
   memcpy(REAL(rel_infectiousness_vaccinated), internal->rel_infectiousness_vaccinated, internal->dim_rel_infectiousness_vaccinated * sizeof(double));
   odin_set_dim(rel_infectiousness_vaccinated, 2, internal->dim_rel_infectiousness_vaccinated_1, internal->dim_rel_infectiousness_vaccinated_2);
   SET_VECTOR_ELT(contents, 490, rel_infectiousness_vaccinated);
-  SET_VECTOR_ELT(contents, 491, ScalarInteger(internal->runtime));
+  SET_VECTOR_ELT(contents, 491, ScalarReal(internal->remaining_boosters));
+  SET_VECTOR_ELT(contents, 492, ScalarInteger(internal->runtime));
   SEXP S_0 = PROTECT(allocVector(REALSXP, internal->dim_S_0));
   memcpy(REAL(S_0), internal->S_0, internal->dim_S_0 * sizeof(double));
   odin_set_dim(S_0, 2, internal->dim_S_0_1, internal->dim_S_0_2);
-  SET_VECTOR_ELT(contents, 492, S_0);
+  SET_VECTOR_ELT(contents, 493, S_0);
   SEXP s_ij = PROTECT(allocVector(REALSXP, internal->dim_s_ij));
   memcpy(REAL(s_ij), internal->s_ij, internal->dim_s_ij * sizeof(double));
   odin_set_dim(s_ij, 2, internal->dim_s_ij_1, internal->dim_s_ij_2);
-  SET_VECTOR_ELT(contents, 493, s_ij);
+  SET_VECTOR_ELT(contents, 494, s_ij);
   SEXP second_doses = PROTECT(allocVector(REALSXP, internal->dim_second_doses));
   memcpy(REAL(second_doses), internal->second_doses, internal->dim_second_doses * sizeof(double));
-  SET_VECTOR_ELT(contents, 494, second_doses);
+  SET_VECTOR_ELT(contents, 495, second_doses);
   SEXP target_met_column = PROTECT(allocVector(REALSXP, internal->dim_target_met_column));
   memcpy(REAL(target_met_column), internal->target_met_column, internal->dim_target_met_column * sizeof(double));
-  SET_VECTOR_ELT(contents, 495, target_met_column);
+  SET_VECTOR_ELT(contents, 496, target_met_column);
   SEXP target_met_matrix = PROTECT(allocVector(REALSXP, internal->dim_target_met_matrix));
   memcpy(REAL(target_met_matrix), internal->target_met_matrix, internal->dim_target_met_matrix * sizeof(double));
   odin_set_dim(target_met_matrix, 2, internal->dim_target_met_matrix_1, internal->dim_target_met_matrix_2);
-  SET_VECTOR_ELT(contents, 496, target_met_matrix);
+  SET_VECTOR_ELT(contents, 497, target_met_matrix);
   SEXP target_pop_first = PROTECT(allocVector(REALSXP, internal->dim_target_pop_first));
   memcpy(REAL(target_pop_first), internal->target_pop_first, internal->dim_target_pop_first * sizeof(double));
-  SET_VECTOR_ELT(contents, 497, target_pop_first);
+  SET_VECTOR_ELT(contents, 498, target_pop_first);
   SEXP temp = PROTECT(allocVector(REALSXP, internal->dim_temp));
   memcpy(REAL(temp), internal->temp, internal->dim_temp * sizeof(double));
-  SET_VECTOR_ELT(contents, 498, temp);
+  SET_VECTOR_ELT(contents, 499, temp);
   SEXP temp_rel = PROTECT(allocVector(REALSXP, internal->dim_temp_rel));
   memcpy(REAL(temp_rel), internal->temp_rel, internal->dim_temp_rel * sizeof(double));
   odin_set_dim(temp_rel, 2, internal->dim_temp_rel_1, internal->dim_temp_rel_2);
-  SET_VECTOR_ELT(contents, 499, temp_rel);
+  SET_VECTOR_ELT(contents, 500, temp_rel);
   SEXP tt_beta = PROTECT(allocVector(REALSXP, internal->dim_tt_beta));
   memcpy(REAL(tt_beta), internal->tt_beta, internal->dim_tt_beta * sizeof(double));
-  SET_VECTOR_ELT(contents, 500, tt_beta);
+  SET_VECTOR_ELT(contents, 501, tt_beta);
   SEXP tt_dur_E = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_E));
   memcpy(REAL(tt_dur_E), internal->tt_dur_E, internal->dim_tt_dur_E * sizeof(double));
-  SET_VECTOR_ELT(contents, 501, tt_dur_E);
+  SET_VECTOR_ELT(contents, 502, tt_dur_E);
   SEXP tt_dur_get_mv_die = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_get_mv_die));
   memcpy(REAL(tt_dur_get_mv_die), internal->tt_dur_get_mv_die, internal->dim_tt_dur_get_mv_die * sizeof(double));
-  SET_VECTOR_ELT(contents, 502, tt_dur_get_mv_die);
+  SET_VECTOR_ELT(contents, 503, tt_dur_get_mv_die);
   SEXP tt_dur_get_mv_survive = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_get_mv_survive));
   memcpy(REAL(tt_dur_get_mv_survive), internal->tt_dur_get_mv_survive, internal->dim_tt_dur_get_mv_survive * sizeof(double));
-  SET_VECTOR_ELT(contents, 503, tt_dur_get_mv_survive);
+  SET_VECTOR_ELT(contents, 504, tt_dur_get_mv_survive);
   SEXP tt_dur_get_ox_die = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_get_ox_die));
   memcpy(REAL(tt_dur_get_ox_die), internal->tt_dur_get_ox_die, internal->dim_tt_dur_get_ox_die * sizeof(double));
-  SET_VECTOR_ELT(contents, 504, tt_dur_get_ox_die);
+  SET_VECTOR_ELT(contents, 505, tt_dur_get_ox_die);
   SEXP tt_dur_get_ox_survive = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_get_ox_survive));
   memcpy(REAL(tt_dur_get_ox_survive), internal->tt_dur_get_ox_survive, internal->dim_tt_dur_get_ox_survive * sizeof(double));
-  SET_VECTOR_ELT(contents, 505, tt_dur_get_ox_survive);
+  SET_VECTOR_ELT(contents, 506, tt_dur_get_ox_survive);
   SEXP tt_dur_ICase = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_ICase));
   memcpy(REAL(tt_dur_ICase), internal->tt_dur_ICase, internal->dim_tt_dur_ICase * sizeof(double));
-  SET_VECTOR_ELT(contents, 506, tt_dur_ICase);
+  SET_VECTOR_ELT(contents, 507, tt_dur_ICase);
   SEXP tt_dur_IMild = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_IMild));
   memcpy(REAL(tt_dur_IMild), internal->tt_dur_IMild, internal->dim_tt_dur_IMild * sizeof(double));
-  SET_VECTOR_ELT(contents, 507, tt_dur_IMild);
+  SET_VECTOR_ELT(contents, 508, tt_dur_IMild);
   SEXP tt_dur_R = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_R));
   memcpy(REAL(tt_dur_R), internal->tt_dur_R, internal->dim_tt_dur_R * sizeof(double));
-  SET_VECTOR_ELT(contents, 508, tt_dur_R);
+  SET_VECTOR_ELT(contents, 509, tt_dur_R);
   SEXP tt_dur_vaccine = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_vaccine));
   memcpy(REAL(tt_dur_vaccine), internal->tt_dur_vaccine, internal->dim_tt_dur_vaccine * sizeof(double));
-  SET_VECTOR_ELT(contents, 509, tt_dur_vaccine);
+  SET_VECTOR_ELT(contents, 510, tt_dur_vaccine);
   SEXP tt_hosp_beds = PROTECT(allocVector(REALSXP, internal->dim_tt_hosp_beds));
   memcpy(REAL(tt_hosp_beds), internal->tt_hosp_beds, internal->dim_tt_hosp_beds * sizeof(double));
-  SET_VECTOR_ELT(contents, 510, tt_hosp_beds);
+  SET_VECTOR_ELT(contents, 511, tt_hosp_beds);
   SEXP tt_ICU_beds = PROTECT(allocVector(REALSXP, internal->dim_tt_ICU_beds));
   memcpy(REAL(tt_ICU_beds), internal->tt_ICU_beds, internal->dim_tt_ICU_beds * sizeof(double));
-  SET_VECTOR_ELT(contents, 511, tt_ICU_beds);
+  SET_VECTOR_ELT(contents, 512, tt_ICU_beds);
   SEXP tt_matrix = PROTECT(allocVector(REALSXP, internal->dim_tt_matrix));
   memcpy(REAL(tt_matrix), internal->tt_matrix, internal->dim_tt_matrix * sizeof(double));
-  SET_VECTOR_ELT(contents, 512, tt_matrix);
+  SET_VECTOR_ELT(contents, 513, tt_matrix);
   SEXP tt_prob_hosp_multiplier = PROTECT(allocVector(REALSXP, internal->dim_tt_prob_hosp_multiplier));
   memcpy(REAL(tt_prob_hosp_multiplier), internal->tt_prob_hosp_multiplier, internal->dim_tt_prob_hosp_multiplier * sizeof(double));
-  SET_VECTOR_ELT(contents, 513, tt_prob_hosp_multiplier);
+  SET_VECTOR_ELT(contents, 514, tt_prob_hosp_multiplier);
   SEXP tt_prob_severe_multiplier = PROTECT(allocVector(REALSXP, internal->dim_tt_prob_severe_multiplier));
   memcpy(REAL(tt_prob_severe_multiplier), internal->tt_prob_severe_multiplier, internal->dim_tt_prob_severe_multiplier * sizeof(double));
-  SET_VECTOR_ELT(contents, 514, tt_prob_severe_multiplier);
+  SET_VECTOR_ELT(contents, 515, tt_prob_severe_multiplier);
   SEXP tt_vaccine_efficacy_disease = PROTECT(allocVector(REALSXP, internal->dim_tt_vaccine_efficacy_disease));
   memcpy(REAL(tt_vaccine_efficacy_disease), internal->tt_vaccine_efficacy_disease, internal->dim_tt_vaccine_efficacy_disease * sizeof(double));
-  SET_VECTOR_ELT(contents, 515, tt_vaccine_efficacy_disease);
+  SET_VECTOR_ELT(contents, 516, tt_vaccine_efficacy_disease);
   SEXP tt_vaccine_efficacy_infection = PROTECT(allocVector(REALSXP, internal->dim_tt_vaccine_efficacy_infection));
   memcpy(REAL(tt_vaccine_efficacy_infection), internal->tt_vaccine_efficacy_infection, internal->dim_tt_vaccine_efficacy_infection * sizeof(double));
-  SET_VECTOR_ELT(contents, 516, tt_vaccine_efficacy_infection);
+  SET_VECTOR_ELT(contents, 517, tt_vaccine_efficacy_infection);
   SEXP vaccination_cov = PROTECT(allocVector(REALSXP, internal->dim_vaccination_cov));
   memcpy(REAL(vaccination_cov), internal->vaccination_cov, internal->dim_vaccination_cov * sizeof(double));
   odin_set_dim(vaccination_cov, 2, internal->dim_vaccination_cov_1, internal->dim_vaccination_cov_2);
-  SET_VECTOR_ELT(contents, 517, vaccination_cov);
+  SET_VECTOR_ELT(contents, 518, vaccination_cov);
   SEXP vaccination_cov_eligible = PROTECT(allocVector(REALSXP, internal->dim_vaccination_cov_eligible));
   memcpy(REAL(vaccination_cov_eligible), internal->vaccination_cov_eligible, internal->dim_vaccination_cov_eligible * sizeof(double));
   odin_set_dim(vaccination_cov_eligible, 2, internal->dim_vaccination_cov_eligible_1, internal->dim_vaccination_cov_eligible_2);
-  SET_VECTOR_ELT(contents, 518, vaccination_cov_eligible);
+  SET_VECTOR_ELT(contents, 519, vaccination_cov_eligible);
   SEXP vaccinations_E1 = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_E1));
   memcpy(REAL(vaccinations_E1), internal->vaccinations_E1, internal->dim_vaccinations_E1 * sizeof(double));
   odin_set_dim(vaccinations_E1, 2, internal->dim_vaccinations_E1_1, internal->dim_vaccinations_E1_2);
-  SET_VECTOR_ELT(contents, 519, vaccinations_E1);
+  SET_VECTOR_ELT(contents, 520, vaccinations_E1);
   SEXP vaccinations_E2 = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_E2));
   memcpy(REAL(vaccinations_E2), internal->vaccinations_E2, internal->dim_vaccinations_E2 * sizeof(double));
   odin_set_dim(vaccinations_E2, 2, internal->dim_vaccinations_E2_1, internal->dim_vaccinations_E2_2);
-  SET_VECTOR_ELT(contents, 520, vaccinations_E2);
+  SET_VECTOR_ELT(contents, 521, vaccinations_E2);
   SEXP vaccinations_R1 = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_R1));
   memcpy(REAL(vaccinations_R1), internal->vaccinations_R1, internal->dim_vaccinations_R1 * sizeof(double));
   odin_set_dim(vaccinations_R1, 2, internal->dim_vaccinations_R1_1, internal->dim_vaccinations_R1_2);
-  SET_VECTOR_ELT(contents, 521, vaccinations_R1);
+  SET_VECTOR_ELT(contents, 522, vaccinations_R1);
   SEXP vaccinations_R2 = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_R2));
   memcpy(REAL(vaccinations_R2), internal->vaccinations_R2, internal->dim_vaccinations_R2 * sizeof(double));
   odin_set_dim(vaccinations_R2, 2, internal->dim_vaccinations_R2_1, internal->dim_vaccinations_R2_2);
-  SET_VECTOR_ELT(contents, 522, vaccinations_R2);
+  SET_VECTOR_ELT(contents, 523, vaccinations_R2);
   SEXP vaccinations_S = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_S));
   memcpy(REAL(vaccinations_S), internal->vaccinations_S, internal->dim_vaccinations_S * sizeof(double));
   odin_set_dim(vaccinations_S, 2, internal->dim_vaccinations_S_1, internal->dim_vaccinations_S_2);
-  SET_VECTOR_ELT(contents, 523, vaccinations_S);
+  SET_VECTOR_ELT(contents, 524, vaccinations_S);
   SEXP vaccine_booster_follow_up_coverage = PROTECT(allocVector(REALSXP, internal->dim_vaccine_booster_follow_up_coverage));
   memcpy(REAL(vaccine_booster_follow_up_coverage), internal->vaccine_booster_follow_up_coverage, internal->dim_vaccine_booster_follow_up_coverage * sizeof(double));
-  SET_VECTOR_ELT(contents, 524, vaccine_booster_follow_up_coverage);
+  SET_VECTOR_ELT(contents, 525, vaccine_booster_follow_up_coverage);
   SEXP vaccine_booster_initial_coverage = PROTECT(allocVector(REALSXP, internal->dim_vaccine_booster_initial_coverage));
   memcpy(REAL(vaccine_booster_initial_coverage), internal->vaccine_booster_initial_coverage, internal->dim_vaccine_booster_initial_coverage * sizeof(double));
-  SET_VECTOR_ELT(contents, 525, vaccine_booster_initial_coverage);
+  SET_VECTOR_ELT(contents, 526, vaccine_booster_initial_coverage);
   SEXP vaccine_coverage_mat = PROTECT(allocVector(REALSXP, internal->dim_vaccine_coverage_mat));
   memcpy(REAL(vaccine_coverage_mat), internal->vaccine_coverage_mat, internal->dim_vaccine_coverage_mat * sizeof(double));
   odin_set_dim(vaccine_coverage_mat, 2, internal->dim_vaccine_coverage_mat_1, internal->dim_vaccine_coverage_mat_2);
-  SET_VECTOR_ELT(contents, 526, vaccine_coverage_mat);
+  SET_VECTOR_ELT(contents, 527, vaccine_coverage_mat);
   SEXP vaccine_efficacy_infection = PROTECT(allocVector(REALSXP, internal->dim_vaccine_efficacy_infection));
   memcpy(REAL(vaccine_efficacy_infection), internal->vaccine_efficacy_infection, internal->dim_vaccine_efficacy_infection * sizeof(double));
   odin_set_dim(vaccine_efficacy_infection, 3, internal->dim_vaccine_efficacy_infection_1, internal->dim_vaccine_efficacy_infection_2, internal->dim_vaccine_efficacy_infection_3);
-  SET_VECTOR_ELT(contents, 527, vaccine_efficacy_infection);
+  SET_VECTOR_ELT(contents, 528, vaccine_efficacy_infection);
   SEXP vaccine_efficacy_infection_t = PROTECT(allocVector(REALSXP, internal->dim_vaccine_efficacy_infection_t));
   memcpy(REAL(vaccine_efficacy_infection_t), internal->vaccine_efficacy_infection_t, internal->dim_vaccine_efficacy_infection_t * sizeof(double));
   odin_set_dim(vaccine_efficacy_infection_t, 2, internal->dim_vaccine_efficacy_infection_t_1, internal->dim_vaccine_efficacy_infection_t_2);
-  SET_VECTOR_ELT(contents, 528, vaccine_efficacy_infection_t);
-  SEXP nms = PROTECT(allocVector(STRSXP, 529));
+  SET_VECTOR_ELT(contents, 529, vaccine_efficacy_infection_t);
+  SEXP nms = PROTECT(allocVector(STRSXP, 530));
   SET_STRING_ELT(nms, 0, mkChar("a_initial_boosted"));
   SET_STRING_ELT(nms, 1, mkChar("beta_set"));
   SET_STRING_ELT(nms, 2, mkChar("booster_doses"));
@@ -5588,51 +5596,51 @@ SEXP nimue_booster_contents(SEXP internal_p) {
   SET_STRING_ELT(nms, 488, mkChar("R2_0"));
   SET_STRING_ELT(nms, 489, mkChar("rel_infectiousness"));
   SET_STRING_ELT(nms, 490, mkChar("rel_infectiousness_vaccinated"));
-  SET_STRING_ELT(nms, 491, mkChar("runtime"));
-  SET_STRING_ELT(nms, 492, mkChar("S_0"));
-  SET_STRING_ELT(nms, 493, mkChar("s_ij"));
-  SET_STRING_ELT(nms, 494, mkChar("second_doses"));
-  SET_STRING_ELT(nms, 495, mkChar("target_met_column"));
-  SET_STRING_ELT(nms, 496, mkChar("target_met_matrix"));
-  SET_STRING_ELT(nms, 497, mkChar("target_pop_first"));
-  SET_STRING_ELT(nms, 498, mkChar("temp"));
-  SET_STRING_ELT(nms, 499, mkChar("temp_rel"));
-  SET_STRING_ELT(nms, 500, mkChar("tt_beta"));
-  SET_STRING_ELT(nms, 501, mkChar("tt_dur_E"));
-  SET_STRING_ELT(nms, 502, mkChar("tt_dur_get_mv_die"));
-  SET_STRING_ELT(nms, 503, mkChar("tt_dur_get_mv_survive"));
-  SET_STRING_ELT(nms, 504, mkChar("tt_dur_get_ox_die"));
-  SET_STRING_ELT(nms, 505, mkChar("tt_dur_get_ox_survive"));
-  SET_STRING_ELT(nms, 506, mkChar("tt_dur_ICase"));
-  SET_STRING_ELT(nms, 507, mkChar("tt_dur_IMild"));
-  SET_STRING_ELT(nms, 508, mkChar("tt_dur_R"));
-  SET_STRING_ELT(nms, 509, mkChar("tt_dur_vaccine"));
-  SET_STRING_ELT(nms, 510, mkChar("tt_hosp_beds"));
-  SET_STRING_ELT(nms, 511, mkChar("tt_ICU_beds"));
-  SET_STRING_ELT(nms, 512, mkChar("tt_matrix"));
-  SET_STRING_ELT(nms, 513, mkChar("tt_prob_hosp_multiplier"));
-  SET_STRING_ELT(nms, 514, mkChar("tt_prob_severe_multiplier"));
-  SET_STRING_ELT(nms, 515, mkChar("tt_vaccine_efficacy_disease"));
-  SET_STRING_ELT(nms, 516, mkChar("tt_vaccine_efficacy_infection"));
-  SET_STRING_ELT(nms, 517, mkChar("vaccination_cov"));
-  SET_STRING_ELT(nms, 518, mkChar("vaccination_cov_eligible"));
-  SET_STRING_ELT(nms, 519, mkChar("vaccinations_E1"));
-  SET_STRING_ELT(nms, 520, mkChar("vaccinations_E2"));
-  SET_STRING_ELT(nms, 521, mkChar("vaccinations_R1"));
-  SET_STRING_ELT(nms, 522, mkChar("vaccinations_R2"));
-  SET_STRING_ELT(nms, 523, mkChar("vaccinations_S"));
-  SET_STRING_ELT(nms, 524, mkChar("vaccine_booster_follow_up_coverage"));
-  SET_STRING_ELT(nms, 525, mkChar("vaccine_booster_initial_coverage"));
-  SET_STRING_ELT(nms, 526, mkChar("vaccine_coverage_mat"));
-  SET_STRING_ELT(nms, 527, mkChar("vaccine_efficacy_infection"));
-  SET_STRING_ELT(nms, 528, mkChar("vaccine_efficacy_infection_t"));
+  SET_STRING_ELT(nms, 491, mkChar("remaining_boosters"));
+  SET_STRING_ELT(nms, 492, mkChar("runtime"));
+  SET_STRING_ELT(nms, 493, mkChar("S_0"));
+  SET_STRING_ELT(nms, 494, mkChar("s_ij"));
+  SET_STRING_ELT(nms, 495, mkChar("second_doses"));
+  SET_STRING_ELT(nms, 496, mkChar("target_met_column"));
+  SET_STRING_ELT(nms, 497, mkChar("target_met_matrix"));
+  SET_STRING_ELT(nms, 498, mkChar("target_pop_first"));
+  SET_STRING_ELT(nms, 499, mkChar("temp"));
+  SET_STRING_ELT(nms, 500, mkChar("temp_rel"));
+  SET_STRING_ELT(nms, 501, mkChar("tt_beta"));
+  SET_STRING_ELT(nms, 502, mkChar("tt_dur_E"));
+  SET_STRING_ELT(nms, 503, mkChar("tt_dur_get_mv_die"));
+  SET_STRING_ELT(nms, 504, mkChar("tt_dur_get_mv_survive"));
+  SET_STRING_ELT(nms, 505, mkChar("tt_dur_get_ox_die"));
+  SET_STRING_ELT(nms, 506, mkChar("tt_dur_get_ox_survive"));
+  SET_STRING_ELT(nms, 507, mkChar("tt_dur_ICase"));
+  SET_STRING_ELT(nms, 508, mkChar("tt_dur_IMild"));
+  SET_STRING_ELT(nms, 509, mkChar("tt_dur_R"));
+  SET_STRING_ELT(nms, 510, mkChar("tt_dur_vaccine"));
+  SET_STRING_ELT(nms, 511, mkChar("tt_hosp_beds"));
+  SET_STRING_ELT(nms, 512, mkChar("tt_ICU_beds"));
+  SET_STRING_ELT(nms, 513, mkChar("tt_matrix"));
+  SET_STRING_ELT(nms, 514, mkChar("tt_prob_hosp_multiplier"));
+  SET_STRING_ELT(nms, 515, mkChar("tt_prob_severe_multiplier"));
+  SET_STRING_ELT(nms, 516, mkChar("tt_vaccine_efficacy_disease"));
+  SET_STRING_ELT(nms, 517, mkChar("tt_vaccine_efficacy_infection"));
+  SET_STRING_ELT(nms, 518, mkChar("vaccination_cov"));
+  SET_STRING_ELT(nms, 519, mkChar("vaccination_cov_eligible"));
+  SET_STRING_ELT(nms, 520, mkChar("vaccinations_E1"));
+  SET_STRING_ELT(nms, 521, mkChar("vaccinations_E2"));
+  SET_STRING_ELT(nms, 522, mkChar("vaccinations_R1"));
+  SET_STRING_ELT(nms, 523, mkChar("vaccinations_R2"));
+  SET_STRING_ELT(nms, 524, mkChar("vaccinations_S"));
+  SET_STRING_ELT(nms, 525, mkChar("vaccine_booster_follow_up_coverage"));
+  SET_STRING_ELT(nms, 526, mkChar("vaccine_booster_initial_coverage"));
+  SET_STRING_ELT(nms, 527, mkChar("vaccine_coverage_mat"));
+  SET_STRING_ELT(nms, 528, mkChar("vaccine_efficacy_infection"));
+  SET_STRING_ELT(nms, 529, mkChar("vaccine_efficacy_infection_t"));
   setAttrib(contents, R_NamesSymbol, nms);
   UNPROTECT(135);
   return contents;
 }
 SEXP nimue_booster_set_user(SEXP internal_p, SEXP user) {
   nimue_booster_internal *internal = nimue_booster_get_internal(internal_p, 1);
-  internal->booster_doses = (double*) user_get_array_dim(user, false, internal->booster_doses, "booster_doses", 1, NA_REAL, NA_REAL, &internal->dim_booster_doses);
   internal->gamma_E = (double*) user_get_array_dim(user, false, internal->gamma_E, "gamma_E", 1, NA_REAL, NA_REAL, &internal->dim_gamma_E);
   internal->gamma_get_mv_die = (double*) user_get_array_dim(user, false, internal->gamma_get_mv_die, "gamma_get_mv_die", 1, NA_REAL, NA_REAL, &internal->dim_gamma_get_mv_die);
   internal->gamma_get_mv_survive = (double*) user_get_array_dim(user, false, internal->gamma_get_mv_survive, "gamma_get_mv_survive", 1, NA_REAL, NA_REAL, &internal->dim_gamma_get_mv_survive);
@@ -5657,6 +5665,7 @@ SEXP nimue_booster_set_user(SEXP internal_p, SEXP user) {
   internal->tt_prob_severe_multiplier = (double*) user_get_array_dim(user, false, internal->tt_prob_severe_multiplier, "tt_prob_severe_multiplier", 1, NA_REAL, NA_REAL, &internal->dim_tt_prob_severe_multiplier);
   internal->tt_vaccine_efficacy_disease = (double*) user_get_array_dim(user, false, internal->tt_vaccine_efficacy_disease, "tt_vaccine_efficacy_disease", 1, NA_REAL, NA_REAL, &internal->dim_tt_vaccine_efficacy_disease);
   internal->tt_vaccine_efficacy_infection = (double*) user_get_array_dim(user, false, internal->tt_vaccine_efficacy_infection, "tt_vaccine_efficacy_infection", 1, NA_REAL, NA_REAL, &internal->dim_tt_vaccine_efficacy_infection);
+  internal->dim_booster_doses = internal->runtime;
   internal->dim_primary_doses = internal->runtime;
   internal->dim_second_doses = internal->runtime;
   internal->dim_target_met_column = internal->N_prioritisation_steps;
@@ -5674,6 +5683,7 @@ SEXP nimue_booster_set_user(SEXP internal_p, SEXP user) {
   internal->vaccine_booster_initial_coverage = (double*) user_get_array(user, false, internal->vaccine_booster_initial_coverage, "vaccine_booster_initial_coverage", NA_REAL, NA_REAL, 1, internal->dim_vaccine_booster_initial_coverage);
   R_Free(internal->target_met_column);
   internal->target_met_column = (double*) R_Calloc(internal->dim_target_met_column, double);
+  internal->booster_doses = (double*) user_get_array(user, false, internal->booster_doses, "booster_doses", NA_REAL, NA_REAL, 1, internal->dim_booster_doses);
   internal->D_0 = (double*) user_get_array(user, false, internal->D_0, "D_0", NA_REAL, NA_REAL, 2, internal->dim_D_0_1, internal->dim_D_0_2);
   internal->dim_beta_set = internal->dim_tt_beta;
   internal->dim_gamma_R = internal->dim_tt_dur_R;
@@ -6288,6 +6298,9 @@ void nimue_booster_rhs(nimue_booster_internal* internal, double t, double * stat
   }
   double beta = 0.0;
   cinterpolate_eval(t, internal->interpolate_beta, &beta);
+  for (int i = 1; i <= internal->dim_booster_second; ++i) {
+    internal->booster_second[i - 1] = fmin(internal->remaining_boosters / (double) fmax(odin_sum1(internal->eligible_for_follow_up_booster, 0, internal->dim_eligible_for_follow_up_booster), 1), 1) * internal->vaccine_booster_follow_up_coverage[i - 1];
+  }
   double gamma_E_t = 0.0;
   cinterpolate_eval(t, internal->interpolate_gamma_E_t, &gamma_E_t);
   double gamma_get_mv_die_t = 0.0;
@@ -6438,9 +6451,6 @@ void nimue_booster_rhs(nimue_booster_internal* internal, double t, double * stat
   for (int i = 1; i <= internal->dim_target_pop_first; ++i) {
     internal->target_pop_first[i - 1] = fmax(((internal->vaccine_coverage_mat[internal->dim_vaccine_coverage_mat_1 * (i - 1) + (int) (prioritisation_step) - 1] * internal->dose_pops[internal->dim_dose_pops_1 * 0 + i - 1]) - internal->dose_pops[internal->dim_dose_pops_1 * 1 + i - 1]), 0);
   }
-  for (int i = 1; i <= internal->dim_a_initial_boosted; ++i) {
-    internal->a_initial_boosted[i - 1] = internal->booster_first[i - 1] * internal->eligible_for_first_booster[i - 1];
-  }
   for (int i = 1; i <= internal->dim_hospitalisation_demand_cumu_1; ++i) {
     for (int j = 1; j <= internal->dim_hospitalisation_demand_cumu_2; ++j) {
       dstatedt[internal->offset_variable_hospitalisation_demand_cumu + i - 1 + internal->dim_hospitalisation_demand_cumu_1 * (j - 1)] = internal->number_requiring_IMV[internal->dim_number_requiring_IMV_1 * (j - 1) + i - 1] + internal->number_requiring_Ox[internal->dim_number_requiring_Ox_1 * (j - 1) + i - 1];
@@ -6479,71 +6489,6 @@ void nimue_booster_rhs(nimue_booster_internal* internal, double t, double * stat
   }
   double p_oxygen = ((total_number_requiring_ox <= (hosp_bed_capacity - hosp_occ)) || total_number_requiring_ox <= 0 ? 1 : (hosp_bed_capacity - hosp_occ) / (double) total_number_requiring_ox);
   double p_ventilation = (total_number_requiring_IMV <= (ICU_bed_capacity - ICU_occ) || total_number_requiring_IMV <= 0 ? 1 : (ICU_bed_capacity - ICU_occ) / (double) total_number_requiring_IMV);
-  double remaining_boosters = internal->booster_doses[(int) (t) - 1] - odin_sum1(internal->a_initial_boosted, 0, internal->dim_a_initial_boosted);
-  for (int i = 1; i <= internal->dim_booster_second; ++i) {
-    internal->booster_second[i - 1] = fmin(remaining_boosters / (double) fmax(odin_sum1(internal->eligible_for_follow_up_booster, 0, internal->dim_eligible_for_follow_up_booster), 1), 1) * internal->vaccine_booster_follow_up_coverage[i - 1];
-  }
-  for (int i = 1; i <= internal->dim_hospitalisations_cumu_1; ++i) {
-    for (int j = 1; j <= internal->dim_hospitalisations_cumu_2; ++j) {
-      dstatedt[internal->offset_variable_hospitalisations_cumu + i - 1 + internal->dim_hospitalisations_cumu_1 * (j - 1)] = internal->number_requiring_IMV[internal->dim_number_requiring_IMV_1 * (j - 1) + i - 1] * p_ventilation + internal->number_requiring_Ox[internal->dim_number_requiring_Ox_1 * (j - 1) + i - 1] * p_oxygen;
-    }
-  }
-  for (int i = 1; i <= internal->dim_IMVGetDie1_1; ++i) {
-    for (int j = 1; j <= internal->dim_IMVGetDie1_2; ++j) {
-      dstatedt[internal->offset_variable_IMVGetDie1 + i - 1 + internal->dim_IMVGetDie1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * p_ventilation * internal->prob_severe_death_treatment[i - 1]) - (gamma_get_mv_die_t * IMVGetDie1[internal->dim_IMVGetDie1_1 * (j - 1) + i - 1]);
-    }
-  }
-  for (int i = 1; i <= internal->dim_IMVGetLive1_1; ++i) {
-    int j = 1;
-    dstatedt[internal->offset_variable_IMVGetLive1 + i - 1 + internal->dim_IMVGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * p_ventilation * (1 - internal->prob_severe_death_treatment[i - 1])) - (gamma_get_mv_survive_t * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1) + i - 1];
-  }
-  for (int i = 1; i <= internal->dim_IMVGetLive1_1; ++i) {
-    for (int j = 2; j <= 8; ++j) {
-      dstatedt[internal->offset_variable_IMVGetLive1 + i - 1 + internal->dim_IMVGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * p_ventilation * (1 - internal->prob_severe_death_treatment[i - 1])) - (gamma_get_mv_survive_t * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1 - 1) + i - 1];
-    }
-  }
-  for (int i = 1; i <= internal->dim_IMVNotGetDie1_1; ++i) {
-    for (int j = 1; j <= internal->dim_IMVNotGetDie1_2; ++j) {
-      dstatedt[internal->offset_variable_IMVNotGetDie1 + i - 1 + internal->dim_IMVNotGetDie1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * (1 - p_ventilation) * internal->prob_severe_death_no_treatment[i - 1]) - (internal->gamma_not_get_mv_die * IMVNotGetDie1[internal->dim_IMVNotGetDie1_1 * (j - 1) + i - 1]);
-    }
-  }
-  for (int i = 1; i <= internal->dim_IMVNotGetLive1_1; ++i) {
-    int j = 1;
-    dstatedt[internal->offset_variable_IMVNotGetLive1 + i - 1 + internal->dim_IMVNotGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * (1 - p_ventilation) * (1 - internal->prob_severe_death_no_treatment[i - 1])) - (internal->gamma_not_get_mv_survive * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1) + i - 1];
-  }
-  for (int i = 1; i <= internal->dim_IMVNotGetLive1_1; ++i) {
-    for (int j = 2; j <= 8; ++j) {
-      dstatedt[internal->offset_variable_IMVNotGetLive1 + i - 1 + internal->dim_IMVNotGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * (1 - p_ventilation) * (1 - internal->prob_severe_death_no_treatment[i - 1])) - (internal->gamma_not_get_mv_survive * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1 - 1) + i - 1];
-    }
-  }
-  for (int i = 1; i <= internal->dim_IOxGetDie1_1; ++i) {
-    for (int j = 1; j <= internal->dim_IOxGetDie1_2; ++j) {
-      dstatedt[internal->offset_variable_IOxGetDie1 + i - 1 + internal->dim_IOxGetDie1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * p_oxygen * internal->prob_non_severe_death_treatment[i - 1]) - gamma_get_ox_die_t * IOxGetDie1[internal->dim_IOxGetDie1_1 * (j - 1) + i - 1];
-    }
-  }
-  for (int i = 1; i <= internal->dim_IOxGetLive1_1; ++i) {
-    int j = 1;
-    dstatedt[internal->offset_variable_IOxGetLive1 + i - 1 + internal->dim_IOxGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * p_oxygen * (1 - internal->prob_non_severe_death_treatment[i - 1])) - (gamma_get_ox_survive_t * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1) + i - 1];
-  }
-  for (int i = 1; i <= internal->dim_IOxGetLive1_1; ++i) {
-    for (int j = 2; j <= 8; ++j) {
-      dstatedt[internal->offset_variable_IOxGetLive1 + i - 1 + internal->dim_IOxGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * p_oxygen * (1 - internal->prob_non_severe_death_treatment[i - 1])) - (gamma_get_ox_survive_t * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1 - 1) + i - 1];
-    }
-  }
-  for (int i = 1; i <= internal->dim_IOxNotGetDie1_1; ++i) {
-    for (int j = 1; j <= internal->dim_IOxNotGetDie1_2; ++j) {
-      dstatedt[internal->offset_variable_IOxNotGetDie1 + i - 1 + internal->dim_IOxNotGetDie1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * (1 - p_oxygen) * internal->prob_non_severe_death_no_treatment[i - 1]) - (internal->gamma_not_get_ox_die * IOxNotGetDie1[internal->dim_IOxNotGetDie1_1 * (j - 1) + i - 1]);
-    }
-  }
-  for (int i = 1; i <= internal->dim_IOxNotGetLive1_1; ++i) {
-    int j = 1;
-    dstatedt[internal->offset_variable_IOxNotGetLive1 + i - 1 + internal->dim_IOxNotGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * (1 - p_oxygen) * (1 - internal->prob_non_severe_death_no_treatment[i - 1])) - (internal->gamma_not_get_ox_survive * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1) + i - 1];
-  }
-  for (int i = 1; i <= internal->dim_IOxNotGetLive1_1; ++i) {
-    for (int j = 2; j <= 8; ++j) {
-      dstatedt[internal->offset_variable_IOxNotGetLive1 + i - 1 + internal->dim_IOxNotGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * (1 - p_oxygen) * (1 - internal->prob_non_severe_death_no_treatment[i - 1])) - (internal->gamma_not_get_ox_survive * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1 - 1) + i - 1];
-    }
-  }
   for (int i = 1; i <= internal->dim_vaccinations_E1_1; ++i) {
     int j = 1;
     internal->vaccinations_E1[i - 1 + internal->dim_vaccinations_E1_1 * (j - 1)] = -(internal->primary_first[i - 1]) * E1[internal->dim_E1_1 * (j - 1) + i - 1];
@@ -6707,6 +6652,67 @@ void nimue_booster_rhs(nimue_booster_internal* internal, double t, double * stat
       dstatedt[internal->offset_variable_E2 + i - 1 + internal->dim_E2_1 * (j - 1)] = (gamma_E_t * E1[internal->dim_E1_1 * (j - 1) + i - 1]) - (gamma_E_t * E2[internal->dim_E2_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * E2[internal->dim_E2_1 * (j - 1) + i - 1] + internal->vaccinations_E2[internal->dim_vaccinations_E2_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * E2[internal->dim_E2_1 * (j - 1 - 1) + i - 1];
     }
   }
+  for (int i = 1; i <= internal->dim_hospitalisations_cumu_1; ++i) {
+    for (int j = 1; j <= internal->dim_hospitalisations_cumu_2; ++j) {
+      dstatedt[internal->offset_variable_hospitalisations_cumu + i - 1 + internal->dim_hospitalisations_cumu_1 * (j - 1)] = internal->number_requiring_IMV[internal->dim_number_requiring_IMV_1 * (j - 1) + i - 1] * p_ventilation + internal->number_requiring_Ox[internal->dim_number_requiring_Ox_1 * (j - 1) + i - 1] * p_oxygen;
+    }
+  }
+  for (int i = 1; i <= internal->dim_IMVGetDie1_1; ++i) {
+    for (int j = 1; j <= internal->dim_IMVGetDie1_2; ++j) {
+      dstatedt[internal->offset_variable_IMVGetDie1 + i - 1 + internal->dim_IMVGetDie1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * p_ventilation * internal->prob_severe_death_treatment[i - 1]) - (gamma_get_mv_die_t * IMVGetDie1[internal->dim_IMVGetDie1_1 * (j - 1) + i - 1]);
+    }
+  }
+  for (int i = 1; i <= internal->dim_IMVGetLive1_1; ++i) {
+    int j = 1;
+    dstatedt[internal->offset_variable_IMVGetLive1 + i - 1 + internal->dim_IMVGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * p_ventilation * (1 - internal->prob_severe_death_treatment[i - 1])) - (gamma_get_mv_survive_t * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1) + i - 1];
+  }
+  for (int i = 1; i <= internal->dim_IMVGetLive1_1; ++i) {
+    for (int j = 2; j <= 8; ++j) {
+      dstatedt[internal->offset_variable_IMVGetLive1 + i - 1 + internal->dim_IMVGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * p_ventilation * (1 - internal->prob_severe_death_treatment[i - 1])) - (gamma_get_mv_survive_t * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * IMVGetLive1[internal->dim_IMVGetLive1_1 * (j - 1 - 1) + i - 1];
+    }
+  }
+  for (int i = 1; i <= internal->dim_IMVNotGetDie1_1; ++i) {
+    for (int j = 1; j <= internal->dim_IMVNotGetDie1_2; ++j) {
+      dstatedt[internal->offset_variable_IMVNotGetDie1 + i - 1 + internal->dim_IMVNotGetDie1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * (1 - p_ventilation) * internal->prob_severe_death_no_treatment[i - 1]) - (internal->gamma_not_get_mv_die * IMVNotGetDie1[internal->dim_IMVNotGetDie1_1 * (j - 1) + i - 1]);
+    }
+  }
+  for (int i = 1; i <= internal->dim_IMVNotGetLive1_1; ++i) {
+    int j = 1;
+    dstatedt[internal->offset_variable_IMVNotGetLive1 + i - 1 + internal->dim_IMVNotGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * (1 - p_ventilation) * (1 - internal->prob_severe_death_no_treatment[i - 1])) - (internal->gamma_not_get_mv_survive * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1) + i - 1];
+  }
+  for (int i = 1; i <= internal->dim_IMVNotGetLive1_1; ++i) {
+    for (int j = 2; j <= 8; ++j) {
+      dstatedt[internal->offset_variable_IMVNotGetLive1 + i - 1 + internal->dim_IMVNotGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * internal->prob_severe_multi[i - 1] * (1 - p_ventilation) * (1 - internal->prob_severe_death_no_treatment[i - 1])) - (internal->gamma_not_get_mv_survive * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * IMVNotGetLive1[internal->dim_IMVNotGetLive1_1 * (j - 1 - 1) + i - 1];
+    }
+  }
+  for (int i = 1; i <= internal->dim_IOxGetDie1_1; ++i) {
+    for (int j = 1; j <= internal->dim_IOxGetDie1_2; ++j) {
+      dstatedt[internal->offset_variable_IOxGetDie1 + i - 1 + internal->dim_IOxGetDie1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * p_oxygen * internal->prob_non_severe_death_treatment[i - 1]) - gamma_get_ox_die_t * IOxGetDie1[internal->dim_IOxGetDie1_1 * (j - 1) + i - 1];
+    }
+  }
+  for (int i = 1; i <= internal->dim_IOxGetLive1_1; ++i) {
+    int j = 1;
+    dstatedt[internal->offset_variable_IOxGetLive1 + i - 1 + internal->dim_IOxGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * p_oxygen * (1 - internal->prob_non_severe_death_treatment[i - 1])) - (gamma_get_ox_survive_t * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1) + i - 1];
+  }
+  for (int i = 1; i <= internal->dim_IOxGetLive1_1; ++i) {
+    for (int j = 2; j <= 8; ++j) {
+      dstatedt[internal->offset_variable_IOxGetLive1 + i - 1 + internal->dim_IOxGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * p_oxygen * (1 - internal->prob_non_severe_death_treatment[i - 1])) - (gamma_get_ox_survive_t * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * IOxGetLive1[internal->dim_IOxGetLive1_1 * (j - 1 - 1) + i - 1];
+    }
+  }
+  for (int i = 1; i <= internal->dim_IOxNotGetDie1_1; ++i) {
+    for (int j = 1; j <= internal->dim_IOxNotGetDie1_2; ++j) {
+      dstatedt[internal->offset_variable_IOxNotGetDie1 + i - 1 + internal->dim_IOxNotGetDie1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * (1 - p_oxygen) * internal->prob_non_severe_death_no_treatment[i - 1]) - (internal->gamma_not_get_ox_die * IOxNotGetDie1[internal->dim_IOxNotGetDie1_1 * (j - 1) + i - 1]);
+    }
+  }
+  for (int i = 1; i <= internal->dim_IOxNotGetLive1_1; ++i) {
+    int j = 1;
+    dstatedt[internal->offset_variable_IOxNotGetLive1 + i - 1 + internal->dim_IOxNotGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * (1 - p_oxygen) * (1 - internal->prob_non_severe_death_no_treatment[i - 1])) - (internal->gamma_not_get_ox_survive * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1) + i - 1];
+  }
+  for (int i = 1; i <= internal->dim_IOxNotGetLive1_1; ++i) {
+    for (int j = 2; j <= 8; ++j) {
+      dstatedt[internal->offset_variable_IOxNotGetLive1 + i - 1 + internal->dim_IOxNotGetLive1_1 * (j - 1)] = (gamma_ICase_t * ICase2[internal->dim_ICase2_1 * (j - 1) + i - 1] * (1 - internal->prob_severe_multi[i - 1]) * (1 - p_oxygen) * (1 - internal->prob_non_severe_death_no_treatment[i - 1])) - (internal->gamma_not_get_ox_survive * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1) + i - 1] + internal->gamma_vaccine_t[j - 1 - 1] * IOxNotGetLive1[internal->dim_IOxNotGetLive1_1 * (j - 1 - 1) + i - 1];
+    }
+  }
   for (int i = 1; i <= internal->dim_R1_1; ++i) {
     int j = 1;
     dstatedt[internal->offset_variable_R1 + i - 1 + internal->dim_R1_1 * (j - 1)] = (internal->gamma_rec * IRec2[internal->dim_IRec2_1 * (j - 1) + i - 1]) + (gamma_IMild_t * IMild[internal->dim_IMild_1 * (j - 1) + i - 1]) + (gamma_get_ox_survive_t * IOxGetLive2[internal->dim_IOxGetLive2_1 * (j - 1) + i - 1]) + (internal->gamma_not_get_ox_survive * IOxNotGetLive2[internal->dim_IOxNotGetLive2_1 * (j - 1) + i - 1]) + (internal->gamma_not_get_mv_survive * IMVNotGetLive2[internal->dim_IMVNotGetLive2_1 * (j - 1) + i - 1]) - (gamma_R_t * R1[internal->dim_R1_1 * (j - 1) + i - 1]) - internal->gamma_vaccine_t[j - 1] * R1[internal->dim_R1_1 * (j - 1) + i - 1] + internal->vaccinations_R1[internal->dim_vaccinations_R1_1 * (j - 1) + i - 1];
@@ -6800,11 +6806,11 @@ void nimue_booster_rhs(nimue_booster_internal* internal, double t, double * stat
     for (int i = 1; i <= internal->dim_second_doses_given; ++i) {
       output[internal->offset_output_second_doses_given + i - 1] = primary_second * (S[internal->dim_S_1 * 1 + i - 1] + E1[internal->dim_E1_1 * 1 + i - 1] + E2[internal->dim_E2_1 * 1 + i - 1] + R1[internal->dim_R1_1 * 1 + i - 1] + R2[internal->dim_R2_1 * 1 + i - 1]);
     }
-    for (int i = 1; i <= internal->dim_first_doses_given; ++i) {
-      output[internal->offset_output_first_doses_given + i - 1] = internal->primary_first[i - 1] * (S[internal->dim_S_1 * 0 + i - 1] + E1[internal->dim_E1_1 * 0 + i - 1] + E2[internal->dim_E2_1 * 0 + i - 1] + R1[internal->dim_R1_1 * 0 + i - 1] + R2[internal->dim_R2_1 * 0 + i - 1]);
-    }
     for (int i = 1; i <= internal->dim_booster_doses_given; ++i) {
       output[internal->offset_output_booster_doses_given + i - 1] = internal->booster_first[i - 1] * (odin_sum2(S, i - 1, i, 2, 5, internal->dim_S_1) + odin_sum2(E1, i - 1, i, 2, 5, internal->dim_E1_1) + odin_sum2(E2, i - 1, i, 2, 5, internal->dim_E2_1) + odin_sum2(R1, i - 1, i, 2, 5, internal->dim_R1_1) + odin_sum2(R2, i - 1, i, 2, 5, internal->dim_R2_1)) + internal->booster_second[i - 1] * (odin_sum2(S, i - 1, i, 6, 8, internal->dim_S_1) + odin_sum2(E1, i - 1, i, 6, 8, internal->dim_E1_1) + odin_sum2(E2, i - 1, i, 6, 8, internal->dim_E2_1) + odin_sum2(R1, i - 1, i, 6, 8, internal->dim_R1_1) + odin_sum2(R2, i - 1, i, 6, 8, internal->dim_R2_1));
+    }
+    for (int i = 1; i <= internal->dim_first_doses_given; ++i) {
+      output[internal->offset_output_first_doses_given + i - 1] = internal->primary_first[i - 1] * (S[internal->dim_S_1 * 0 + i - 1] + E1[internal->dim_E1_1 * 0 + i - 1] + E2[internal->dim_E2_1 * 0 + i - 1] + R1[internal->dim_R1_1 * 0 + i - 1] + R2[internal->dim_R2_1 * 0 + i - 1]);
     }
   }
 }
@@ -6919,6 +6925,9 @@ void nimue_booster_output_dde(size_t n_eq, double t, double * state, size_t n_ou
       internal->vaccination_cov[i - 1 + internal->dim_vaccination_cov_1 * (j - 1)] = internal->dose_pops[internal->dim_dose_pops_1 * (j - 1) + i - 1] - internal->dose_pops[internal->dim_dose_pops_1 * (j + 1 - 1) + i - 1];
     }
   }
+  for (int i = 1; i <= internal->dim_booster_second; ++i) {
+    internal->booster_second[i - 1] = fmin(internal->remaining_boosters / (double) fmax(odin_sum1(internal->eligible_for_follow_up_booster, 0, internal->dim_eligible_for_follow_up_booster), 1), 1) * internal->vaccine_booster_follow_up_coverage[i - 1];
+  }
   for (int i = 1; i <= internal->dim_unvaccinated; ++i) {
     output[internal->offset_output_unvaccinated + i - 1] = internal->vaccination_cov[internal->dim_vaccination_cov_1 * 0 + i - 1];
   }
@@ -6944,21 +6953,14 @@ void nimue_booster_output_dde(size_t n_eq, double t, double * state, size_t n_ou
   for (int i = 1; i <= internal->dim_target_pop_first; ++i) {
     internal->target_pop_first[i - 1] = fmax(((internal->vaccine_coverage_mat[internal->dim_vaccine_coverage_mat_1 * (i - 1) + (int) (prioritisation_step) - 1] * internal->dose_pops[internal->dim_dose_pops_1 * 0 + i - 1]) - internal->dose_pops[internal->dim_dose_pops_1 * 1 + i - 1]), 0);
   }
-  for (int i = 1; i <= internal->dim_a_initial_boosted; ++i) {
-    internal->a_initial_boosted[i - 1] = internal->booster_first[i - 1] * internal->eligible_for_first_booster[i - 1];
+  for (int i = 1; i <= internal->dim_booster_doses_given; ++i) {
+    output[internal->offset_output_booster_doses_given + i - 1] = internal->booster_first[i - 1] * (odin_sum2(S, i - 1, i, 2, 5, internal->dim_S_1) + odin_sum2(E1, i - 1, i, 2, 5, internal->dim_E1_1) + odin_sum2(E2, i - 1, i, 2, 5, internal->dim_E2_1) + odin_sum2(R1, i - 1, i, 2, 5, internal->dim_R1_1) + odin_sum2(R2, i - 1, i, 2, 5, internal->dim_R2_1)) + internal->booster_second[i - 1] * (odin_sum2(S, i - 1, i, 6, 8, internal->dim_S_1) + odin_sum2(E1, i - 1, i, 6, 8, internal->dim_E1_1) + odin_sum2(E2, i - 1, i, 6, 8, internal->dim_E2_1) + odin_sum2(R1, i - 1, i, 6, 8, internal->dim_R1_1) + odin_sum2(R2, i - 1, i, 6, 8, internal->dim_R2_1));
   }
   for (int i = 1; i <= internal->dim_primary_first; ++i) {
     internal->primary_first[i - 1] = fmin(internal->primary_doses[(int) (t) - 1] * internal->target_pop_first[i - 1] / (double) fmax(odin_sum1(internal->target_pop_first, 0, internal->dim_target_pop_first) * (internal->vaccination_cov[internal->dim_vaccination_cov_1 * 0 + i - 1]), 1), 1);
   }
   for (int i = 1; i <= internal->dim_first_doses_given; ++i) {
     output[internal->offset_output_first_doses_given + i - 1] = internal->primary_first[i - 1] * (S[internal->dim_S_1 * 0 + i - 1] + E1[internal->dim_E1_1 * 0 + i - 1] + E2[internal->dim_E2_1 * 0 + i - 1] + R1[internal->dim_R1_1 * 0 + i - 1] + R2[internal->dim_R2_1 * 0 + i - 1]);
-  }
-  double remaining_boosters = internal->booster_doses[(int) (t) - 1] - odin_sum1(internal->a_initial_boosted, 0, internal->dim_a_initial_boosted);
-  for (int i = 1; i <= internal->dim_booster_second; ++i) {
-    internal->booster_second[i - 1] = fmin(remaining_boosters / (double) fmax(odin_sum1(internal->eligible_for_follow_up_booster, 0, internal->dim_eligible_for_follow_up_booster), 1), 1) * internal->vaccine_booster_follow_up_coverage[i - 1];
-  }
-  for (int i = 1; i <= internal->dim_booster_doses_given; ++i) {
-    output[internal->offset_output_booster_doses_given + i - 1] = internal->booster_first[i - 1] * (odin_sum2(S, i - 1, i, 2, 5, internal->dim_S_1) + odin_sum2(E1, i - 1, i, 2, 5, internal->dim_E1_1) + odin_sum2(E2, i - 1, i, 2, 5, internal->dim_E2_1) + odin_sum2(R1, i - 1, i, 2, 5, internal->dim_R1_1) + odin_sum2(R2, i - 1, i, 2, 5, internal->dim_R2_1)) + internal->booster_second[i - 1] * (odin_sum2(S, i - 1, i, 6, 8, internal->dim_S_1) + odin_sum2(E1, i - 1, i, 6, 8, internal->dim_E1_1) + odin_sum2(E2, i - 1, i, 6, 8, internal->dim_E2_1) + odin_sum2(R1, i - 1, i, 6, 8, internal->dim_R1_1) + odin_sum2(R2, i - 1, i, 6, 8, internal->dim_R2_1));
   }
 }
 SEXP nimue_booster_rhs_r(SEXP internal_p, SEXP t, SEXP state) {
@@ -7588,27 +7590,29 @@ SEXP nimue_booster_check_create(SEXP user) {
   internal->dim_vaccinations_R2 = internal->dim_vaccinations_R2_1 * internal->dim_vaccinations_R2_2;
   internal->dim_vaccinations_S = internal->dim_vaccinations_S_1 * internal->dim_vaccinations_S_2;
   internal->dim_vaccine_efficacy_infection_t = internal->dim_vaccine_efficacy_infection_t_1 * internal->dim_vaccine_efficacy_infection_t_2;
-  internal->offset_output_booster_doses_given = internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + 1;
-  internal->offset_output_deaths_cumu = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_N + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_booster_waned + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1;
-  internal->offset_output_first_doses_given = internal->dim_E + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
-  internal->offset_output_hospital_demand = internal->dim_E + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_occupancy + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
-  internal->offset_output_hospital_occupancy = internal->dim_E + internal->dim_ICase + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
+  internal->offset_output_booster_doses_given = internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + 1;
+  internal->offset_output_booster_first = internal->dim_E + internal->dim_ICase + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
+  internal->offset_output_deaths_cumu = internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_N + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_booster_waned + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1;
+  internal->offset_output_first_doses_given = internal->dim_booster_first + internal->dim_E + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
+  internal->offset_output_hospital_demand = internal->dim_booster_first + internal->dim_E + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_occupancy + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
+  internal->offset_output_hospital_occupancy = internal->dim_booster_first + internal->dim_E + internal->dim_ICase + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
   internal->offset_output_ICase = internal->dim_E + internal->dim_IMildout + internal->dim_R + 1;
-  internal->offset_output_ICU_demand = internal->dim_E + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_occupancy + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
-  internal->offset_output_ICU_occupancy = internal->dim_E + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
-  internal->offset_output_IHospital = internal->dim_E + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
-  internal->offset_output_IICU = internal->dim_E + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
+  internal->offset_output_ICU_demand = internal->dim_booster_first + internal->dim_E + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_occupancy + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
+  internal->offset_output_ICU_occupancy = internal->dim_booster_first + internal->dim_E + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
+  internal->offset_output_IHospital = internal->dim_booster_first + internal->dim_E + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
+  internal->offset_output_IICU = internal->dim_booster_first + internal->dim_E + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
   internal->offset_output_IMildout = internal->dim_E + 1;
   internal->offset_output_IRec = internal->dim_E + internal->dim_ICase + internal->dim_IMildout + internal->dim_R + 1;
-  internal->offset_output_N = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_booster_waned + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1;
+  internal->offset_output_N = internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_booster_waned + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1;
+  internal->offset_output_primary_first = internal->dim_E + internal->dim_ICase + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
   internal->offset_output_R = internal->dim_E + internal->dim_IMildout + 1;
-  internal->offset_output_second_doses_given = internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + 1;
-  internal->offset_output_unvaccinated = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + 1;
-  internal->offset_output_vaccinated_booster_dose = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1;
-  internal->offset_output_vaccinated_booster_waned = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1;
-  internal->offset_output_vaccinated_first_dose = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + 1;
-  internal->offset_output_vaccinated_second_dose = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_first_dose + 1;
-  internal->offset_output_vaccinated_second_waned = internal->dim_booster_doses_given + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + 1;
+  internal->offset_output_second_doses_given = internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + 1;
+  internal->offset_output_unvaccinated = internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + 1;
+  internal->offset_output_vaccinated_booster_dose = internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1;
+  internal->offset_output_vaccinated_booster_waned = internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1;
+  internal->offset_output_vaccinated_first_dose = internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + 1;
+  internal->offset_output_vaccinated_second_dose = internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_first_dose + 1;
+  internal->offset_output_vaccinated_second_waned = internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + 1;
   R_Free(internal->dose_pops);
   internal->dose_pops = (double*) R_Calloc(internal->dim_dose_pops, double);
   R_Free(internal->initial_D);
@@ -7841,7 +7845,7 @@ void nimue_booster_check_initmod_desolve(void(* odeparms) (int *, double *)) {
 }
 SEXP nimue_booster_check_contents(SEXP internal_p) {
   nimue_booster_check_internal *internal = nimue_booster_check_get_internal(internal_p, 1);
-  SEXP contents = PROTECT(allocVector(VECSXP, 531));
+  SEXP contents = PROTECT(allocVector(VECSXP, 533));
   SEXP a_initial_boosted = PROTECT(allocVector(REALSXP, internal->dim_a_initial_boosted));
   memcpy(REAL(a_initial_boosted), internal->a_initial_boosted, internal->dim_a_initial_boosted * sizeof(double));
   SET_VECTOR_ELT(contents, 0, a_initial_boosted);
@@ -8470,241 +8474,243 @@ SEXP nimue_booster_check_contents(SEXP internal_p) {
   odin_set_dim(number_requiring_Ox, 2, internal->dim_number_requiring_Ox_1, internal->dim_number_requiring_Ox_2);
   SET_VECTOR_ELT(contents, 425, number_requiring_Ox);
   SET_VECTOR_ELT(contents, 426, ScalarInteger(internal->offset_output_booster_doses_given));
-  SET_VECTOR_ELT(contents, 427, ScalarInteger(internal->offset_output_deaths_cumu));
-  SET_VECTOR_ELT(contents, 428, ScalarInteger(internal->offset_output_first_doses_given));
-  SET_VECTOR_ELT(contents, 429, ScalarInteger(internal->offset_output_hospital_demand));
-  SET_VECTOR_ELT(contents, 430, ScalarInteger(internal->offset_output_hospital_occupancy));
-  SET_VECTOR_ELT(contents, 431, ScalarInteger(internal->offset_output_ICase));
-  SET_VECTOR_ELT(contents, 432, ScalarInteger(internal->offset_output_ICU_demand));
-  SET_VECTOR_ELT(contents, 433, ScalarInteger(internal->offset_output_ICU_occupancy));
-  SET_VECTOR_ELT(contents, 434, ScalarInteger(internal->offset_output_IHospital));
-  SET_VECTOR_ELT(contents, 435, ScalarInteger(internal->offset_output_IICU));
-  SET_VECTOR_ELT(contents, 436, ScalarInteger(internal->offset_output_IMildout));
-  SET_VECTOR_ELT(contents, 437, ScalarInteger(internal->offset_output_IRec));
-  SET_VECTOR_ELT(contents, 438, ScalarInteger(internal->offset_output_N));
-  SET_VECTOR_ELT(contents, 439, ScalarInteger(internal->offset_output_R));
-  SET_VECTOR_ELT(contents, 440, ScalarInteger(internal->offset_output_second_doses_given));
-  SET_VECTOR_ELT(contents, 441, ScalarInteger(internal->offset_output_unvaccinated));
-  SET_VECTOR_ELT(contents, 442, ScalarInteger(internal->offset_output_vaccinated_booster_dose));
-  SET_VECTOR_ELT(contents, 443, ScalarInteger(internal->offset_output_vaccinated_booster_waned));
-  SET_VECTOR_ELT(contents, 444, ScalarInteger(internal->offset_output_vaccinated_first_dose));
-  SET_VECTOR_ELT(contents, 445, ScalarInteger(internal->offset_output_vaccinated_second_dose));
-  SET_VECTOR_ELT(contents, 446, ScalarInteger(internal->offset_output_vaccinated_second_waned));
-  SET_VECTOR_ELT(contents, 447, ScalarInteger(internal->offset_variable_D));
-  SET_VECTOR_ELT(contents, 448, ScalarInteger(internal->offset_variable_E2));
-  SET_VECTOR_ELT(contents, 449, ScalarInteger(internal->offset_variable_hospitalisation_demand_cumu));
-  SET_VECTOR_ELT(contents, 450, ScalarInteger(internal->offset_variable_hospitalisations_cumu));
-  SET_VECTOR_ELT(contents, 451, ScalarInteger(internal->offset_variable_ICase1));
-  SET_VECTOR_ELT(contents, 452, ScalarInteger(internal->offset_variable_ICase2));
-  SET_VECTOR_ELT(contents, 453, ScalarInteger(internal->offset_variable_IMild));
-  SET_VECTOR_ELT(contents, 454, ScalarInteger(internal->offset_variable_IMVGetDie1));
-  SET_VECTOR_ELT(contents, 455, ScalarInteger(internal->offset_variable_IMVGetDie2));
-  SET_VECTOR_ELT(contents, 456, ScalarInteger(internal->offset_variable_IMVGetLive1));
-  SET_VECTOR_ELT(contents, 457, ScalarInteger(internal->offset_variable_IMVGetLive2));
-  SET_VECTOR_ELT(contents, 458, ScalarInteger(internal->offset_variable_IMVNotGetDie1));
-  SET_VECTOR_ELT(contents, 459, ScalarInteger(internal->offset_variable_IMVNotGetDie2));
-  SET_VECTOR_ELT(contents, 460, ScalarInteger(internal->offset_variable_IMVNotGetLive1));
-  SET_VECTOR_ELT(contents, 461, ScalarInteger(internal->offset_variable_IMVNotGetLive2));
-  SET_VECTOR_ELT(contents, 462, ScalarInteger(internal->offset_variable_infections_cumu));
-  SET_VECTOR_ELT(contents, 463, ScalarInteger(internal->offset_variable_IOxGetDie1));
-  SET_VECTOR_ELT(contents, 464, ScalarInteger(internal->offset_variable_IOxGetDie2));
-  SET_VECTOR_ELT(contents, 465, ScalarInteger(internal->offset_variable_IOxGetLive1));
-  SET_VECTOR_ELT(contents, 466, ScalarInteger(internal->offset_variable_IOxGetLive2));
-  SET_VECTOR_ELT(contents, 467, ScalarInteger(internal->offset_variable_IOxNotGetDie1));
-  SET_VECTOR_ELT(contents, 468, ScalarInteger(internal->offset_variable_IOxNotGetDie2));
-  SET_VECTOR_ELT(contents, 469, ScalarInteger(internal->offset_variable_IOxNotGetLive1));
-  SET_VECTOR_ELT(contents, 470, ScalarInteger(internal->offset_variable_IOxNotGetLive2));
-  SET_VECTOR_ELT(contents, 471, ScalarInteger(internal->offset_variable_IRec1));
-  SET_VECTOR_ELT(contents, 472, ScalarInteger(internal->offset_variable_IRec2));
-  SET_VECTOR_ELT(contents, 473, ScalarInteger(internal->offset_variable_R1));
-  SET_VECTOR_ELT(contents, 474, ScalarInteger(internal->offset_variable_R2));
+  SET_VECTOR_ELT(contents, 427, ScalarInteger(internal->offset_output_booster_first));
+  SET_VECTOR_ELT(contents, 428, ScalarInteger(internal->offset_output_deaths_cumu));
+  SET_VECTOR_ELT(contents, 429, ScalarInteger(internal->offset_output_first_doses_given));
+  SET_VECTOR_ELT(contents, 430, ScalarInteger(internal->offset_output_hospital_demand));
+  SET_VECTOR_ELT(contents, 431, ScalarInteger(internal->offset_output_hospital_occupancy));
+  SET_VECTOR_ELT(contents, 432, ScalarInteger(internal->offset_output_ICase));
+  SET_VECTOR_ELT(contents, 433, ScalarInteger(internal->offset_output_ICU_demand));
+  SET_VECTOR_ELT(contents, 434, ScalarInteger(internal->offset_output_ICU_occupancy));
+  SET_VECTOR_ELT(contents, 435, ScalarInteger(internal->offset_output_IHospital));
+  SET_VECTOR_ELT(contents, 436, ScalarInteger(internal->offset_output_IICU));
+  SET_VECTOR_ELT(contents, 437, ScalarInteger(internal->offset_output_IMildout));
+  SET_VECTOR_ELT(contents, 438, ScalarInteger(internal->offset_output_IRec));
+  SET_VECTOR_ELT(contents, 439, ScalarInteger(internal->offset_output_N));
+  SET_VECTOR_ELT(contents, 440, ScalarInteger(internal->offset_output_primary_first));
+  SET_VECTOR_ELT(contents, 441, ScalarInteger(internal->offset_output_R));
+  SET_VECTOR_ELT(contents, 442, ScalarInteger(internal->offset_output_second_doses_given));
+  SET_VECTOR_ELT(contents, 443, ScalarInteger(internal->offset_output_unvaccinated));
+  SET_VECTOR_ELT(contents, 444, ScalarInteger(internal->offset_output_vaccinated_booster_dose));
+  SET_VECTOR_ELT(contents, 445, ScalarInteger(internal->offset_output_vaccinated_booster_waned));
+  SET_VECTOR_ELT(contents, 446, ScalarInteger(internal->offset_output_vaccinated_first_dose));
+  SET_VECTOR_ELT(contents, 447, ScalarInteger(internal->offset_output_vaccinated_second_dose));
+  SET_VECTOR_ELT(contents, 448, ScalarInteger(internal->offset_output_vaccinated_second_waned));
+  SET_VECTOR_ELT(contents, 449, ScalarInteger(internal->offset_variable_D));
+  SET_VECTOR_ELT(contents, 450, ScalarInteger(internal->offset_variable_E2));
+  SET_VECTOR_ELT(contents, 451, ScalarInteger(internal->offset_variable_hospitalisation_demand_cumu));
+  SET_VECTOR_ELT(contents, 452, ScalarInteger(internal->offset_variable_hospitalisations_cumu));
+  SET_VECTOR_ELT(contents, 453, ScalarInteger(internal->offset_variable_ICase1));
+  SET_VECTOR_ELT(contents, 454, ScalarInteger(internal->offset_variable_ICase2));
+  SET_VECTOR_ELT(contents, 455, ScalarInteger(internal->offset_variable_IMild));
+  SET_VECTOR_ELT(contents, 456, ScalarInteger(internal->offset_variable_IMVGetDie1));
+  SET_VECTOR_ELT(contents, 457, ScalarInteger(internal->offset_variable_IMVGetDie2));
+  SET_VECTOR_ELT(contents, 458, ScalarInteger(internal->offset_variable_IMVGetLive1));
+  SET_VECTOR_ELT(contents, 459, ScalarInteger(internal->offset_variable_IMVGetLive2));
+  SET_VECTOR_ELT(contents, 460, ScalarInteger(internal->offset_variable_IMVNotGetDie1));
+  SET_VECTOR_ELT(contents, 461, ScalarInteger(internal->offset_variable_IMVNotGetDie2));
+  SET_VECTOR_ELT(contents, 462, ScalarInteger(internal->offset_variable_IMVNotGetLive1));
+  SET_VECTOR_ELT(contents, 463, ScalarInteger(internal->offset_variable_IMVNotGetLive2));
+  SET_VECTOR_ELT(contents, 464, ScalarInteger(internal->offset_variable_infections_cumu));
+  SET_VECTOR_ELT(contents, 465, ScalarInteger(internal->offset_variable_IOxGetDie1));
+  SET_VECTOR_ELT(contents, 466, ScalarInteger(internal->offset_variable_IOxGetDie2));
+  SET_VECTOR_ELT(contents, 467, ScalarInteger(internal->offset_variable_IOxGetLive1));
+  SET_VECTOR_ELT(contents, 468, ScalarInteger(internal->offset_variable_IOxGetLive2));
+  SET_VECTOR_ELT(contents, 469, ScalarInteger(internal->offset_variable_IOxNotGetDie1));
+  SET_VECTOR_ELT(contents, 470, ScalarInteger(internal->offset_variable_IOxNotGetDie2));
+  SET_VECTOR_ELT(contents, 471, ScalarInteger(internal->offset_variable_IOxNotGetLive1));
+  SET_VECTOR_ELT(contents, 472, ScalarInteger(internal->offset_variable_IOxNotGetLive2));
+  SET_VECTOR_ELT(contents, 473, ScalarInteger(internal->offset_variable_IRec1));
+  SET_VECTOR_ELT(contents, 474, ScalarInteger(internal->offset_variable_IRec2));
+  SET_VECTOR_ELT(contents, 475, ScalarInteger(internal->offset_variable_R1));
+  SET_VECTOR_ELT(contents, 476, ScalarInteger(internal->offset_variable_R2));
   SEXP primary_doses = PROTECT(allocVector(REALSXP, internal->dim_primary_doses));
   memcpy(REAL(primary_doses), internal->primary_doses, internal->dim_primary_doses * sizeof(double));
-  SET_VECTOR_ELT(contents, 475, primary_doses);
+  SET_VECTOR_ELT(contents, 477, primary_doses);
   SEXP primary_first = PROTECT(allocVector(REALSXP, internal->dim_primary_first));
   memcpy(REAL(primary_first), internal->primary_first, internal->dim_primary_first * sizeof(double));
-  SET_VECTOR_ELT(contents, 476, primary_first);
+  SET_VECTOR_ELT(contents, 478, primary_first);
   SEXP primary_second = PROTECT(allocVector(REALSXP, internal->dim_primary_second));
   memcpy(REAL(primary_second), internal->primary_second, internal->dim_primary_second * sizeof(double));
-  SET_VECTOR_ELT(contents, 477, primary_second);
+  SET_VECTOR_ELT(contents, 479, primary_second);
   SEXP prob_hosp = PROTECT(allocVector(REALSXP, internal->dim_prob_hosp));
   memcpy(REAL(prob_hosp), internal->prob_hosp, internal->dim_prob_hosp * sizeof(double));
   odin_set_dim(prob_hosp, 3, internal->dim_prob_hosp_1, internal->dim_prob_hosp_2, internal->dim_prob_hosp_3);
-  SET_VECTOR_ELT(contents, 478, prob_hosp);
+  SET_VECTOR_ELT(contents, 480, prob_hosp);
   SEXP prob_hosp_multiplier = PROTECT(allocVector(REALSXP, internal->dim_prob_hosp_multiplier));
   memcpy(REAL(prob_hosp_multiplier), internal->prob_hosp_multiplier, internal->dim_prob_hosp_multiplier * sizeof(double));
-  SET_VECTOR_ELT(contents, 479, prob_hosp_multiplier);
+  SET_VECTOR_ELT(contents, 481, prob_hosp_multiplier);
   SEXP prob_hosp_t = PROTECT(allocVector(REALSXP, internal->dim_prob_hosp_t));
   memcpy(REAL(prob_hosp_t), internal->prob_hosp_t, internal->dim_prob_hosp_t * sizeof(double));
   odin_set_dim(prob_hosp_t, 2, internal->dim_prob_hosp_t_1, internal->dim_prob_hosp_t_2);
-  SET_VECTOR_ELT(contents, 480, prob_hosp_t);
+  SET_VECTOR_ELT(contents, 482, prob_hosp_t);
   SEXP prob_hosp_t_mult = PROTECT(allocVector(REALSXP, internal->dim_prob_hosp_t_mult));
   memcpy(REAL(prob_hosp_t_mult), internal->prob_hosp_t_mult, internal->dim_prob_hosp_t_mult * sizeof(double));
   odin_set_dim(prob_hosp_t_mult, 2, internal->dim_prob_hosp_t_mult_1, internal->dim_prob_hosp_t_mult_2);
-  SET_VECTOR_ELT(contents, 481, prob_hosp_t_mult);
+  SET_VECTOR_ELT(contents, 483, prob_hosp_t_mult);
   SEXP prob_non_severe_death_no_treatment = PROTECT(allocVector(REALSXP, internal->dim_prob_non_severe_death_no_treatment));
   memcpy(REAL(prob_non_severe_death_no_treatment), internal->prob_non_severe_death_no_treatment, internal->dim_prob_non_severe_death_no_treatment * sizeof(double));
-  SET_VECTOR_ELT(contents, 482, prob_non_severe_death_no_treatment);
+  SET_VECTOR_ELT(contents, 484, prob_non_severe_death_no_treatment);
   SEXP prob_non_severe_death_treatment = PROTECT(allocVector(REALSXP, internal->dim_prob_non_severe_death_treatment));
   memcpy(REAL(prob_non_severe_death_treatment), internal->prob_non_severe_death_treatment, internal->dim_prob_non_severe_death_treatment * sizeof(double));
-  SET_VECTOR_ELT(contents, 483, prob_non_severe_death_treatment);
+  SET_VECTOR_ELT(contents, 485, prob_non_severe_death_treatment);
   SEXP prob_severe = PROTECT(allocVector(REALSXP, internal->dim_prob_severe));
   memcpy(REAL(prob_severe), internal->prob_severe, internal->dim_prob_severe * sizeof(double));
-  SET_VECTOR_ELT(contents, 484, prob_severe);
+  SET_VECTOR_ELT(contents, 486, prob_severe);
   SEXP prob_severe_death_no_treatment = PROTECT(allocVector(REALSXP, internal->dim_prob_severe_death_no_treatment));
   memcpy(REAL(prob_severe_death_no_treatment), internal->prob_severe_death_no_treatment, internal->dim_prob_severe_death_no_treatment * sizeof(double));
-  SET_VECTOR_ELT(contents, 485, prob_severe_death_no_treatment);
+  SET_VECTOR_ELT(contents, 487, prob_severe_death_no_treatment);
   SEXP prob_severe_death_treatment = PROTECT(allocVector(REALSXP, internal->dim_prob_severe_death_treatment));
   memcpy(REAL(prob_severe_death_treatment), internal->prob_severe_death_treatment, internal->dim_prob_severe_death_treatment * sizeof(double));
-  SET_VECTOR_ELT(contents, 486, prob_severe_death_treatment);
+  SET_VECTOR_ELT(contents, 488, prob_severe_death_treatment);
   SEXP prob_severe_multi = PROTECT(allocVector(REALSXP, internal->dim_prob_severe_multi));
   memcpy(REAL(prob_severe_multi), internal->prob_severe_multi, internal->dim_prob_severe_multi * sizeof(double));
-  SET_VECTOR_ELT(contents, 487, prob_severe_multi);
+  SET_VECTOR_ELT(contents, 489, prob_severe_multi);
   SEXP prob_severe_multiplier = PROTECT(allocVector(REALSXP, internal->dim_prob_severe_multiplier));
   memcpy(REAL(prob_severe_multiplier), internal->prob_severe_multiplier, internal->dim_prob_severe_multiplier * sizeof(double));
-  SET_VECTOR_ELT(contents, 488, prob_severe_multiplier);
+  SET_VECTOR_ELT(contents, 490, prob_severe_multiplier);
   SEXP R1_0 = PROTECT(allocVector(REALSXP, internal->dim_R1_0));
   memcpy(REAL(R1_0), internal->R1_0, internal->dim_R1_0 * sizeof(double));
   odin_set_dim(R1_0, 2, internal->dim_R1_0_1, internal->dim_R1_0_2);
-  SET_VECTOR_ELT(contents, 489, R1_0);
+  SET_VECTOR_ELT(contents, 491, R1_0);
   SEXP R2_0 = PROTECT(allocVector(REALSXP, internal->dim_R2_0));
   memcpy(REAL(R2_0), internal->R2_0, internal->dim_R2_0 * sizeof(double));
   odin_set_dim(R2_0, 2, internal->dim_R2_0_1, internal->dim_R2_0_2);
-  SET_VECTOR_ELT(contents, 490, R2_0);
+  SET_VECTOR_ELT(contents, 492, R2_0);
   SEXP rel_infectiousness = PROTECT(allocVector(REALSXP, internal->dim_rel_infectiousness));
   memcpy(REAL(rel_infectiousness), internal->rel_infectiousness, internal->dim_rel_infectiousness * sizeof(double));
-  SET_VECTOR_ELT(contents, 491, rel_infectiousness);
+  SET_VECTOR_ELT(contents, 493, rel_infectiousness);
   SEXP rel_infectiousness_vaccinated = PROTECT(allocVector(REALSXP, internal->dim_rel_infectiousness_vaccinated));
   memcpy(REAL(rel_infectiousness_vaccinated), internal->rel_infectiousness_vaccinated, internal->dim_rel_infectiousness_vaccinated * sizeof(double));
   odin_set_dim(rel_infectiousness_vaccinated, 2, internal->dim_rel_infectiousness_vaccinated_1, internal->dim_rel_infectiousness_vaccinated_2);
-  SET_VECTOR_ELT(contents, 492, rel_infectiousness_vaccinated);
-  SET_VECTOR_ELT(contents, 493, ScalarInteger(internal->runtime));
+  SET_VECTOR_ELT(contents, 494, rel_infectiousness_vaccinated);
+  SET_VECTOR_ELT(contents, 495, ScalarInteger(internal->runtime));
   SEXP S_0 = PROTECT(allocVector(REALSXP, internal->dim_S_0));
   memcpy(REAL(S_0), internal->S_0, internal->dim_S_0 * sizeof(double));
   odin_set_dim(S_0, 2, internal->dim_S_0_1, internal->dim_S_0_2);
-  SET_VECTOR_ELT(contents, 494, S_0);
+  SET_VECTOR_ELT(contents, 496, S_0);
   SEXP s_ij = PROTECT(allocVector(REALSXP, internal->dim_s_ij));
   memcpy(REAL(s_ij), internal->s_ij, internal->dim_s_ij * sizeof(double));
   odin_set_dim(s_ij, 2, internal->dim_s_ij_1, internal->dim_s_ij_2);
-  SET_VECTOR_ELT(contents, 495, s_ij);
+  SET_VECTOR_ELT(contents, 497, s_ij);
   SEXP second_doses = PROTECT(allocVector(REALSXP, internal->dim_second_doses));
   memcpy(REAL(second_doses), internal->second_doses, internal->dim_second_doses * sizeof(double));
-  SET_VECTOR_ELT(contents, 496, second_doses);
+  SET_VECTOR_ELT(contents, 498, second_doses);
   SEXP target_met_column = PROTECT(allocVector(REALSXP, internal->dim_target_met_column));
   memcpy(REAL(target_met_column), internal->target_met_column, internal->dim_target_met_column * sizeof(double));
-  SET_VECTOR_ELT(contents, 497, target_met_column);
+  SET_VECTOR_ELT(contents, 499, target_met_column);
   SEXP target_met_matrix = PROTECT(allocVector(REALSXP, internal->dim_target_met_matrix));
   memcpy(REAL(target_met_matrix), internal->target_met_matrix, internal->dim_target_met_matrix * sizeof(double));
   odin_set_dim(target_met_matrix, 2, internal->dim_target_met_matrix_1, internal->dim_target_met_matrix_2);
-  SET_VECTOR_ELT(contents, 498, target_met_matrix);
+  SET_VECTOR_ELT(contents, 500, target_met_matrix);
   SEXP target_pop_first = PROTECT(allocVector(REALSXP, internal->dim_target_pop_first));
   memcpy(REAL(target_pop_first), internal->target_pop_first, internal->dim_target_pop_first * sizeof(double));
-  SET_VECTOR_ELT(contents, 499, target_pop_first);
+  SET_VECTOR_ELT(contents, 501, target_pop_first);
   SEXP temp = PROTECT(allocVector(REALSXP, internal->dim_temp));
   memcpy(REAL(temp), internal->temp, internal->dim_temp * sizeof(double));
-  SET_VECTOR_ELT(contents, 500, temp);
+  SET_VECTOR_ELT(contents, 502, temp);
   SEXP temp_rel = PROTECT(allocVector(REALSXP, internal->dim_temp_rel));
   memcpy(REAL(temp_rel), internal->temp_rel, internal->dim_temp_rel * sizeof(double));
   odin_set_dim(temp_rel, 2, internal->dim_temp_rel_1, internal->dim_temp_rel_2);
-  SET_VECTOR_ELT(contents, 501, temp_rel);
+  SET_VECTOR_ELT(contents, 503, temp_rel);
   SEXP tt_beta = PROTECT(allocVector(REALSXP, internal->dim_tt_beta));
   memcpy(REAL(tt_beta), internal->tt_beta, internal->dim_tt_beta * sizeof(double));
-  SET_VECTOR_ELT(contents, 502, tt_beta);
+  SET_VECTOR_ELT(contents, 504, tt_beta);
   SEXP tt_dur_E = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_E));
   memcpy(REAL(tt_dur_E), internal->tt_dur_E, internal->dim_tt_dur_E * sizeof(double));
-  SET_VECTOR_ELT(contents, 503, tt_dur_E);
+  SET_VECTOR_ELT(contents, 505, tt_dur_E);
   SEXP tt_dur_get_mv_die = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_get_mv_die));
   memcpy(REAL(tt_dur_get_mv_die), internal->tt_dur_get_mv_die, internal->dim_tt_dur_get_mv_die * sizeof(double));
-  SET_VECTOR_ELT(contents, 504, tt_dur_get_mv_die);
+  SET_VECTOR_ELT(contents, 506, tt_dur_get_mv_die);
   SEXP tt_dur_get_mv_survive = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_get_mv_survive));
   memcpy(REAL(tt_dur_get_mv_survive), internal->tt_dur_get_mv_survive, internal->dim_tt_dur_get_mv_survive * sizeof(double));
-  SET_VECTOR_ELT(contents, 505, tt_dur_get_mv_survive);
+  SET_VECTOR_ELT(contents, 507, tt_dur_get_mv_survive);
   SEXP tt_dur_get_ox_die = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_get_ox_die));
   memcpy(REAL(tt_dur_get_ox_die), internal->tt_dur_get_ox_die, internal->dim_tt_dur_get_ox_die * sizeof(double));
-  SET_VECTOR_ELT(contents, 506, tt_dur_get_ox_die);
+  SET_VECTOR_ELT(contents, 508, tt_dur_get_ox_die);
   SEXP tt_dur_get_ox_survive = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_get_ox_survive));
   memcpy(REAL(tt_dur_get_ox_survive), internal->tt_dur_get_ox_survive, internal->dim_tt_dur_get_ox_survive * sizeof(double));
-  SET_VECTOR_ELT(contents, 507, tt_dur_get_ox_survive);
+  SET_VECTOR_ELT(contents, 509, tt_dur_get_ox_survive);
   SEXP tt_dur_ICase = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_ICase));
   memcpy(REAL(tt_dur_ICase), internal->tt_dur_ICase, internal->dim_tt_dur_ICase * sizeof(double));
-  SET_VECTOR_ELT(contents, 508, tt_dur_ICase);
+  SET_VECTOR_ELT(contents, 510, tt_dur_ICase);
   SEXP tt_dur_IMild = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_IMild));
   memcpy(REAL(tt_dur_IMild), internal->tt_dur_IMild, internal->dim_tt_dur_IMild * sizeof(double));
-  SET_VECTOR_ELT(contents, 509, tt_dur_IMild);
+  SET_VECTOR_ELT(contents, 511, tt_dur_IMild);
   SEXP tt_dur_R = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_R));
   memcpy(REAL(tt_dur_R), internal->tt_dur_R, internal->dim_tt_dur_R * sizeof(double));
-  SET_VECTOR_ELT(contents, 510, tt_dur_R);
+  SET_VECTOR_ELT(contents, 512, tt_dur_R);
   SEXP tt_dur_vaccine = PROTECT(allocVector(REALSXP, internal->dim_tt_dur_vaccine));
   memcpy(REAL(tt_dur_vaccine), internal->tt_dur_vaccine, internal->dim_tt_dur_vaccine * sizeof(double));
-  SET_VECTOR_ELT(contents, 511, tt_dur_vaccine);
+  SET_VECTOR_ELT(contents, 513, tt_dur_vaccine);
   SEXP tt_hosp_beds = PROTECT(allocVector(REALSXP, internal->dim_tt_hosp_beds));
   memcpy(REAL(tt_hosp_beds), internal->tt_hosp_beds, internal->dim_tt_hosp_beds * sizeof(double));
-  SET_VECTOR_ELT(contents, 512, tt_hosp_beds);
+  SET_VECTOR_ELT(contents, 514, tt_hosp_beds);
   SEXP tt_ICU_beds = PROTECT(allocVector(REALSXP, internal->dim_tt_ICU_beds));
   memcpy(REAL(tt_ICU_beds), internal->tt_ICU_beds, internal->dim_tt_ICU_beds * sizeof(double));
-  SET_VECTOR_ELT(contents, 513, tt_ICU_beds);
+  SET_VECTOR_ELT(contents, 515, tt_ICU_beds);
   SEXP tt_matrix = PROTECT(allocVector(REALSXP, internal->dim_tt_matrix));
   memcpy(REAL(tt_matrix), internal->tt_matrix, internal->dim_tt_matrix * sizeof(double));
-  SET_VECTOR_ELT(contents, 514, tt_matrix);
+  SET_VECTOR_ELT(contents, 516, tt_matrix);
   SEXP tt_prob_hosp_multiplier = PROTECT(allocVector(REALSXP, internal->dim_tt_prob_hosp_multiplier));
   memcpy(REAL(tt_prob_hosp_multiplier), internal->tt_prob_hosp_multiplier, internal->dim_tt_prob_hosp_multiplier * sizeof(double));
-  SET_VECTOR_ELT(contents, 515, tt_prob_hosp_multiplier);
+  SET_VECTOR_ELT(contents, 517, tt_prob_hosp_multiplier);
   SEXP tt_prob_severe_multiplier = PROTECT(allocVector(REALSXP, internal->dim_tt_prob_severe_multiplier));
   memcpy(REAL(tt_prob_severe_multiplier), internal->tt_prob_severe_multiplier, internal->dim_tt_prob_severe_multiplier * sizeof(double));
-  SET_VECTOR_ELT(contents, 516, tt_prob_severe_multiplier);
+  SET_VECTOR_ELT(contents, 518, tt_prob_severe_multiplier);
   SEXP tt_vaccine_efficacy_disease = PROTECT(allocVector(REALSXP, internal->dim_tt_vaccine_efficacy_disease));
   memcpy(REAL(tt_vaccine_efficacy_disease), internal->tt_vaccine_efficacy_disease, internal->dim_tt_vaccine_efficacy_disease * sizeof(double));
-  SET_VECTOR_ELT(contents, 517, tt_vaccine_efficacy_disease);
+  SET_VECTOR_ELT(contents, 519, tt_vaccine_efficacy_disease);
   SEXP tt_vaccine_efficacy_infection = PROTECT(allocVector(REALSXP, internal->dim_tt_vaccine_efficacy_infection));
   memcpy(REAL(tt_vaccine_efficacy_infection), internal->tt_vaccine_efficacy_infection, internal->dim_tt_vaccine_efficacy_infection * sizeof(double));
-  SET_VECTOR_ELT(contents, 518, tt_vaccine_efficacy_infection);
+  SET_VECTOR_ELT(contents, 520, tt_vaccine_efficacy_infection);
   SEXP vaccination_cov = PROTECT(allocVector(REALSXP, internal->dim_vaccination_cov));
   memcpy(REAL(vaccination_cov), internal->vaccination_cov, internal->dim_vaccination_cov * sizeof(double));
   odin_set_dim(vaccination_cov, 2, internal->dim_vaccination_cov_1, internal->dim_vaccination_cov_2);
-  SET_VECTOR_ELT(contents, 519, vaccination_cov);
+  SET_VECTOR_ELT(contents, 521, vaccination_cov);
   SEXP vaccination_cov_eligible = PROTECT(allocVector(REALSXP, internal->dim_vaccination_cov_eligible));
   memcpy(REAL(vaccination_cov_eligible), internal->vaccination_cov_eligible, internal->dim_vaccination_cov_eligible * sizeof(double));
   odin_set_dim(vaccination_cov_eligible, 2, internal->dim_vaccination_cov_eligible_1, internal->dim_vaccination_cov_eligible_2);
-  SET_VECTOR_ELT(contents, 520, vaccination_cov_eligible);
+  SET_VECTOR_ELT(contents, 522, vaccination_cov_eligible);
   SEXP vaccinations_E1 = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_E1));
   memcpy(REAL(vaccinations_E1), internal->vaccinations_E1, internal->dim_vaccinations_E1 * sizeof(double));
   odin_set_dim(vaccinations_E1, 2, internal->dim_vaccinations_E1_1, internal->dim_vaccinations_E1_2);
-  SET_VECTOR_ELT(contents, 521, vaccinations_E1);
+  SET_VECTOR_ELT(contents, 523, vaccinations_E1);
   SEXP vaccinations_E2 = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_E2));
   memcpy(REAL(vaccinations_E2), internal->vaccinations_E2, internal->dim_vaccinations_E2 * sizeof(double));
   odin_set_dim(vaccinations_E2, 2, internal->dim_vaccinations_E2_1, internal->dim_vaccinations_E2_2);
-  SET_VECTOR_ELT(contents, 522, vaccinations_E2);
+  SET_VECTOR_ELT(contents, 524, vaccinations_E2);
   SEXP vaccinations_R1 = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_R1));
   memcpy(REAL(vaccinations_R1), internal->vaccinations_R1, internal->dim_vaccinations_R1 * sizeof(double));
   odin_set_dim(vaccinations_R1, 2, internal->dim_vaccinations_R1_1, internal->dim_vaccinations_R1_2);
-  SET_VECTOR_ELT(contents, 523, vaccinations_R1);
+  SET_VECTOR_ELT(contents, 525, vaccinations_R1);
   SEXP vaccinations_R2 = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_R2));
   memcpy(REAL(vaccinations_R2), internal->vaccinations_R2, internal->dim_vaccinations_R2 * sizeof(double));
   odin_set_dim(vaccinations_R2, 2, internal->dim_vaccinations_R2_1, internal->dim_vaccinations_R2_2);
-  SET_VECTOR_ELT(contents, 524, vaccinations_R2);
+  SET_VECTOR_ELT(contents, 526, vaccinations_R2);
   SEXP vaccinations_S = PROTECT(allocVector(REALSXP, internal->dim_vaccinations_S));
   memcpy(REAL(vaccinations_S), internal->vaccinations_S, internal->dim_vaccinations_S * sizeof(double));
   odin_set_dim(vaccinations_S, 2, internal->dim_vaccinations_S_1, internal->dim_vaccinations_S_2);
-  SET_VECTOR_ELT(contents, 525, vaccinations_S);
+  SET_VECTOR_ELT(contents, 527, vaccinations_S);
   SEXP vaccine_booster_follow_up_coverage = PROTECT(allocVector(REALSXP, internal->dim_vaccine_booster_follow_up_coverage));
   memcpy(REAL(vaccine_booster_follow_up_coverage), internal->vaccine_booster_follow_up_coverage, internal->dim_vaccine_booster_follow_up_coverage * sizeof(double));
-  SET_VECTOR_ELT(contents, 526, vaccine_booster_follow_up_coverage);
+  SET_VECTOR_ELT(contents, 528, vaccine_booster_follow_up_coverage);
   SEXP vaccine_booster_initial_coverage = PROTECT(allocVector(REALSXP, internal->dim_vaccine_booster_initial_coverage));
   memcpy(REAL(vaccine_booster_initial_coverage), internal->vaccine_booster_initial_coverage, internal->dim_vaccine_booster_initial_coverage * sizeof(double));
-  SET_VECTOR_ELT(contents, 527, vaccine_booster_initial_coverage);
+  SET_VECTOR_ELT(contents, 529, vaccine_booster_initial_coverage);
   SEXP vaccine_coverage_mat = PROTECT(allocVector(REALSXP, internal->dim_vaccine_coverage_mat));
   memcpy(REAL(vaccine_coverage_mat), internal->vaccine_coverage_mat, internal->dim_vaccine_coverage_mat * sizeof(double));
   odin_set_dim(vaccine_coverage_mat, 2, internal->dim_vaccine_coverage_mat_1, internal->dim_vaccine_coverage_mat_2);
-  SET_VECTOR_ELT(contents, 528, vaccine_coverage_mat);
+  SET_VECTOR_ELT(contents, 530, vaccine_coverage_mat);
   SEXP vaccine_efficacy_infection = PROTECT(allocVector(REALSXP, internal->dim_vaccine_efficacy_infection));
   memcpy(REAL(vaccine_efficacy_infection), internal->vaccine_efficacy_infection, internal->dim_vaccine_efficacy_infection * sizeof(double));
   odin_set_dim(vaccine_efficacy_infection, 3, internal->dim_vaccine_efficacy_infection_1, internal->dim_vaccine_efficacy_infection_2, internal->dim_vaccine_efficacy_infection_3);
-  SET_VECTOR_ELT(contents, 529, vaccine_efficacy_infection);
+  SET_VECTOR_ELT(contents, 531, vaccine_efficacy_infection);
   SEXP vaccine_efficacy_infection_t = PROTECT(allocVector(REALSXP, internal->dim_vaccine_efficacy_infection_t));
   memcpy(REAL(vaccine_efficacy_infection_t), internal->vaccine_efficacy_infection_t, internal->dim_vaccine_efficacy_infection_t * sizeof(double));
   odin_set_dim(vaccine_efficacy_infection_t, 2, internal->dim_vaccine_efficacy_infection_t_1, internal->dim_vaccine_efficacy_infection_t_2);
-  SET_VECTOR_ELT(contents, 530, vaccine_efficacy_infection_t);
-  SEXP nms = PROTECT(allocVector(STRSXP, 531));
+  SET_VECTOR_ELT(contents, 532, vaccine_efficacy_infection_t);
+  SEXP nms = PROTECT(allocVector(STRSXP, 533));
   SET_STRING_ELT(nms, 0, mkChar("a_initial_boosted"));
   SET_STRING_ELT(nms, 1, mkChar("beta_set"));
   SET_STRING_ELT(nms, 2, mkChar("booster_doses"));
@@ -9132,110 +9138,112 @@ SEXP nimue_booster_check_contents(SEXP internal_p) {
   SET_STRING_ELT(nms, 424, mkChar("number_requiring_IMV"));
   SET_STRING_ELT(nms, 425, mkChar("number_requiring_Ox"));
   SET_STRING_ELT(nms, 426, mkChar("offset_output_booster_doses_given"));
-  SET_STRING_ELT(nms, 427, mkChar("offset_output_deaths_cumu"));
-  SET_STRING_ELT(nms, 428, mkChar("offset_output_first_doses_given"));
-  SET_STRING_ELT(nms, 429, mkChar("offset_output_hospital_demand"));
-  SET_STRING_ELT(nms, 430, mkChar("offset_output_hospital_occupancy"));
-  SET_STRING_ELT(nms, 431, mkChar("offset_output_ICase"));
-  SET_STRING_ELT(nms, 432, mkChar("offset_output_ICU_demand"));
-  SET_STRING_ELT(nms, 433, mkChar("offset_output_ICU_occupancy"));
-  SET_STRING_ELT(nms, 434, mkChar("offset_output_IHospital"));
-  SET_STRING_ELT(nms, 435, mkChar("offset_output_IICU"));
-  SET_STRING_ELT(nms, 436, mkChar("offset_output_IMildout"));
-  SET_STRING_ELT(nms, 437, mkChar("offset_output_IRec"));
-  SET_STRING_ELT(nms, 438, mkChar("offset_output_N"));
-  SET_STRING_ELT(nms, 439, mkChar("offset_output_R"));
-  SET_STRING_ELT(nms, 440, mkChar("offset_output_second_doses_given"));
-  SET_STRING_ELT(nms, 441, mkChar("offset_output_unvaccinated"));
-  SET_STRING_ELT(nms, 442, mkChar("offset_output_vaccinated_booster_dose"));
-  SET_STRING_ELT(nms, 443, mkChar("offset_output_vaccinated_booster_waned"));
-  SET_STRING_ELT(nms, 444, mkChar("offset_output_vaccinated_first_dose"));
-  SET_STRING_ELT(nms, 445, mkChar("offset_output_vaccinated_second_dose"));
-  SET_STRING_ELT(nms, 446, mkChar("offset_output_vaccinated_second_waned"));
-  SET_STRING_ELT(nms, 447, mkChar("offset_variable_D"));
-  SET_STRING_ELT(nms, 448, mkChar("offset_variable_E2"));
-  SET_STRING_ELT(nms, 449, mkChar("offset_variable_hospitalisation_demand_cumu"));
-  SET_STRING_ELT(nms, 450, mkChar("offset_variable_hospitalisations_cumu"));
-  SET_STRING_ELT(nms, 451, mkChar("offset_variable_ICase1"));
-  SET_STRING_ELT(nms, 452, mkChar("offset_variable_ICase2"));
-  SET_STRING_ELT(nms, 453, mkChar("offset_variable_IMild"));
-  SET_STRING_ELT(nms, 454, mkChar("offset_variable_IMVGetDie1"));
-  SET_STRING_ELT(nms, 455, mkChar("offset_variable_IMVGetDie2"));
-  SET_STRING_ELT(nms, 456, mkChar("offset_variable_IMVGetLive1"));
-  SET_STRING_ELT(nms, 457, mkChar("offset_variable_IMVGetLive2"));
-  SET_STRING_ELT(nms, 458, mkChar("offset_variable_IMVNotGetDie1"));
-  SET_STRING_ELT(nms, 459, mkChar("offset_variable_IMVNotGetDie2"));
-  SET_STRING_ELT(nms, 460, mkChar("offset_variable_IMVNotGetLive1"));
-  SET_STRING_ELT(nms, 461, mkChar("offset_variable_IMVNotGetLive2"));
-  SET_STRING_ELT(nms, 462, mkChar("offset_variable_infections_cumu"));
-  SET_STRING_ELT(nms, 463, mkChar("offset_variable_IOxGetDie1"));
-  SET_STRING_ELT(nms, 464, mkChar("offset_variable_IOxGetDie2"));
-  SET_STRING_ELT(nms, 465, mkChar("offset_variable_IOxGetLive1"));
-  SET_STRING_ELT(nms, 466, mkChar("offset_variable_IOxGetLive2"));
-  SET_STRING_ELT(nms, 467, mkChar("offset_variable_IOxNotGetDie1"));
-  SET_STRING_ELT(nms, 468, mkChar("offset_variable_IOxNotGetDie2"));
-  SET_STRING_ELT(nms, 469, mkChar("offset_variable_IOxNotGetLive1"));
-  SET_STRING_ELT(nms, 470, mkChar("offset_variable_IOxNotGetLive2"));
-  SET_STRING_ELT(nms, 471, mkChar("offset_variable_IRec1"));
-  SET_STRING_ELT(nms, 472, mkChar("offset_variable_IRec2"));
-  SET_STRING_ELT(nms, 473, mkChar("offset_variable_R1"));
-  SET_STRING_ELT(nms, 474, mkChar("offset_variable_R2"));
-  SET_STRING_ELT(nms, 475, mkChar("primary_doses"));
-  SET_STRING_ELT(nms, 476, mkChar("primary_first"));
-  SET_STRING_ELT(nms, 477, mkChar("primary_second"));
-  SET_STRING_ELT(nms, 478, mkChar("prob_hosp"));
-  SET_STRING_ELT(nms, 479, mkChar("prob_hosp_multiplier"));
-  SET_STRING_ELT(nms, 480, mkChar("prob_hosp_t"));
-  SET_STRING_ELT(nms, 481, mkChar("prob_hosp_t_mult"));
-  SET_STRING_ELT(nms, 482, mkChar("prob_non_severe_death_no_treatment"));
-  SET_STRING_ELT(nms, 483, mkChar("prob_non_severe_death_treatment"));
-  SET_STRING_ELT(nms, 484, mkChar("prob_severe"));
-  SET_STRING_ELT(nms, 485, mkChar("prob_severe_death_no_treatment"));
-  SET_STRING_ELT(nms, 486, mkChar("prob_severe_death_treatment"));
-  SET_STRING_ELT(nms, 487, mkChar("prob_severe_multi"));
-  SET_STRING_ELT(nms, 488, mkChar("prob_severe_multiplier"));
-  SET_STRING_ELT(nms, 489, mkChar("R1_0"));
-  SET_STRING_ELT(nms, 490, mkChar("R2_0"));
-  SET_STRING_ELT(nms, 491, mkChar("rel_infectiousness"));
-  SET_STRING_ELT(nms, 492, mkChar("rel_infectiousness_vaccinated"));
-  SET_STRING_ELT(nms, 493, mkChar("runtime"));
-  SET_STRING_ELT(nms, 494, mkChar("S_0"));
-  SET_STRING_ELT(nms, 495, mkChar("s_ij"));
-  SET_STRING_ELT(nms, 496, mkChar("second_doses"));
-  SET_STRING_ELT(nms, 497, mkChar("target_met_column"));
-  SET_STRING_ELT(nms, 498, mkChar("target_met_matrix"));
-  SET_STRING_ELT(nms, 499, mkChar("target_pop_first"));
-  SET_STRING_ELT(nms, 500, mkChar("temp"));
-  SET_STRING_ELT(nms, 501, mkChar("temp_rel"));
-  SET_STRING_ELT(nms, 502, mkChar("tt_beta"));
-  SET_STRING_ELT(nms, 503, mkChar("tt_dur_E"));
-  SET_STRING_ELT(nms, 504, mkChar("tt_dur_get_mv_die"));
-  SET_STRING_ELT(nms, 505, mkChar("tt_dur_get_mv_survive"));
-  SET_STRING_ELT(nms, 506, mkChar("tt_dur_get_ox_die"));
-  SET_STRING_ELT(nms, 507, mkChar("tt_dur_get_ox_survive"));
-  SET_STRING_ELT(nms, 508, mkChar("tt_dur_ICase"));
-  SET_STRING_ELT(nms, 509, mkChar("tt_dur_IMild"));
-  SET_STRING_ELT(nms, 510, mkChar("tt_dur_R"));
-  SET_STRING_ELT(nms, 511, mkChar("tt_dur_vaccine"));
-  SET_STRING_ELT(nms, 512, mkChar("tt_hosp_beds"));
-  SET_STRING_ELT(nms, 513, mkChar("tt_ICU_beds"));
-  SET_STRING_ELT(nms, 514, mkChar("tt_matrix"));
-  SET_STRING_ELT(nms, 515, mkChar("tt_prob_hosp_multiplier"));
-  SET_STRING_ELT(nms, 516, mkChar("tt_prob_severe_multiplier"));
-  SET_STRING_ELT(nms, 517, mkChar("tt_vaccine_efficacy_disease"));
-  SET_STRING_ELT(nms, 518, mkChar("tt_vaccine_efficacy_infection"));
-  SET_STRING_ELT(nms, 519, mkChar("vaccination_cov"));
-  SET_STRING_ELT(nms, 520, mkChar("vaccination_cov_eligible"));
-  SET_STRING_ELT(nms, 521, mkChar("vaccinations_E1"));
-  SET_STRING_ELT(nms, 522, mkChar("vaccinations_E2"));
-  SET_STRING_ELT(nms, 523, mkChar("vaccinations_R1"));
-  SET_STRING_ELT(nms, 524, mkChar("vaccinations_R2"));
-  SET_STRING_ELT(nms, 525, mkChar("vaccinations_S"));
-  SET_STRING_ELT(nms, 526, mkChar("vaccine_booster_follow_up_coverage"));
-  SET_STRING_ELT(nms, 527, mkChar("vaccine_booster_initial_coverage"));
-  SET_STRING_ELT(nms, 528, mkChar("vaccine_coverage_mat"));
-  SET_STRING_ELT(nms, 529, mkChar("vaccine_efficacy_infection"));
-  SET_STRING_ELT(nms, 530, mkChar("vaccine_efficacy_infection_t"));
+  SET_STRING_ELT(nms, 427, mkChar("offset_output_booster_first"));
+  SET_STRING_ELT(nms, 428, mkChar("offset_output_deaths_cumu"));
+  SET_STRING_ELT(nms, 429, mkChar("offset_output_first_doses_given"));
+  SET_STRING_ELT(nms, 430, mkChar("offset_output_hospital_demand"));
+  SET_STRING_ELT(nms, 431, mkChar("offset_output_hospital_occupancy"));
+  SET_STRING_ELT(nms, 432, mkChar("offset_output_ICase"));
+  SET_STRING_ELT(nms, 433, mkChar("offset_output_ICU_demand"));
+  SET_STRING_ELT(nms, 434, mkChar("offset_output_ICU_occupancy"));
+  SET_STRING_ELT(nms, 435, mkChar("offset_output_IHospital"));
+  SET_STRING_ELT(nms, 436, mkChar("offset_output_IICU"));
+  SET_STRING_ELT(nms, 437, mkChar("offset_output_IMildout"));
+  SET_STRING_ELT(nms, 438, mkChar("offset_output_IRec"));
+  SET_STRING_ELT(nms, 439, mkChar("offset_output_N"));
+  SET_STRING_ELT(nms, 440, mkChar("offset_output_primary_first"));
+  SET_STRING_ELT(nms, 441, mkChar("offset_output_R"));
+  SET_STRING_ELT(nms, 442, mkChar("offset_output_second_doses_given"));
+  SET_STRING_ELT(nms, 443, mkChar("offset_output_unvaccinated"));
+  SET_STRING_ELT(nms, 444, mkChar("offset_output_vaccinated_booster_dose"));
+  SET_STRING_ELT(nms, 445, mkChar("offset_output_vaccinated_booster_waned"));
+  SET_STRING_ELT(nms, 446, mkChar("offset_output_vaccinated_first_dose"));
+  SET_STRING_ELT(nms, 447, mkChar("offset_output_vaccinated_second_dose"));
+  SET_STRING_ELT(nms, 448, mkChar("offset_output_vaccinated_second_waned"));
+  SET_STRING_ELT(nms, 449, mkChar("offset_variable_D"));
+  SET_STRING_ELT(nms, 450, mkChar("offset_variable_E2"));
+  SET_STRING_ELT(nms, 451, mkChar("offset_variable_hospitalisation_demand_cumu"));
+  SET_STRING_ELT(nms, 452, mkChar("offset_variable_hospitalisations_cumu"));
+  SET_STRING_ELT(nms, 453, mkChar("offset_variable_ICase1"));
+  SET_STRING_ELT(nms, 454, mkChar("offset_variable_ICase2"));
+  SET_STRING_ELT(nms, 455, mkChar("offset_variable_IMild"));
+  SET_STRING_ELT(nms, 456, mkChar("offset_variable_IMVGetDie1"));
+  SET_STRING_ELT(nms, 457, mkChar("offset_variable_IMVGetDie2"));
+  SET_STRING_ELT(nms, 458, mkChar("offset_variable_IMVGetLive1"));
+  SET_STRING_ELT(nms, 459, mkChar("offset_variable_IMVGetLive2"));
+  SET_STRING_ELT(nms, 460, mkChar("offset_variable_IMVNotGetDie1"));
+  SET_STRING_ELT(nms, 461, mkChar("offset_variable_IMVNotGetDie2"));
+  SET_STRING_ELT(nms, 462, mkChar("offset_variable_IMVNotGetLive1"));
+  SET_STRING_ELT(nms, 463, mkChar("offset_variable_IMVNotGetLive2"));
+  SET_STRING_ELT(nms, 464, mkChar("offset_variable_infections_cumu"));
+  SET_STRING_ELT(nms, 465, mkChar("offset_variable_IOxGetDie1"));
+  SET_STRING_ELT(nms, 466, mkChar("offset_variable_IOxGetDie2"));
+  SET_STRING_ELT(nms, 467, mkChar("offset_variable_IOxGetLive1"));
+  SET_STRING_ELT(nms, 468, mkChar("offset_variable_IOxGetLive2"));
+  SET_STRING_ELT(nms, 469, mkChar("offset_variable_IOxNotGetDie1"));
+  SET_STRING_ELT(nms, 470, mkChar("offset_variable_IOxNotGetDie2"));
+  SET_STRING_ELT(nms, 471, mkChar("offset_variable_IOxNotGetLive1"));
+  SET_STRING_ELT(nms, 472, mkChar("offset_variable_IOxNotGetLive2"));
+  SET_STRING_ELT(nms, 473, mkChar("offset_variable_IRec1"));
+  SET_STRING_ELT(nms, 474, mkChar("offset_variable_IRec2"));
+  SET_STRING_ELT(nms, 475, mkChar("offset_variable_R1"));
+  SET_STRING_ELT(nms, 476, mkChar("offset_variable_R2"));
+  SET_STRING_ELT(nms, 477, mkChar("primary_doses"));
+  SET_STRING_ELT(nms, 478, mkChar("primary_first"));
+  SET_STRING_ELT(nms, 479, mkChar("primary_second"));
+  SET_STRING_ELT(nms, 480, mkChar("prob_hosp"));
+  SET_STRING_ELT(nms, 481, mkChar("prob_hosp_multiplier"));
+  SET_STRING_ELT(nms, 482, mkChar("prob_hosp_t"));
+  SET_STRING_ELT(nms, 483, mkChar("prob_hosp_t_mult"));
+  SET_STRING_ELT(nms, 484, mkChar("prob_non_severe_death_no_treatment"));
+  SET_STRING_ELT(nms, 485, mkChar("prob_non_severe_death_treatment"));
+  SET_STRING_ELT(nms, 486, mkChar("prob_severe"));
+  SET_STRING_ELT(nms, 487, mkChar("prob_severe_death_no_treatment"));
+  SET_STRING_ELT(nms, 488, mkChar("prob_severe_death_treatment"));
+  SET_STRING_ELT(nms, 489, mkChar("prob_severe_multi"));
+  SET_STRING_ELT(nms, 490, mkChar("prob_severe_multiplier"));
+  SET_STRING_ELT(nms, 491, mkChar("R1_0"));
+  SET_STRING_ELT(nms, 492, mkChar("R2_0"));
+  SET_STRING_ELT(nms, 493, mkChar("rel_infectiousness"));
+  SET_STRING_ELT(nms, 494, mkChar("rel_infectiousness_vaccinated"));
+  SET_STRING_ELT(nms, 495, mkChar("runtime"));
+  SET_STRING_ELT(nms, 496, mkChar("S_0"));
+  SET_STRING_ELT(nms, 497, mkChar("s_ij"));
+  SET_STRING_ELT(nms, 498, mkChar("second_doses"));
+  SET_STRING_ELT(nms, 499, mkChar("target_met_column"));
+  SET_STRING_ELT(nms, 500, mkChar("target_met_matrix"));
+  SET_STRING_ELT(nms, 501, mkChar("target_pop_first"));
+  SET_STRING_ELT(nms, 502, mkChar("temp"));
+  SET_STRING_ELT(nms, 503, mkChar("temp_rel"));
+  SET_STRING_ELT(nms, 504, mkChar("tt_beta"));
+  SET_STRING_ELT(nms, 505, mkChar("tt_dur_E"));
+  SET_STRING_ELT(nms, 506, mkChar("tt_dur_get_mv_die"));
+  SET_STRING_ELT(nms, 507, mkChar("tt_dur_get_mv_survive"));
+  SET_STRING_ELT(nms, 508, mkChar("tt_dur_get_ox_die"));
+  SET_STRING_ELT(nms, 509, mkChar("tt_dur_get_ox_survive"));
+  SET_STRING_ELT(nms, 510, mkChar("tt_dur_ICase"));
+  SET_STRING_ELT(nms, 511, mkChar("tt_dur_IMild"));
+  SET_STRING_ELT(nms, 512, mkChar("tt_dur_R"));
+  SET_STRING_ELT(nms, 513, mkChar("tt_dur_vaccine"));
+  SET_STRING_ELT(nms, 514, mkChar("tt_hosp_beds"));
+  SET_STRING_ELT(nms, 515, mkChar("tt_ICU_beds"));
+  SET_STRING_ELT(nms, 516, mkChar("tt_matrix"));
+  SET_STRING_ELT(nms, 517, mkChar("tt_prob_hosp_multiplier"));
+  SET_STRING_ELT(nms, 518, mkChar("tt_prob_severe_multiplier"));
+  SET_STRING_ELT(nms, 519, mkChar("tt_vaccine_efficacy_disease"));
+  SET_STRING_ELT(nms, 520, mkChar("tt_vaccine_efficacy_infection"));
+  SET_STRING_ELT(nms, 521, mkChar("vaccination_cov"));
+  SET_STRING_ELT(nms, 522, mkChar("vaccination_cov_eligible"));
+  SET_STRING_ELT(nms, 523, mkChar("vaccinations_E1"));
+  SET_STRING_ELT(nms, 524, mkChar("vaccinations_E2"));
+  SET_STRING_ELT(nms, 525, mkChar("vaccinations_R1"));
+  SET_STRING_ELT(nms, 526, mkChar("vaccinations_R2"));
+  SET_STRING_ELT(nms, 527, mkChar("vaccinations_S"));
+  SET_STRING_ELT(nms, 528, mkChar("vaccine_booster_follow_up_coverage"));
+  SET_STRING_ELT(nms, 529, mkChar("vaccine_booster_initial_coverage"));
+  SET_STRING_ELT(nms, 530, mkChar("vaccine_coverage_mat"));
+  SET_STRING_ELT(nms, 531, mkChar("vaccine_efficacy_infection"));
+  SET_STRING_ELT(nms, 532, mkChar("vaccine_efficacy_infection_t"));
   setAttrib(contents, R_NamesSymbol, nms);
   UNPROTECT(136);
   return contents;
@@ -9729,8 +9737,8 @@ SEXP nimue_booster_check_metadata(SEXP internal_p) {
   SET_STRING_ELT(variable_names, 29, mkChar("infections_cumu"));
   SET_VECTOR_ELT(ret, 0, variable_length);
   UNPROTECT(2);
-  SEXP output_length = PROTECT(allocVector(VECSXP, 23));
-  SEXP output_names = PROTECT(allocVector(STRSXP, 23));
+  SEXP output_length = PROTECT(allocVector(VECSXP, 25));
+  SEXP output_names = PROTECT(allocVector(STRSXP, 25));
   setAttrib(output_length, R_NamesSymbol, output_names);
   SET_VECTOR_ELT(output_length, 0, R_NilValue);
   SET_VECTOR_ELT(output_length, 1, ScalarInteger(internal->dim_E));
@@ -9738,24 +9746,26 @@ SEXP nimue_booster_check_metadata(SEXP internal_p) {
   SET_VECTOR_ELT(output_length, 3, ScalarInteger(internal->dim_R));
   SET_VECTOR_ELT(output_length, 4, ScalarInteger(internal->dim_ICase));
   SET_VECTOR_ELT(output_length, 5, ScalarInteger(internal->dim_IRec));
-  SET_VECTOR_ELT(output_length, 6, ScalarInteger(internal->dim_hospital_occupancy));
-  SET_VECTOR_ELT(output_length, 7, ScalarInteger(internal->dim_ICU_occupancy));
-  SET_VECTOR_ELT(output_length, 8, ScalarInteger(internal->dim_hospital_demand));
-  SET_VECTOR_ELT(output_length, 9, ScalarInteger(internal->dim_ICU_demand));
-  SET_VECTOR_ELT(output_length, 10, ScalarInteger(internal->dim_IICU));
-  SET_VECTOR_ELT(output_length, 11, ScalarInteger(internal->dim_IHospital));
-  SET_VECTOR_ELT(output_length, 12, ScalarInteger(internal->dim_first_doses_given));
-  SET_VECTOR_ELT(output_length, 13, ScalarInteger(internal->dim_second_doses_given));
-  SET_VECTOR_ELT(output_length, 14, ScalarInteger(internal->dim_booster_doses_given));
-  SET_VECTOR_ELT(output_length, 15, ScalarInteger(internal->dim_unvaccinated));
-  SET_VECTOR_ELT(output_length, 16, ScalarInteger(internal->dim_vaccinated_first_dose));
-  SET_VECTOR_ELT(output_length, 17, ScalarInteger(internal->dim_vaccinated_second_dose));
-  SET_VECTOR_ELT(output_length, 18, ScalarInteger(internal->dim_vaccinated_second_waned));
-  SET_VECTOR_ELT(output_length, 19, ScalarInteger(internal->dim_vaccinated_booster_dose));
-  SET_VECTOR_ELT(output_length, 20, ScalarInteger(internal->dim_vaccinated_booster_waned));
-  SET_VECTOR_ELT(output_length, 21, ScalarInteger(internal->dim_N));
-  SET_VECTOR_ELT(output_length, 22, allocVector(INTSXP, 2));
-  int * dim_deaths_cumu = INTEGER(VECTOR_ELT(output_length, 22));
+  SET_VECTOR_ELT(output_length, 6, ScalarInteger(internal->dim_primary_first));
+  SET_VECTOR_ELT(output_length, 7, ScalarInteger(internal->dim_booster_first));
+  SET_VECTOR_ELT(output_length, 8, ScalarInteger(internal->dim_hospital_occupancy));
+  SET_VECTOR_ELT(output_length, 9, ScalarInteger(internal->dim_ICU_occupancy));
+  SET_VECTOR_ELT(output_length, 10, ScalarInteger(internal->dim_hospital_demand));
+  SET_VECTOR_ELT(output_length, 11, ScalarInteger(internal->dim_ICU_demand));
+  SET_VECTOR_ELT(output_length, 12, ScalarInteger(internal->dim_IICU));
+  SET_VECTOR_ELT(output_length, 13, ScalarInteger(internal->dim_IHospital));
+  SET_VECTOR_ELT(output_length, 14, ScalarInteger(internal->dim_first_doses_given));
+  SET_VECTOR_ELT(output_length, 15, ScalarInteger(internal->dim_second_doses_given));
+  SET_VECTOR_ELT(output_length, 16, ScalarInteger(internal->dim_booster_doses_given));
+  SET_VECTOR_ELT(output_length, 17, ScalarInteger(internal->dim_unvaccinated));
+  SET_VECTOR_ELT(output_length, 18, ScalarInteger(internal->dim_vaccinated_first_dose));
+  SET_VECTOR_ELT(output_length, 19, ScalarInteger(internal->dim_vaccinated_second_dose));
+  SET_VECTOR_ELT(output_length, 20, ScalarInteger(internal->dim_vaccinated_second_waned));
+  SET_VECTOR_ELT(output_length, 21, ScalarInteger(internal->dim_vaccinated_booster_dose));
+  SET_VECTOR_ELT(output_length, 22, ScalarInteger(internal->dim_vaccinated_booster_waned));
+  SET_VECTOR_ELT(output_length, 23, ScalarInteger(internal->dim_N));
+  SET_VECTOR_ELT(output_length, 24, allocVector(INTSXP, 2));
+  int * dim_deaths_cumu = INTEGER(VECTOR_ELT(output_length, 24));
   dim_deaths_cumu[0] = internal->dim_deaths_cumu_1;
   dim_deaths_cumu[1] = internal->dim_deaths_cumu_2;
   SET_STRING_ELT(output_names, 0, mkChar("time"));
@@ -9764,26 +9774,28 @@ SEXP nimue_booster_check_metadata(SEXP internal_p) {
   SET_STRING_ELT(output_names, 3, mkChar("R"));
   SET_STRING_ELT(output_names, 4, mkChar("ICase"));
   SET_STRING_ELT(output_names, 5, mkChar("IRec"));
-  SET_STRING_ELT(output_names, 6, mkChar("hospital_occupancy"));
-  SET_STRING_ELT(output_names, 7, mkChar("ICU_occupancy"));
-  SET_STRING_ELT(output_names, 8, mkChar("hospital_demand"));
-  SET_STRING_ELT(output_names, 9, mkChar("ICU_demand"));
-  SET_STRING_ELT(output_names, 10, mkChar("IICU"));
-  SET_STRING_ELT(output_names, 11, mkChar("IHospital"));
-  SET_STRING_ELT(output_names, 12, mkChar("first_doses_given"));
-  SET_STRING_ELT(output_names, 13, mkChar("second_doses_given"));
-  SET_STRING_ELT(output_names, 14, mkChar("booster_doses_given"));
-  SET_STRING_ELT(output_names, 15, mkChar("unvaccinated"));
-  SET_STRING_ELT(output_names, 16, mkChar("vaccinated_first_dose"));
-  SET_STRING_ELT(output_names, 17, mkChar("vaccinated_second_dose"));
-  SET_STRING_ELT(output_names, 18, mkChar("vaccinated_second_waned"));
-  SET_STRING_ELT(output_names, 19, mkChar("vaccinated_booster_dose"));
-  SET_STRING_ELT(output_names, 20, mkChar("vaccinated_booster_waned"));
-  SET_STRING_ELT(output_names, 21, mkChar("N"));
-  SET_STRING_ELT(output_names, 22, mkChar("deaths_cumu"));
+  SET_STRING_ELT(output_names, 6, mkChar("primary_first"));
+  SET_STRING_ELT(output_names, 7, mkChar("booster_first"));
+  SET_STRING_ELT(output_names, 8, mkChar("hospital_occupancy"));
+  SET_STRING_ELT(output_names, 9, mkChar("ICU_occupancy"));
+  SET_STRING_ELT(output_names, 10, mkChar("hospital_demand"));
+  SET_STRING_ELT(output_names, 11, mkChar("ICU_demand"));
+  SET_STRING_ELT(output_names, 12, mkChar("IICU"));
+  SET_STRING_ELT(output_names, 13, mkChar("IHospital"));
+  SET_STRING_ELT(output_names, 14, mkChar("first_doses_given"));
+  SET_STRING_ELT(output_names, 15, mkChar("second_doses_given"));
+  SET_STRING_ELT(output_names, 16, mkChar("booster_doses_given"));
+  SET_STRING_ELT(output_names, 17, mkChar("unvaccinated"));
+  SET_STRING_ELT(output_names, 18, mkChar("vaccinated_first_dose"));
+  SET_STRING_ELT(output_names, 19, mkChar("vaccinated_second_dose"));
+  SET_STRING_ELT(output_names, 20, mkChar("vaccinated_second_waned"));
+  SET_STRING_ELT(output_names, 21, mkChar("vaccinated_booster_dose"));
+  SET_STRING_ELT(output_names, 22, mkChar("vaccinated_booster_waned"));
+  SET_STRING_ELT(output_names, 23, mkChar("N"));
+  SET_STRING_ELT(output_names, 24, mkChar("deaths_cumu"));
   SET_VECTOR_ELT(ret, 1, output_length);
   UNPROTECT(2);
-  SET_VECTOR_ELT(ret, 2, ScalarInteger(internal->dim_booster_doses_given + internal->dim_deaths_cumu + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_N + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_booster_waned + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1));
+  SET_VECTOR_ELT(ret, 2, ScalarInteger(internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_deaths_cumu + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_N + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_booster_waned + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1));
   SEXP interpolate_t = PROTECT(allocVector(VECSXP, 3));
   SEXP interpolate_t_nms = PROTECT(allocVector(STRSXP, 3));
   setAttrib(interpolate_t, R_NamesSymbol, interpolate_t_nms);
@@ -10412,9 +10424,11 @@ void nimue_booster_check_rhs(nimue_booster_check_internal* internal, double t, d
     for (int i = 1; i <= internal->dim_second_doses_given; ++i) {
       output[internal->offset_output_second_doses_given + i - 1] = internal->primary_second[i - 1] * (S[internal->dim_S_1 * 1 + i - 1] + E1[internal->dim_E1_1 * 1 + i - 1] + E2[internal->dim_E2_1 * 1 + i - 1] + R1[internal->dim_R1_1 * 1 + i - 1] + R2[internal->dim_R2_1 * 1 + i - 1]);
     }
+    memcpy(output + internal->offset_output_booster_first, internal->booster_first, internal->dim_booster_first * sizeof(double));
     for (int i = 1; i <= internal->dim_first_doses_given; ++i) {
       output[internal->offset_output_first_doses_given + i - 1] = internal->primary_first[i - 1] * (S[internal->dim_S_1 * 0 + i - 1] + E1[internal->dim_E1_1 * 0 + i - 1] + E2[internal->dim_E2_1 * 0 + i - 1] + R1[internal->dim_R1_1 * 0 + i - 1] + R2[internal->dim_R2_1 * 0 + i - 1]);
     }
+    memcpy(output + internal->offset_output_primary_first, internal->primary_first, internal->dim_primary_first * sizeof(double));
     for (int i = 1; i <= internal->dim_booster_doses_given; ++i) {
       output[internal->offset_output_booster_doses_given + i - 1] = internal->booster_first[i - 1] * (odin_sum2(S, i - 1, i, 2, 5, internal->dim_S_1) + odin_sum2(E1, i - 1, i, 2, 5, internal->dim_E1_1) + odin_sum2(E2, i - 1, i, 2, 5, internal->dim_E2_1) + odin_sum2(R1, i - 1, i, 2, 5, internal->dim_R1_1) + odin_sum2(R2, i - 1, i, 2, 5, internal->dim_R2_1)) + internal->booster_second[i - 1] * (odin_sum2(S, i - 1, i, 6, 8, internal->dim_S_1) + odin_sum2(E1, i - 1, i, 6, 8, internal->dim_E1_1) + odin_sum2(E2, i - 1, i, 6, 8, internal->dim_E2_1) + odin_sum2(R1, i - 1, i, 6, 8, internal->dim_R1_1) + odin_sum2(R2, i - 1, i, 6, 8, internal->dim_R2_1));
     }
@@ -10561,12 +10575,14 @@ void nimue_booster_check_output_dde(size_t n_eq, double t, double * state, size_
   for (int i = 1; i <= internal->dim_a_initial_boosted; ++i) {
     internal->a_initial_boosted[i - 1] = internal->booster_first[i - 1] * internal->eligible_for_first_booster[i - 1];
   }
+  memcpy(output + internal->offset_output_booster_first, internal->booster_first, internal->dim_booster_first * sizeof(double));
   for (int i = 1; i <= internal->dim_primary_first; ++i) {
     internal->primary_first[i - 1] = fmin(internal->primary_doses[(int) (t) - 1] * internal->target_pop_first[i - 1] / (double) fmax(odin_sum1(internal->target_pop_first, 0, internal->dim_target_pop_first) * (internal->vaccination_cov[internal->dim_vaccination_cov_1 * 0 + i - 1]), 1), 1);
   }
   for (int i = 1; i <= internal->dim_first_doses_given; ++i) {
     output[internal->offset_output_first_doses_given + i - 1] = internal->primary_first[i - 1] * (S[internal->dim_S_1 * 0 + i - 1] + E1[internal->dim_E1_1 * 0 + i - 1] + E2[internal->dim_E2_1 * 0 + i - 1] + R1[internal->dim_R1_1 * 0 + i - 1] + R2[internal->dim_R2_1 * 0 + i - 1]);
   }
+  memcpy(output + internal->offset_output_primary_first, internal->primary_first, internal->dim_primary_first * sizeof(double));
   double remaining_boosters = internal->booster_doses[(int) (t) - 1] - odin_sum1(internal->a_initial_boosted, 0, internal->dim_a_initial_boosted);
   for (int i = 1; i <= internal->dim_booster_second; ++i) {
     internal->booster_second[i - 1] = fmin(remaining_boosters / (double) fmax(odin_sum1(internal->eligible_for_follow_up_booster, 0, internal->dim_eligible_for_follow_up_booster), 1), 1) * internal->vaccine_booster_follow_up_coverage[i - 1];
@@ -10578,7 +10594,7 @@ void nimue_booster_check_output_dde(size_t n_eq, double t, double * state, size_
 SEXP nimue_booster_check_rhs_r(SEXP internal_p, SEXP t, SEXP state) {
   SEXP dstatedt = PROTECT(allocVector(REALSXP, LENGTH(state)));
   nimue_booster_check_internal *internal = nimue_booster_check_get_internal(internal_p, 1);
-  SEXP output_ptr = PROTECT(allocVector(REALSXP, internal->dim_booster_doses_given + internal->dim_deaths_cumu + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_N + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_booster_waned + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1));
+  SEXP output_ptr = PROTECT(allocVector(REALSXP, internal->dim_booster_doses_given + internal->dim_booster_first + internal->dim_deaths_cumu + internal->dim_E + internal->dim_first_doses_given + internal->dim_hospital_demand + internal->dim_hospital_occupancy + internal->dim_ICase + internal->dim_ICU_demand + internal->dim_ICU_occupancy + internal->dim_IHospital + internal->dim_IICU + internal->dim_IMildout + internal->dim_IRec + internal->dim_N + internal->dim_primary_first + internal->dim_R + internal->dim_second_doses_given + internal->dim_unvaccinated + internal->dim_vaccinated_booster_dose + internal->dim_vaccinated_booster_waned + internal->dim_vaccinated_first_dose + internal->dim_vaccinated_second_dose + internal->dim_vaccinated_second_waned + 1));
   setAttrib(dstatedt, install("output"), output_ptr);
   UNPROTECT(1);
   double *output = REAL(output_ptr);
