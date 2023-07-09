@@ -578,15 +578,18 @@ parameters_booster <- function(
   }
 
   # Format vaccine-specific parameters
-  if(typeof(dur_V) == "list"){
-    gamma_vaccine <- purrr::map(dur_V, ~c(0, 0, 1/.x[1:2], 0, 1/.x[-(1:2)], 0)) %>%
-      unlist() %>%
-      matrix(ncol = 8, nrow = length(tt_dur_V), byrow = TRUE)
-    tt_dur_vaccine <- tt_dur_V
-  } else {
-    gamma_vaccine <- matrix(c(0, 0, 1/dur_V[1:2], 0, 1/dur_V[-(1:2)], 0), nrow = 1)
-    tt_dur_vaccine <- 0
-  }
+  # if(typeof(dur_V) == "list"){
+  #   gamma_vaccine <- purrr::map(dur_V, ~c(0, 0, 1/.x[1:2], 0, 1/.x[-(1:2)], 0)) %>%
+  #     unlist() %>%
+  #     matrix(ncol = 8, nrow = length(tt_dur_V), byrow = TRUE)
+  #   tt_dur_vaccine <- tt_dur_V
+  # } else {
+  #   gamma_vaccine <- matrix(c(0, 0, 1/dur_V[1:2], 0, 1/dur_V[-(1:2)], 0), nrow = 1)
+  #   tt_dur_vaccine <- 0
+  # }
+  ## Modified
+  gamma_vaccine <- format_gamma_vaccine_for_odin_booster(dur_V, tt_dur_V)
+  tt_dur_vaccine <- tt_dur_V
 
   rel_infectiousness_vaccinated <- format_rel_inf_vacc_for_odin_booster(rel_infectiousness_vaccinated)
 
@@ -845,6 +848,58 @@ format_ve_d_for_odin_booster <- function(vaccine_efficacy_disease,
   )
 
   return(prob_hosp_odin_array)
+
+}
+
+#' @noRd
+format_gamma_vaccine_for_odin_booster <- function(dur_V, tt_dur_V) {
+
+  # if provided as just a vector of 4 elements, create the matrix,
+  if (is.vector(dur_V) & length(dur_V == 4)) {
+    dur_V <- matrix(rep(dur_V, 17), byrow = FALSE, nrow = 4, ncol = 17)
+  }
+
+  # If just provided as a vector then we put into a list ready for formatting
+  if(!is.list(dur_V)){
+    dur_V <- list(dur_V)
+  }
+
+  # check that the correct length agreement between tt_vaccine_efficacy_infection
+  # nimue:::assert_length(dur_V, length(tt_dur_V))
+  if (length(dur_V) != length(tt_dur_V)) {
+    stop("dur_V must be length concordant with tt_dur_V")
+  }
+
+  # now check that each dur_V is correct number of columns  and rows
+  dur_V <- lapply(dur_V, function(x) {
+    if(ncol(x) != 17 | nrow(x) != 4){
+      stop("Parameter vaccine_efficacy_infection must be a matrix with ncol = 17 and nrow = 4")
+    }
+    return(x)
+  })
+
+  # and now format so each list is the gamma_vaccine at each time
+  # point for the 4 relevant waning classes
+  gamma_vaccine_list <- lapply(seq_along(tt_dur_V), function(index) {
+
+    gamma_vaccine <- 1/dur_V[[index]] #add 0 for unvaccinated
+    gamma_vaccine <- rbind(rep(0, 17),
+                           rep(0, 17),
+                           gamma_vaccine[1, ],
+                           gamma_vaccine[2, ],
+                           rep(0, 17),
+                           gamma_vaccine[3, ],
+                           gamma_vaccine[4, ],
+                           rep(0, 17))
+  })
+
+  # and use this list to create an array that is in right format for odin
+  gamma_vaccine_odin_array <- aperm(
+    array(unlist(gamma_vaccine_list), dim = c(dim(gamma_vaccine_list[[1]]), length(gamma_vaccine_list))),
+    c(3, 2, 1)
+  )
+
+  return(gamma_vaccine_odin_array)
 
 }
 
