@@ -445,13 +445,13 @@ dim(gamma_vaccine_t) <- 8
 ### Altered so that we can have BPSV and Spec have different second dose delays (even though they're both put in the model as the same vaccine series for diff age groups)
 runtime <- user()
 
-primary_doses[] <- user()     # Calculate outside (including the time-variable delay to protection)
+primary_doses[] <- user()     # Calculate outside (including the vaccine variable delay to protection)
 dim(primary_doses) <- runtime
 
 second_doses[] <- user()      # Calculate outside (including the second_dose_delay)
 dim(second_doses) <- runtime
 
-booster_doses[] <- user()       # Calculate outside (including the time-variable delay to protection)
+booster_doses[] <- user()       # Calculate outside (including the vaccine variable delay to protection)
 dim(booster_doses) <- runtime
 
 ######
@@ -489,15 +489,12 @@ prioritisation_step <- if (sum(target_met_column) < N_prioritisation_steps) sum(
 ## dose_pops[i, 1] is everyone alive; dose_pops[i, 2] is everyone vaxxed once. Difference is everyone unvaccinated (i.e number to receive first dose)
 target_pop_first[] <- max(((vaccine_coverage_mat[as.integer(prioritisation_step), i] * dose_pops[i, 1]) - dose_pops[i, 2]), 0)
 dim(target_pop_first) <- 17
-# number of doses
 primary_first[] <- min(primary_doses[as.integer(t)] * target_pop_first[i] / max(sum(target_pop_first) * (vaccination_cov[i,1]), 1), 1)
 # primary_doses[as.integer(t)] is the number of doses to be given out
 # target_pop_first[i] is the size of the number of folks who could be vaxxed in the ith age group
 # sum(target_pop_first) is the total number of folks who could be vaxxed
 # (vaccination_cov[i,1]) is the number of unvaccinated folks, and you divide by it on the bottom to convert the total going doses to that age-group into a proportion of that age-group that get vaccinated
 dim(primary_first) <- 17
-
-## Original
 primary_second <- min(second_doses[as.integer(t)] / max(sum(vaccination_cov[, 2]), 1), 1)
 
 #first boosters:
@@ -512,7 +509,7 @@ dim(booster_first) <- 17
 ## sacking off follow up boosters
 a_initial_boosted[] <- 0 # booster_first[i] * eligible_for_first_booster[i]
 dim(a_initial_boosted) <- 17
-remaining_boosters <- 1 # booster_doses[as.integer(t)] - sum(a_initial_boosted)
+remaining_boosters <- 0 # 1 # booster_doses[as.integer(t)] - sum(a_initial_boosted)
 eligible_for_follow_up_booster[] <- dose_pops[i, 7] * vaccine_booster_follow_up_coverage[i]
 dim(eligible_for_follow_up_booster) <- 17
 booster_second[] <- min(remaining_boosters / max(sum(eligible_for_follow_up_booster[]), 1), 1) * vaccine_booster_follow_up_coverage[i]
