@@ -1154,7 +1154,7 @@ run_booster <- function(
   set.seed(seed)
 
   # create parameter list
-  pars <- parameters_booster(country = country,
+  pars <- squire.page.sarsX:::parameters_booster(country = country,
                              population = population,
                              tt_contact_matrix = tt_contact_matrix,
                              contact_matrix_set = contact_matrix_set,

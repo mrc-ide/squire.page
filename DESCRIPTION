@@ -1,4 +1,4 @@
-Package: squire.page
+Package: squire.page.sarsX
 Title: Functions used in global-lmic-reports-orderly and other repos
 Version: 0.0.0.9000
 Authors@R: 
