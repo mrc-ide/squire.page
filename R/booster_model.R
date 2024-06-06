@@ -1223,7 +1223,7 @@ run_booster <- function(
 
   # Set model type
   replicates <- 1
-  mod_gen = nimue_booster
+  mod_gen = squire.page.sarsX:::nimue_booster # squire.page:::nimue_booster
   #mod_gen = nimue_booster_check
 
   # Running the Model
