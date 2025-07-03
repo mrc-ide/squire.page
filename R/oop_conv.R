@@ -468,7 +468,7 @@ setup_parameters.booster_min_model <- function(model_obj, parameters){
 
 #' An S3 generic for estimating Beta
 #' @noRd
-beta_est <- function(squire_model, model_params, R0, tt_R0, tt_end = NULL) {
+beta_est <- function(squire_model, model_params, R0, tt_R0) {
   UseMethod("beta_est")
 }
 #' An S3 method for getting Beta for a model

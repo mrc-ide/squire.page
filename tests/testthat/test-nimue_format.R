@@ -1,6 +1,6 @@
 #generate data to use
 data <- suppressMessages(generate_draws(afg_fit, generate_parameters(afg_fit, draws = 3), draws = 3))
-data$pmcmc_results$inputs$model_params
+
 test_that("Summaries", {
   summaries <- c("deaths",
                  "infections",

@@ -21,7 +21,7 @@
 #' @param out nimue_simulation or squire_simulation object
 #' @param var_select Vector of compartment names, e.g. \code{c("S", "R")}. In
 #'   addition a number of summary compartment can be requested. These include:
-#' \itemize{
+#' \describe{
 #'       \item{"deaths"}{ Daily Deaths }
 #'       \item{"infections"}{ Daily Infections }
 #'       \item{"hospital_occupancy"}{ See description }
