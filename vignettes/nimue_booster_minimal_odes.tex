@@ -1,0 +1,360 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\setlength{\parindent}{0pt}
+\geometry{margin=1in}
+
+\title{Booster Model Formulae}
+\date{}
+\begin{document}
+
+\maketitle
+
+\section{Age groups and Vaccination Statuses}
+The model includes 17 age groups (indexed by $a$) and 8 vaccination statuses (indexed by $v$), where:
+\begin{itemize}
+    \item $v = 1$: Unvaccinated
+    \item $v = 2$: First dose received
+    \item $v = 3$: Second dose received
+    \item $v = 4, 5$: Waned immunity states
+    \item $v = 6$: First booster received
+    \item $v = 7, 8$: Further waned booster states
+\end{itemize}
+
+\section{Model Compartments}
+
+The model consists of the following compartments for each age group $a$ and vaccination status $v$:
+
+\begin{itemize}
+    \item $S_{a,v}$: Susceptible individuals
+    \item $E1_{a,v}$, $E2_{a,v}$: Exposed individuals (latent infection stages)
+    \item $I^{\text{Mild}}_{a,v}$: Mild infections (non-hospitalized)
+    \item $I1_{a,v}$, $I2_{a,v}$: Severe infections (pre-hospitalization)
+    \item $R1_{a,v}$, $R2_{a,v}$: Recovered individuals
+    \item $D_{a,v}$: Deaths
+\end{itemize}
+
+Hospital and ICU compartments (detailed in Section 4):
+
+\begin{itemize}
+    \item Hospitalised compartments: $H^{\text{Hosp,Get,Live}}_{a,v}$, $H^{\text{Hosp,Get,Die}}_{a,v}$, $H^{\text{Hosp,NotGet,Live}}_{a,v}$, $H^{\text{Hosp,NotGet,Die}}_{a,v}$
+    \item ICU compartments: $H^{\text{ICU,Get,Live}}_{a,v}$, $H^{\text{ICU,Get,Die}}_{a,v}$, $H^{\text{ICU,NotGet,Live}}_{a,v}$, $H^{\text{ICU,NotGet,Die}}_{a,v}$
+    \item Recovery (from ICU) compartments: $H1^{\text{Rec}}_{a,v}$, $H2^{\text{Rec}}_{a,v}$
+\end{itemize}
+
+Please note that compartment values vary over time, but this notation is not included for brevity, i.e. $S_{a,v}$ is truely  $S_{a,v}(t)$.
+
+\section{Core Epidemiological Dynamics}
+
+\subsection{Susceptible Compartment}
+
+\begin{align*}
+\frac{dS_{a,1}}{dt} &= \gamma_R(t) R2_{a,1} - \lambda_a \xi^{\text{inf}}_1(t) S_{a,1} - \gamma^{\text{vac}}_1(t) S_{a,1} + V^S_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dS_{a,v}}{dt} &= \gamma_R(t) R2_{a,v} - \lambda_a \xi^{\text{inf}}_v(t) S_{a,v} - \gamma^{\text{vac}}_v(t) S_{a,v} + V^S_{a,v} + \gamma^{\text{vac}}_{v-1}(t) S_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+where:
+\begin{itemize}
+    \item $\lambda_a$ is the force of infection for age group $a$
+    \item $\xi^{\text{inf}}_v(t)$ is the vaccine efficacy against infection for vaccination status $v$
+    \item $\gamma^{\text{vac}}_v(t)$ is the rate of vaccine waning for status $v$
+    \item $\gamma_R(t)$ is the rate of loss of natural immunity
+    \item $V^S_{a,v}$ represents vaccination transitions
+\end{itemize}
+
+\subsection{Exposed Compartments}
+
+\begin{align*}
+\frac{dE1_{a,1}}{dt} &= \lambda_a \xi^{\text{inf}}_1(t) S_{a,1} - \gamma_E E1_{a,1} - \gamma^{\text{vac}}_1(t) E1_{a,1} + V^{E1}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dE1_{a,v}}{dt} &= \lambda_a \xi^{\text{inf}}_v(t) S_{a,v} - \gamma_E E1_{a,v} - \gamma^{\text{vac}}_v(t) E1_{a,v} + V^{E1}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) E1_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+\begin{align*}
+\frac{dE2_{a,1}}{dt} &= \gamma_E E1_{a,1} - \gamma_E E2_{a,1} - \gamma^{\text{vac}}_1(t) E2_{a,1} + V^{E2}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dE2_{a,v}}{dt} &= \gamma_E E1_{a,v} - \gamma_E E2_{a,v} - \gamma^{\text{vac}}_v(t) E2_{a,v} + V^{E2}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) E2_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+where $\gamma_E$ is the rate of progression through latent infection.
+
+\subsection{Mild Infections}
+
+\begin{align*}
+\frac{dI^{\text{Mild}}_{a,1}}{dt} &= \gamma_E E2_{a,1} (1 - p^{\text{hosp}}_{a,1}(t)) - \gamma^{\text{Mild}} I^{\text{Mild}}_{a,1} - \gamma^{\text{vac}}_1(t) I^{\text{Mild}}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dI^{\text{Mild}}_{a,v}}{dt} &= \gamma_E E2_{a,v} (1 - p^{\text{hosp}}_{a,v}(t)) - \gamma^{\text{Mild}} I^{\text{Mild}}_{a,v} - \gamma^{\text{vac}}_v(t) I^{\text{Mild}}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) I^{\text{Mild}}_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+where:
+\begin{itemize}
+    \item $p^{\text{hosp}}_{a,v}(t) = p^{\text{hosp}}_a \cdot \xi^{\text{dis}}_v(t) \cdot m^{\text{hosp}}(t)$ is the time-varying hospitalization probability
+    \item $\gamma^{\text{Mild}}$ is the recovery rate from mild infection
+\end{itemize}
+
+\subsection{Severe Infections (Pre-hospitalization)}
+
+\begin{align*}
+\frac{dI1_{a,1}}{dt} &= \gamma_E E2_{a,1} p^{\text{hosp}}_{a,1}(t) - \gamma^{\text{Case}} I1_{a,1} - \gamma^{\text{vac}}_1(t) I1_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dI1_{a,v}}{dt} &= \gamma_E E2_{a,v} p^{\text{hosp}}_{a,v}(t) - \gamma^{\text{Case}} I1_{a,v} - \gamma^{\text{vac}}_v(t) I1_{a,v} + \gamma^{\text{vac}}_{v-1}(t) I1_{a,v-1}
+\end{align*}
+
+\begin{align*}
+\frac{dI2_{a,1}}{dt} &= \gamma^{\text{Case}} I1_{a,1} - \gamma^{\text{Case}} I2_{a,1} - \gamma^{\text{vac}}_1(t) I2_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dI2_{a,v}}{dt} &= \gamma^{\text{Case}} I1_{a,v} - \gamma^{\text{Case}} I2_{a,v} - \gamma^{\text{vac}}_v(t) I2_{a,v} + \gamma^{\text{vac}}_{v-1}(t) I2_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+\subsection{Recovered Compartments}
+
+\begin{align*}
+\frac{dR1_{a,1}}{dt} &= \gamma^{\text{rec}} H2^{\text{Rec}}_{a,1} + \gamma^{\text{Mild}} I^{\text{Mild}}_{a,1} + \gamma^{\text{Hosp,surv}}(t) H2^{\text{Hosp,Get,Live}}_{a,1} \\
+&\quad + \gamma^{\text{Hosp,surv}} H2^{\text{Hosp,NotGet,Live}}_{a,1} + \gamma^{\text{ICU,surv}} H2^{\text{ICU,NotGet,Live}}_{a,1} \\
+&\quad - \gamma_R(t) R1_{a,1} - \gamma^{\text{vac}}_1(t) R1_{a,1} + V^{R1}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dR1_{a,v}}{dt} &= \gamma^{\text{rec}} H2^{\text{Rec}}_{a,v} + \gamma^{\text{Mild}} I^{\text{Mild}}_{a,v} + \gamma^{\text{Hosp,surv}}(t) H2^{\text{Hosp,Get,Live}}_{a,v} \\
+&\quad + \gamma^{\text{Hosp,surv}} H2^{\text{Hosp,NotGet,Live}}_{a,v} + \gamma^{\text{ICU,surv}} H2^{\text{ICU,NotGet,Live}}_{a,v} \\
+&\quad - \gamma_R(t) R1_{a,v} - \gamma^{\text{vac}}_v(t) R1_{a,v} + V^{R1}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) R1_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+\begin{align*}
+\frac{dR2_{a,1}}{dt} &= \gamma_R(t) R1_{a,1} - \gamma_R(t) R2_{a,1} - \gamma^{\text{vac}}_1(t) R2_{a,1} + V^{R2}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dR2_{a,v}}{dt} &= \gamma_R(t) R1_{a,v} - \gamma_R(t) R2_{a,v} - \gamma^{\text{vac}}_v(t) R2_{a,v} + V^{R2}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) R2_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+\section{Hospital and ICU Dynamics}
+
+For individuals who do not require ICU, get treatment and survive:
+\begin{align*}
+\frac{dH1^{\text{Hosp,Get,Live}}_{a,1}}{dt} &= \gamma^{\text{Case}} I2_{a,1} (1 - p^{\text{sev}}_a(t)) p^{\text{hosp}} (1 - p^{\text{death,Hosp,treat}}_a) \\
+&\quad - \gamma^{\text{Hosp,surv}}(t) H1^{\text{Hosp,Get,Live}}_{a,1} - \gamma^{\text{vac}}_1(t) H1^{\text{Hosp,Get,Live}}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dH1^{\text{Hosp,Get,Live}}_{a,v}}{dt} &= \gamma^{\text{Case}} I2_{a,v} (1 - p^{\text{sev}}_a(t)) p^{\text{hosp}} (1 - p^{\text{death,Hosp,treat}}_a) \\
+&\quad - \gamma^{\text{Hosp,surv}}(t) H1^{\text{Hosp,Get,Live}}_{a,v} - \gamma^{\text{vac}}_v(t) H1^{\text{Hosp,Get,Live}}_{a,v} \\
+&\quad + \gamma^{\text{vac}}_{v-1}(t) H1^{\text{Hosp,Get,Live}}_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+\begin{align*}
+\frac{dH2^{\text{Hosp,Get,Live}}_{a,1}}{dt} &= \gamma^{\text{Hosp,surv}}(t) H1^{\text{Hosp,Get,Live}}_{a,1} - \gamma^{\text{Hosp,surv}}(t) H2^{\text{Hosp,Get,Live}}_{a,1} - \gamma^{\text{vac}}_1(t) H2^{\text{Hosp,Get,Live}}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dH2^{\text{Hosp,Get,Live}}_{a,v}}{dt} &= \gamma^{\text{Hosp,surv}}(t) H1^{\text{Hosp,Get,Live}}_{a,v} - \gamma^{\text{Hosp,surv}}(t) H2^{\text{Hosp,Get,Live}}_{a,v} \\
+&\quad - \gamma^{\text{vac}}_v(t) H2^{\text{Hosp,Get,Live}}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) H2^{\text{Hosp,Get,Live}}_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+Similar equations exist for:
+\begin{itemize}
+    \item $H1^{\text{Hosp,Get,Die}}_{a,v}$, $H2^{\text{Hosp,Get,Die}}_{a,v}$: Get treatment, die
+    \item $H1^{\text{Hosp,NotGet,Live}}_{a,v}$, $H2^{\text{Hosp,NotGet,Live}}_{a,v}$: Don't get treatment, survive
+    \item $H1^{\text{Hosp,NotGet,Die}}_{a,v}$, $H2^{\text{Hosp,NotGet,Die}}_{a,v}$: Don't get treatment, die
+\end{itemize}
+
+\subsection{Mechanical Ventilation Compartments}
+
+For individuals who get mechanical ventilation and survive:
+\begin{align*}
+\frac{dH1^{\text{ICU,Get,Live}}_{a,1}}{dt} &= \gamma^{\text{Case}} I2_{a,1} p^{\text{sev}}_a(t) p^{\text{ICU}} (1 - p^{\text{death,ICU,treat}}_a) \\
+&\quad - \gamma^{\text{ICU,surv}}(t) H1^{\text{ICU,Get,Live}}_{a,1} - \gamma^{\text{vac}}_1(t) H1^{\text{ICU,Get,Live}}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dH1^{\text{ICU,Get,Live}}_{a,v}}{dt} &= \gamma^{\text{Case}} I2_{a,v} p^{\text{sev}}_a(t) p^{\text{ICU}} (1 - p^{\text{death,ICU,treat}}_a) \\
+&\quad - \gamma^{\text{ICU,surv}}(t) H1^{\text{ICU,Get,Live}}_{a,v} - \gamma^{\text{vac}}_v(t) H1^{\text{ICU,Get,Live}}_{a,v} \\
+&\quad + \gamma^{\text{vac}}_{v-1}(t) H1^{\text{ICU,Get,Live}}_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+Similar structures exist for all mechanical ventilation compartments.
+
+\subsection{Recovery from ICU}
+
+\begin{align*}
+\frac{dH1^{\text{Rec}}_{a,1}}{dt} &= \gamma^{\text{ICU,surv}}(t) H2^{\text{ICU,Get,Live}}_{a,1} - \gamma^{\text{rec}} H1^{\text{Rec}}_{a,1} - \gamma^{\text{vac}}_1(t) H1^{\text{Rec}}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dH1^{\text{Rec}}_{a,v}}{dt} &= \gamma^{\text{ICU,surv}}(t) H2^{\text{ICU,Get,Live}}_{a,v} - \gamma^{\text{rec}} H1^{\text{Rec}}_{a,v} \\
+&\quad - \gamma^{\text{vac}}_v(t) H1^{\text{Rec}}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) H1^{\text{Rec}}_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+\begin{align*}
+\frac{dH2^{\text{Rec}}_{a,1}}{dt} &= \gamma^{\text{rec}} H1^{\text{Rec}}_{a,1} - \gamma^{\text{rec}} H2^{\text{Rec}}_{a,1} - \gamma^{\text{vac}}_1(t) H2^{\text{Rec}}_{a,1}
+\end{align*}
+
+\begin{align*}
+\frac{dH2^{\text{Rec}}_{a,v}}{dt} &= \gamma^{\text{rec}} H1^{\text{Rec}}_{a,v} - \gamma^{\text{rec}} H2^{\text{Rec}}_{a,v} \\
+&\quad - \gamma^{\text{vac}}_v(t) H2^{\text{Rec}}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) H2^{\text{Rec}}_{a,v-1}
+\end{align*}
+for $v = 2, \ldots, 8$
+
+\subsection{Deaths}
+
+\begin{align*}
+\frac{dD_{a,v}}{dt} &= \gamma^{\text{Hosp,die}}(t) H2^{\text{Hosp,Get,Die}}_{a,v} + \gamma^{\text{Hosp,die}} H2^{\text{Hosp,NotGet,Die}}_{a,v} \\
+&\quad + \gamma^{\text{ICU,die}}(t) H2^{\text{ICU,Get,Die}}_{a,v} + \gamma^{\text{ICU,die}} H2^{\text{ICU,NotGet,Die}}_{a,v}
+\end{align*}
+
+\section{Vaccination Dynamics}
+
+\subsection{Vaccination Transitions}
+
+The vaccination transitions $V^X_{a,v}$ for compartment $X$ are defined as:
+
+\begin{align*}
+V^X_{a,1} &= -r^{\text{prim,1}}_a X_{a,1} \\
+V^X_{a,2} &= r^{\text{prim,1}}_a X_{a,1} - r^{\text{prim,2}} X_{a,2} \\
+V^X_{a,3} &= r^{\text{prim,2}} X_{a,2} - r^{\text{boost,1}} X_{a,3} \\
+V^X_{a,4} &= -r^{\text{boost,1}} X_{a,4} \\
+V^X_{a,5} &= -r^{\text{boost,1}} X_{a,5} \\
+V^X_{a,6} &= r^{\text{boost,1}} \sum_{k=3}^5 X_{a,k} + r^{\text{boost,2}}_a \sum_{k=7}^8 X_{a,k} \\
+V^X_{a,7} &= -r^{\text{boost,2}}_a X_{a,7} \\
+V^X_{a,8} &= -r^{\text{boost,2}}_a X_{a,8}
+\end{align*}
+
+where:
+
+\begin{itemize}
+    \item $r^{\text{prim,1}}_a$ is the first dose rate for age group $a$
+    \item $r^{\text{prim,2}}$ is the second dose rate
+    \item $r^{\text{boost,1}}$ is the first booster rate
+    \item $r^{\text{boost,2}}_a$ is the second booster rate for age group $a$
+\end{itemize}
+
+\section{Force of Infection}
+
+The force of infection for age group $a$ is:
+
+\begin{align*}
+\lambda_a = \beta(t) \sum_{k=1}^{17} M_{a,k} \rho_k \sum_{v=1}^8 \left( I^{\text{Mild}}_{k,v} + I1_{k,v} + I2_{k,v} \right) \psi_v
+\end{align*}
+
+where:
+\begin{itemize}
+    \item $\beta(t)$ is the time-varying transmission rate
+    \item $M_{a,k}$ is the contact matrix between age groups $a$ and $k$
+    \item $\rho_k$ is the relative infectiousness of age group $k$
+    \item $\psi_v$ is the relative infectiousness of vaccination status $v$
+\end{itemize}
+
+\section{Hospital Capacity Constraints}
+
+\subsection{Treatment Availability}
+
+The probability of receiving (non-ICU) treatment is:
+
+\begin{align*}
+p^{\text{hosp}} = \begin{cases}
+1 & \text{if } N^{\text{hosp,req}} \leq C^{\text{hosp}} - O^{\text{hosp}} \\
+\frac{C^{\text{hosp}} - O^{\text{hosp}}}{N^{\text{hosp,req}}} & \text{if } N^{\text{hosp,req}} > C^{\text{hosp}} - O^{\text{hosp}}
+\end{cases}
+\end{align*}
+
+where:
+\begin{itemize}
+    \item $N^{\text{hosp,req}}$ is the total number requiring treatment
+    \item $C^{\text{hosp}}$ is the hospital bed capacity
+    \item $O^{\text{hosp}}$ is the current hospital bed occupancy
+\end{itemize}
+
+\subsection{ICU Bed Availability}
+
+The probability of receiving mechanical ventilation is:
+
+\begin{align*}
+p^{\text{ICU}} = \begin{cases}
+1 & \text{if } N^{\text{ICU,req}} \leq C^{\text{ICU}} - O^{\text{ICU}} \\
+\frac{C^{\text{ICU}} - O^{\text{ICU}}}{N^{\text{ICU,req}}} & \text{if } N^{\text{ICU,req}} > C^{\text{ICU}} - O^{\text{ICU}}
+\end{cases}
+\end{align*}
+
+where:
+\begin{itemize}
+    \item $N^{\text{ICU,req}}$ is the total number requiring mechanical ventilation
+    \item $C^{\text{ICU}}$ is the ICU bed capacity
+    \item $O^{\text{ICU}}$ is the current ICU bed occupancy
+\end{itemize}
+
+\section{Time-Varying Parameters}
+
+Several parameters in the model are time-varying and implemented using interpolation:
+
+\begin{itemize}
+    \item $\beta(t)$: Transmission rate
+    \item $\gamma_R(t)$: Rate of immunity waning
+    \item $\xi^{\text{inf}}_v(t)$: Vaccine efficacy against infection
+    \item $\xi^{\text{dis}}_v(t)$: Vaccine efficacy against disease
+    \item $\gamma^{\text{vac}}_v(t)$: Vaccine waning rates
+    \item $\gamma^{\text{Hosp,surv}}(t)$, $\gamma^{\text{Hosp,die}}(t)$: (non-ICU) Treatment progression rates
+    \item $\gamma^{\text{ICU,surv}}(t)$, $\gamma^{\text{ICU,die}}(t)$: ICU progression rates
+    \item $m^{\text{hosp}}(t)$: Hospitalization probability multiplier
+    \item $m^{\text{sev}}(t)$: Severity probability multiplier
+\end{itemize}
+
+\section{Parameter Definitions}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+Parameter & Description \\
+\midrule
+$\gamma_E$ & Rate of progression through latent infection \\
+$\gamma^{\text{Mild}}$ & Recovery rate from mild infection \\
+$\gamma^{\text{Case}}$ & Rate of progression from severe infection \\
+$\gamma^{\text{rec}}$ & Rate of progression through post-ICU recovery \\
+$p^{\text{hosp}}_a$ & Probability of hospitalization by age group \\
+$p^{\text{sev}}_a$ & Probability of severe disease (requiring ICU treatment) by age group \\
+$p^{\text{death,Hosp,treat}}_a$ & Death probability with (non-ICU) treatment \\
+$p^{\text{death,Hosp,notreat}}_a$ & Death probability without ICU treatment \\
+$p^{\text{death,ICU,treat}}_a$ & Death probability with mechanical ventilation \\
+$p^{\text{death,ICU,notreat}}_a$ & Death probability without mechanical ventilation \\
+\bottomrule
+\end{tabular}
+\caption{Key model parameters}
+\end{table}
+
+\section{Acknowledgements}
+
+This document was initially generated using Claude and Copilot, then edited for clarity and correctness.
+
+\end{document}

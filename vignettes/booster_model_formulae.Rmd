@@ -1,0 +1,331 @@
+---
+title: "Booster Model Formulae"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{booster_model_formulae}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Age groups and Vaccination Statuses
+
+The model includes 17 age groups (indexed by $a$) and 8 vaccination statuses (indexed by $v$), where:
+
+- $v = 1$: Unvaccinated
+- $v = 2$: First dose received
+- $v = 3$: Second dose received
+- $v = 4, 5$: Waned immunity states
+- $v = 6$: First booster received
+- $v = 7, 8$: Further waned booster states
+
+# Model Compartments
+
+The model consists of the following compartments for each age group $a$ and vaccination status $v$:
+
+- $S_{a,v}$: Susceptible individuals
+- $E1_{a,v}$, $E2_{a,v}$: Exposed individuals (latent infection stages)
+- $I^{\text{Mild}}_{a,v}$: Mild infections (non-hospitalized)
+- $I1_{a,v}$, $I2_{a,v}$: Severe infections (pre-hospitalization)
+- $R1_{a,v}$, $R2_{a,v}$: Recovered individuals
+- $D_{a,v}$: Deaths
+
+Hospital and ICU compartments (detailed in Section 4):
+
+- Hospitalised compartments: $H^{\text{Hosp,Get,Live}}_{a,v}$, $H^{\text{Hosp,Get,Die}}_{a,v}$, $H^{\text{Hosp,NotGet,Live}}_{a,v}$, $H^{\text{Hosp,NotGet,Die}}_{a,v}$
+- ICU compartments: $H^{\text{ICU,Get,Live}}_{a,v}$, $H^{\text{ICU,Get,Die}}_{a,v}$, $H^{\text{ICU,NotGet,Live}}_{a,v}$, $H^{\text{ICU,NotGet,Die}}_{a,v}$
+- Recovery (from ICU) compartments: $H1^{\text{Rec}}_{a,v}$, $H2^{\text{Rec}}_{a,v}$
+
+Please note that compartment values vary over time, but this notation is not included for brevity, i.e. $S_{a,v}$ is truly $S_{a,v}(t)$.
+
+# Core Epidemiological Dynamics
+
+## Susceptible Compartment
+
+$$\frac{dS_{a,1}}{dt} = \gamma_R(t) R2_{a,1} - \lambda_a \xi^{\text{inf}}_1(t) S_{a,1} - \gamma^{\text{vac}}_1(t) S_{a,1} + V^S_{a,1}$$
+
+$$\frac{dS_{a,v}}{dt} = \gamma_R(t) R2_{a,v} - \lambda_a \xi^{\text{inf}}_v(t) S_{a,v} - \gamma^{\text{vac}}_v(t) S_{a,v} + V^S_{a,v} + \gamma^{\text{vac}}_{v-1}(t) S_{a,v-1}$$
+
+for $v = 2, \ldots, 8$
+
+where:
+
+- $\lambda_a$ is the force of infection for age group $a$
+- $\xi^{\text{inf}}_v(t)$ is the vaccine efficacy against infection for vaccination status $v$
+- $\gamma^{\text{vac}}_v(t)$ is the rate of vaccine waning for status $v$
+- $\gamma_R(t)$ is the rate of loss of natural immunity
+- $V^S_{a,v}$ represents vaccination transitions
+
+## Exposed Compartments
+
+$$\frac{dE1_{a,1}}{dt} = \lambda_a \xi^{\text{inf}}_1(t) S_{a,1} - \gamma_E E1_{a,1} - \gamma^{\text{vac}}_1(t) E1_{a,1} + V^{E1}_{a,1}$$
+
+$$\frac{dE1_{a,v}}{dt} = \lambda_a \xi^{\text{inf}}_v(t) S_{a,v} - \gamma_E E1_{a,v} - \gamma^{\text{vac}}_v(t) E1_{a,v} + V^{E1}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) E1_{a,v-1}$$
+
+for $v = 2, \ldots, 8$
+
+$$\frac{dE2_{a,1}}{dt} = \gamma_E E1_{a,1} - \gamma_E E2_{a,1} - \gamma^{\text{vac}}_1(t) E2_{a,1} + V^{E2}_{a,1}$$
+
+$$\frac{dE2_{a,v}}{dt} = \gamma_E E1_{a,v} - \gamma_E E2_{a,v} - \gamma^{\text{vac}}_v(t) E2_{a,v} + V^{E2}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) E2_{a,v-1}$$
+
+for $v = 2, \ldots, 8$
+
+where $\gamma_E$ is the rate of progression through latent infection.
+
+## Mild Infections
+
+$$\frac{dI^{\text{Mild}}_{a,1}}{dt} = \gamma_E E2_{a,1} (1 - p^{\text{hosp}}_{a,1}(t)) - \gamma^{\text{Mild}} I^{\text{Mild}}_{a,1} - \gamma^{\text{vac}}_1(t) I^{\text{Mild}}_{a,1}$$
+
+$$\frac{dI^{\text{Mild}}_{a,v}}{dt} = \gamma_E E2_{a,v} (1 - p^{\text{hosp}}_{a,v}(t)) - \gamma^{\text{Mild}} I^{\text{Mild}}_{a,v} - \gamma^{\text{vac}}_v(t) I^{\text{Mild}}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) I^{\text{Mild}}_{a,v-1}$$
+
+for $v = 2, \ldots, 8$
+
+where:
+
+- $p^{\text{hosp}}_{a,v}(t) = p^{\text{hosp}}_a \cdot \xi^{\text{dis}}_v(t) \cdot m^{\text{hosp}}(t)$ is the time-varying hospitalization probability
+- $\gamma^{\text{Mild}}$ is the recovery rate from mild infection
+
+## Severe Infections (Pre-hospitalization)
+
+$$\frac{dI1_{a,1}}{dt} = \gamma_E E2_{a,1} p^{\text{hosp}}_{a,1}(t) - \gamma^{\text{Case}} I1_{a,1} - \gamma^{\text{vac}}_1(t) I1_{a,1}$$
+
+$$\frac{dI1_{a,v}}{dt} = \gamma_E E2_{a,v} p^{\text{hosp}}_{a,v}(t) - \gamma^{\text{Case}} I1_{a,v} - \gamma^{\text{vac}}_v(t) I1_{a,v} + \gamma^{\text{vac}}_{v-1}(t) I1_{a,v-1}$$
+
+$$\frac{dI2_{a,1}}{dt} = \gamma^{\text{Case}} I1_{a,1} - \gamma^{\text{Case}} I2_{a,1} - \gamma^{\text{vac}}_1(t) I2_{a,1}$$
+
+$$\frac{dI2_{a,v}}{dt} = \gamma^{\text{Case}} I1_{a,v} - \gamma^{\text{Case}} I2_{a,v} - \gamma^{\text{vac}}_v(t) I2_{a,v} + \gamma^{\text{vac}}_{v-1}(t) I2_{a,v-1}$$
+
+for $v = 2, \ldots, 8$
+
+## Recovered Compartments
+
+$$\begin{align}
+\frac{dR1_{a,1}}{dt} &= \gamma^{\text{rec}} H2^{\text{Rec}}_{a,1} + \gamma^{\text{Mild}} I^{\text{Mild}}_{a,1} + \gamma^{\text{Hosp,surv}}(t) H2^{\text{Hosp,Get,Live}}_{a,1} \\
+&\quad + \gamma^{\text{Hosp,surv}} H2^{\text{Hosp,NotGet,Live}}_{a,1} + \gamma^{\text{ICU,surv}} H2^{\text{ICU,NotGet,Live}}_{a,1} \\
+&\quad - \gamma_R(t) R1_{a,1} - \gamma^{\text{vac}}_1(t) R1_{a,1} + V^{R1}_{a,1}
+\end{align}$$
+
+$$\begin{align}
+\frac{dR1_{a,v}}{dt} &= \gamma^{\text{rec}} H2^{\text{Rec}}_{a,v} + \gamma^{\text{Mild}} I^{\text{Mild}}_{a,v} + \gamma^{\text{Hosp,surv}}(t) H2^{\text{Hosp,Get,Live}}_{a,v} \\
+&\quad + \gamma^{\text{Hosp,surv}} H2^{\text{Hosp,NotGet,Live}}_{a,v} + \gamma^{\text{ICU,surv}} H2^{\text{ICU,NotGet,Live}}_{a,v} \\
+&\quad - \gamma_R(t) R1_{a,v} - \gamma^{\text{vac}}_v(t) R1_{a,v} + V^{R1}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) R1_{a,v-1}
+\end{align}$$
+
+for $v = 2, \ldots, 8$
+
+$$\frac{dR2_{a,1}}{dt} = \gamma_R(t) R1_{a,1} - \gamma_R(t) R2_{a,1} - \gamma^{\text{vac}}_1(t) R2_{a,1} + V^{R2}_{a,1}$$
+
+$$\frac{dR2_{a,v}}{dt} = \gamma_R(t) R1_{a,v} - \gamma_R(t) R2_{a,v} - \gamma^{\text{vac}}_v(t) R2_{a,v} + V^{R2}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) R2_{a,v-1}$$
+
+for $v = 2, \ldots, 8$
+
+# Hospital and ICU Dynamics
+
+For individuals who do not require ICU, get treatment and survive:
+
+$$\begin{align}
+\frac{dH1^{\text{Hosp,Get,Live}}_{a,1}}{dt} &= \gamma^{\text{Case}} I2_{a,1} (1 - p^{\text{sev}}_a(t)) p^{\text{hosp}} (1 - p^{\text{death,Hosp,treat}}_a) \\
+&\quad - \gamma^{\text{Hosp,surv}}(t) H1^{\text{Hosp,Get,Live}}_{a,1} - \gamma^{\text{vac}}_1(t) H1^{\text{Hosp,Get,Live}}_{a,1}
+\end{align}$$
+
+$$\begin{align}
+\frac{dH1^{\text{Hosp,Get,Live}}_{a,v}}{dt} &= \gamma^{\text{Case}} I2_{a,v} (1 - p^{\text{sev}}_a(t)) p^{\text{hosp}} (1 - p^{\text{death,Hosp,treat}}_a) \\
+&\quad - \gamma^{\text{Hosp,surv}}(t) H1^{\text{Hosp,Get,Live}}_{a,v} - \gamma^{\text{vac}}_v(t) H1^{\text{Hosp,Get,Live}}_{a,v} \\
+&\quad + \gamma^{\text{vac}}_{v-1}(t) H1^{\text{Hosp,Get,Live}}_{a,v-1}
+\end{align}$$
+
+for $v = 2, \ldots, 8$
+
+$$\frac{dH2^{\text{Hosp,Get,Live}}_{a,1}}{dt} = \gamma^{\text{Hosp,surv}}(t) H1^{\text{Hosp,Get,Live}}_{a,1} - \gamma^{\text{Hosp,surv}}(t) H2^{\text{Hosp,Get,Live}}_{a,1} - \gamma^{\text{vac}}_1(t) H2^{\text{Hosp,Get,Live}}_{a,1}$$
+
+$$\begin{align}
+\frac{dH2^{\text{Hosp,Get,Live}}_{a,v}}{dt} &= \gamma^{\text{Hosp,surv}}(t) H1^{\text{Hosp,Get,Live}}_{a,v} - \gamma^{\text{Hosp,surv}}(t) H2^{\text{Hosp,Get,Live}}_{a,v} \\
+&\quad - \gamma^{\text{vac}}_v(t) H2^{\text{Hosp,Get,Live}}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) H2^{\text{Hosp,Get,Live}}_{a,v-1}
+\end{align}$$
+
+for $v = 2, \ldots, 8$
+
+Similar equations exist for:
+
+- $H1^{\text{Hosp,Get,Die}}_{a,v}$, $H2^{\text{Hosp,Get,Die}}_{a,v}$: Get treatment, die
+- $H1^{\text{Hosp,NotGet,Live}}_{a,v}$, $H2^{\text{Hosp,NotGet,Live}}_{a,v}$: Don't get treatment, survive
+- $H1^{\text{Hosp,NotGet,Die}}_{a,v}$, $H2^{\text{Hosp,NotGet,Die}}_{a,v}$: Don't get treatment, die
+
+## Mechanical Ventilation Compartments
+
+For individuals who get mechanical ventilation and survive:
+
+$$\begin{align}
+\frac{dH1^{\text{ICU,Get,Live}}_{a,1}}{dt} &= \gamma^{\text{Case}} I2_{a,1} p^{\text{sev}}_a(t) p^{\text{ICU}} (1 - p^{\text{death,ICU,treat}}_a) \\
+&\quad - \gamma^{\text{ICU,surv}}(t) H1^{\text{ICU,Get,Live}}_{a,1} - \gamma^{\text{vac}}_1(t) H1^{\text{ICU,Get,Live}}_{a,1}
+\end{align}$$
+
+$$\begin{align}
+\frac{dH1^{\text{ICU,Get,Live}}_{a,v}}{dt} &= \gamma^{\text{Case}} I2_{a,v} p^{\text{sev}}_a(t) p^{\text{ICU}} (1 - p^{\text{death,ICU,treat}}_a) \\
+&\quad - \gamma^{\text{ICU,surv}}(t) H1^{\text{ICU,Get,Live}}_{a,v} - \gamma^{\text{vac}}_v(t) H1^{\text{ICU,Get,Live}}_{a,v} \\
+&\quad + \gamma^{\text{vac}}_{v-1}(t) H1^{\text{ICU,Get,Live}}_{a,v-1}
+\end{align}$$
+
+for $v = 2, \ldots, 8$
+
+Similar structures exist for all mechanical ventilation compartments.
+
+## Recovery from ICU
+
+$$\frac{dH1^{\text{Rec}}_{a,1}}{dt} = \gamma^{\text{ICU,surv}}(t) H2^{\text{ICU,Get,Live}}_{a,1} - \gamma^{\text{rec}} H1^{\text{Rec}}_{a,1} - \gamma^{\text{vac}}_1(t) H1^{\text{Rec}}_{a,1}$$
+
+$$\begin{align}
+\frac{dH1^{\text{Rec}}_{a,v}}{dt} &= \gamma^{\text{ICU,surv}}(t) H2^{\text{ICU,Get,Live}}_{a,v} - \gamma^{\text{rec}} H1^{\text{Rec}}_{a,v} \\
+&\quad - \gamma^{\text{vac}}_v(t) H1^{\text{Rec}}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) H1^{\text{Rec}}_{a,v-1}
+\end{align}$$
+
+for $v = 2, \ldots, 8$
+
+$$\frac{dH2^{\text{Rec}}_{a,1}}{dt} = \gamma^{\text{rec}} H1^{\text{Rec}}_{a,1} - \gamma^{\text{rec}} H2^{\text{Rec}}_{a,1} - \gamma^{\text{vac}}_1(t) H2^{\text{Rec}}_{a,1}$$
+
+$$\begin{align}
+\frac{dH2^{\text{Rec}}_{a,v}}{dt} &= \gamma^{\text{rec}} H1^{\text{Rec}}_{a,v} - \gamma^{\text{rec}} H2^{\text{Rec}}_{a,v} \\
+&\quad - \gamma^{\text{vac}}_v(t) H2^{\text{Rec}}_{a,v} + \gamma^{\text{vac}}_{v-1}(t) H2^{\text{Rec}}_{a,v-1}
+\end{align}$$
+
+for $v = 2, \ldots, 8$
+
+## Deaths
+
+$$\begin{align}
+\frac{dD_{a,v}}{dt} &= \gamma^{\text{Hosp,die}}(t) H2^{\text{Hosp,Get,Die}}_{a,v} + \gamma^{\text{Hosp,die}} H2^{\text{Hosp,NotGet,Die}}_{a,v} \\
+&\quad + \gamma^{\text{ICU,die}}(t) H2^{\text{ICU,Get,Die}}_{a,v} + \gamma^{\text{ICU,die}} H2^{\text{ICU,NotGet,Die}}_{a,v}
+\end{align}$$
+
+# Vaccination Dynamics
+
+## Vaccination Transitions
+
+The vaccination transitions $V^X_{a,v}$ for compartment $X$ are defined as:
+
+$$\begin{align}
+V^X_{a,1} &= -r^{\text{prim,1}}_a X_{a,1} \\
+V^X_{a,2} &= r^{\text{prim,1}}_a X_{a,1} - r^{\text{prim,2}} X_{a,2} \\
+V^X_{a,3} &= r^{\text{prim,2}} X_{a,2} - r^{\text{boost,1}} X_{a,3} \\
+V^X_{a,4} &= -r^{\text{boost,1}} X_{a,4} \\
+V^X_{a,5} &= -r^{\text{boost,1}} X_{a,5} \\
+V^X_{a,6} &= r^{\text{boost,1}} \sum_{k=3}^5 X_{a,k} + r^{\text{boost,2}}_a \sum_{k=7}^8 X_{a,k} \\
+V^X_{a,7} &= -r^{\text{boost,2}}_a X_{a,7} \\
+V^X_{a,8} &= -r^{\text{boost,2}}_a X_{a,8}
+\end{align}$$
+
+where:
+
+- $r^{\text{prim,1}}_a$ is the first dose rate for age group $a$
+- $r^{\text{prim,2}}$ is the second dose rate
+- $r^{\text{boost,1}}$ is the first booster rate
+- $r^{\text{boost,2}}_a$ is the second booster rate for age group $a$
+
+# Force of Infection
+
+The force of infection for age group $a$ is:
+
+$$\lambda_a = \beta(t) \sum_{k=1}^{17} M_{a,k} \rho_k \sum_{v=1}^8 \left( I^{\text{Mild}}_{k,v} + I1_{k,v} + I2_{k,v} \right) \psi_v$$
+
+where:
+
+- $\beta(t)$ is the time-varying transmission rate
+- $M_{a,k}$ is the contact matrix between age groups $a$ and $k$
+- $\rho_k$ is the relative infectiousness of age group $k$
+- $\psi_v$ is the relative infectiousness of vaccination status $v$
+
+# Hospital Capacity Constraints
+
+## Treatment Availability
+
+The probability of receiving (non-ICU) treatment is:
+
+$$p^{\text{hosp}} = \begin{cases}
+1 & \text{if } N^{\text{hosp,req}} \leq C^{\text{hosp}} - O^{\text{hosp}} \\
+\frac{C^{\text{hosp}} - O^{\text{hosp}}}{N^{\text{hosp,req}}} & \text{if } N^{\text{hosp,req}} > C^{\text{hosp}} - O^{\text{hosp}}
+\end{cases}$$
+
+where:
+
+- $N^{\text{hosp,req}}$ is the total number requiring treatment
+- $C^{\text{hosp}}$ is the hospital bed capacity
+- $O^{\text{hosp}}$ is the current hospital bed occupancy
+
+## ICU Bed Availability
+
+The probability of receiving mechanical ventilation is:
+
+$$p^{\text{ICU}} = \begin{cases}
+1 & \text{if } N^{\text{ICU,req}} \leq C^{\text{ICU}} - O^{\text{ICU}} \\
+\frac{C^{\text{ICU}} - O^{\text{ICU}}}{N^{\text{ICU,req}}} & \text{if } N^{\text{ICU,req}} > C^{\text{ICU}} - O^{\text{ICU}}
+\end{cases}$$
+
+where:
+
+- $N^{\text{ICU,req}}$ is the total number requiring mechanical ventilation
+- $C^{\text{ICU}}$ is the ICU bed capacity
+- $O^{\text{ICU}}$ is the current ICU bed occupancy
+
+# Time-Varying Parameters
+
+Several parameters in the model are time-varying and implemented using interpolation:
+
+- $\beta(t)$: Transmission rate
+- $\gamma_R(t)$: Rate of immunity waning
+- $\xi^{\text{inf}}_v(t)$: Vaccine efficacy against infection
+- $\xi^{\text{dis}}_v(t)$: Vaccine efficacy against disease
+- $\gamma^{\text{vac}}_v(t)$: Vaccine waning rates
+- $\gamma^{\text{Hosp,surv}}(t)$, $\gamma^{\text{Hosp,die}}(t)$: (non-ICU) Treatment progression rates
+- $\gamma^{\text{ICU,surv}}(t)$, $\gamma^{\text{ICU,die}}(t)$: ICU progression rates
+- $m^{\text{hosp}}(t)$: Hospitalization probability multiplier
+- $m^{\text{sev}}(t)$: Severity probability multiplier
+
+# Parameter Definitions
+
+The following table summarizes the key model parameters:
+
+```{r parameter-table, echo=FALSE}
+library(knitr)
+
+parameter_table <- data.frame(
+  Parameter = c(
+    "$\\gamma_E$",
+    "$\\gamma^{\\text{Mild}}$",
+    "$\\gamma^{\\text{Case}}$",
+    "$\\gamma^{\\text{rec}}$",
+    "$p^{\\text{hosp}}_a$",
+    "$p^{\\text{sev}}_a$",
+    "$p^{\\text{death,Hosp,treat}}_a$",
+    "$p^{\\text{death,Hosp,notreat}}_a$",
+    "$p^{\\text{death,ICU,treat}}_a$",
+    "$p^{\\text{death,ICU,notreat}}_a$"
+  ),
+  Description = c(
+    "Rate of progression through latent infection",
+    "Recovery rate from mild infection",
+    "Rate of progression from severe infection",
+    "Rate of progression through post-ICU recovery",
+    "Probability of hospitalization by age group",
+    "Probability of severe disease (requiring ICU treatment) by age group",
+    "Death probability with (non-ICU) treatment",
+    "Death probability without ICU treatment",
+    "Death probability with mechanical ventilation",
+    "Death probability without mechanical ventilation"
+  )
+)
+
+kable(parameter_table, 
+      caption = "Key model parameters",
+      col.names = c("Parameter", "Description"),
+      escape = FALSE)
+```
+
+# Acknowledgements
+
+This document was initially generated using Claude and Copilot, then edited for clarity and correctness.
